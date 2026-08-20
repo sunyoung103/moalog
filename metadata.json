@@ -1,0 +1,12 @@
+{
+  "name": "모아로그 (Moalog)",
+  "description": "실시간 카메라 관찰, AI 생물 식별, 자동 누끼 스티커 및 분류학 기반 생태 도감과 필드 맵 아카이브",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
+
