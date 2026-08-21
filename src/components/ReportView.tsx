@@ -267,15 +267,15 @@ export const ReportView: React.FC<ReportViewProps> = ({
   return (
     <div className="space-y-4 pb-12 select-none" id="report-view-container">
       {/* ================= 1. 나의 탐험가 유형 (만능 탐험가 등) ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+      <section className="bg-white rounded-3xl p-5 shadow-xs border border-stone-200/60">
         <div
           onClick={() => setIsPersonaModalOpen(true)}
           className="w-full cursor-pointer group"
         >
           {/* Top Label & Edit Button */}
           <div className="flex items-center justify-between mb-3.5">
-            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-stone-800">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-stone-900">
+              <Sparkles className="w-3.5 h-3.5 text-stone-700" />
               <span>탐험가 성향 프로필</span>
             </div>
 
@@ -285,7 +285,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 e.stopPropagation();
                 setIsPersonaModalOpen(true);
               }}
-              className="flex items-center gap-1 text-[11px] font-bold text-stone-500 group-hover:text-stone-800 bg-stone-100 hover:bg-stone-200/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer border border-stone-200/60"
+              className="flex items-center gap-1 text-[11px] font-bold text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer shadow-2xs"
             >
               <RefreshCw className="w-3 h-3 text-stone-600" />
               <span>유형 변경</span>
@@ -293,9 +293,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
 
           {/* Center Explorer Identity Info Box */}
-          <div className="bg-stone-50/90 rounded-2xl p-4 border border-stone-200/80 transition-all group-hover:border-emerald-300">
+          <div className="bg-stone-50 rounded-2xl p-4 transition-all shadow-2xs border border-stone-100">
             <div className="flex items-start gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100/90 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200/80 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-stone-900 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <CurrentIcon className="w-6 h-6 stroke-[2.2px]" />
               </div>
 
@@ -304,7 +304,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   <h2 className="text-base font-black text-stone-900 tracking-tight">
                     {currentPersona.title}
                   </h2>
-                  <span className="text-[10px] font-mono font-extrabold bg-emerald-100/80 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-200/70">
+                  <span className="text-[10px] font-mono font-extrabold bg-white text-stone-900 px-2 py-0.5 rounded-md shadow-2xs border border-stone-200/60">
                     {currentPersona.level || 'Lv.3 관찰자'}
                   </span>
                 </div>
@@ -315,12 +315,12 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
 
             {/* Specialty Chips */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-3 mt-3 border-t border-stone-200/60">
+            <div className="flex items-center gap-1.5 flex-wrap pt-3 mt-3 border-t border-stone-200/80">
               <span className="text-[10px] text-stone-500 font-extrabold mr-1">관찰 테마:</span>
               {currentPersona.specialtyChips?.map((chip) => (
                 <span
                   key={chip}
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-stone-700 border border-stone-200/80 shadow-2xs"
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-stone-800 shadow-2xs border border-stone-200/60"
                 >
                   {chip}
                 </span>
@@ -331,10 +331,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
       </section>
 
       {/* ================= 2. 나의 생태 관심 저널 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+      <section className="bg-white rounded-3xl p-5 shadow-xs border border-stone-200/60">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
               <BookOpen className="w-4 h-4 text-stone-700" />
             </div>
             <div>
@@ -343,48 +343,48 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
           </div>
 
-          <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-xl border border-emerald-200/60">
+          <span className="text-xs font-mono font-black text-stone-900 bg-stone-100 px-2.5 py-1 rounded-xl shadow-2xs">
             {collectedList.length}종 관찰됨
           </span>
         </div>
 
         {/* 3 Metrics Grid */}
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+          <div className="bg-stone-50 p-3 rounded-2xl text-center flex flex-col items-center justify-center shadow-2xs border border-stone-100">
             <span className="text-[10px] text-stone-500 font-extrabold block mb-1">총 포착</span>
             <div className="flex items-baseline justify-center gap-0.5 font-mono">
               <span className="text-xl font-black text-stone-900">{collectedList.length}</span>
-              <span className="text-[10px] text-stone-500 font-bold">종</span>
+              <span className="text-[10px] text-stone-400 font-bold">종</span>
             </div>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+          <div className="bg-stone-50 p-3 rounded-2xl text-center flex flex-col items-center justify-center shadow-2xs border border-stone-100">
             <span className="text-[10px] text-stone-500 font-extrabold block mb-1">연속 관찰</span>
             <div className="flex items-center justify-center gap-1 font-mono">
               <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
               <span className="text-xl font-black text-stone-900">{userStats.streakDays || 5}</span>
-              <span className="text-[10px] text-stone-500 font-bold">일</span>
+              <span className="text-[10px] text-stone-400 font-bold">일</span>
             </div>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+          <div className="bg-stone-50 p-3 rounded-2xl text-center flex flex-col items-center justify-center shadow-2xs border border-stone-100">
             <span className="text-[10px] text-stone-500 font-extrabold block mb-1">방문 서식지</span>
             <div className="flex items-baseline justify-center gap-0.5 font-mono">
               <span className="text-xl font-black text-stone-900">{userStats.exploredHabitats?.length || 4}</span>
-              <span className="text-[10px] text-stone-500 font-bold">곳</span>
+              <span className="text-[10px] text-stone-400 font-bold">곳</span>
             </div>
           </div>
         </div>
 
         {/* Completion Rate Progress Bar */}
-        <div className="bg-stone-50 border border-stone-200/80 p-3.5 rounded-2xl mb-4">
+        <div className="bg-stone-50 p-3.5 rounded-2xl mb-4 shadow-2xs border border-stone-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-stone-800">생태 백과 도감 완성률</span>
-            <span className="text-xs font-black text-emerald-800 font-mono">{completionRate}%</span>
+            <span className="text-xs font-black text-stone-950 font-mono">{completionRate}%</span>
           </div>
-          <div className="w-full bg-stone-200/80 h-2.5 rounded-full overflow-hidden p-0.5 border border-stone-200/60">
+          <div className="w-full bg-stone-200/80 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner">
             <div
-              className="bg-emerald-500 h-full rounded-full transition-all duration-700"
+              className="bg-stone-900 h-full rounded-full transition-all duration-700"
               style={{ width: `${Math.max(5, completionRate)}%` }}
             />
           </div>
@@ -398,7 +398,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <div className="pt-2 border-t border-stone-100">
             <div className="flex items-center justify-between mb-2.5 px-0.5">
               <span className="text-xs font-black text-stone-900">최근 관찰 기록 일지</span>
-              <span className="text-[10px] text-stone-500 font-mono">최신 3개 기록</span>
+              <span className="text-[10px] text-stone-400 font-mono">최신 3개 기록</span>
             </div>
 
             <div className="space-y-2">
@@ -409,10 +409,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   <div
                     key={sp.id}
                     onClick={() => onSelectSpecimen(sp)}
-                    className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100/80 border border-stone-200/70 transition-all flex items-center justify-between cursor-pointer"
+                    className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 transition-all flex items-center justify-between cursor-pointer border border-stone-100 shadow-2xs"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-stone-200/80 flex items-center justify-center overflow-hidden shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-stone-200/60 flex items-center justify-center overflow-hidden shrink-0">
                         {targetImg ? (
                           <img src={targetImg} alt={sp.koreanName} className="w-full h-full object-cover" />
                         ) : (
@@ -422,7 +422,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <h4 className="text-xs font-black text-stone-900">{sp.koreanName}</h4>
-                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-200/60 px-1.5 py-0.2 rounded">
+                          <span className="text-[9px] font-mono font-bold text-stone-600 bg-stone-200/60 px-1.5 py-0.2 rounded">
                             {sp.number || 'No.01'}
                           </span>
                         </div>
@@ -441,9 +441,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
       </section>
 
       {/* ================= 3. 나의 관찰 성향 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+      <section className="bg-white rounded-3xl p-5 shadow-xs border border-stone-200/60">
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
             <PieChart className="w-4 h-4 text-stone-700" />
           </div>
           <div>
@@ -454,8 +454,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         {/* Multi-color stacked segment bar */}
         <div className="space-y-3 mb-4">
-          <div className="w-full h-3 rounded-full overflow-hidden flex bg-stone-100 p-0.5 border border-stone-200/80">
-            <div style={{ width: `${plantPct}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`식물 ${plantPct}%`} />
+          <div className="w-full h-3 rounded-full overflow-hidden flex bg-stone-100 p-0.5">
+            <div style={{ width: `${plantPct}%` }} className="bg-stone-900 h-full rounded-l-full transition-all" title={`식물 ${plantPct}%`} />
             <div style={{ width: `${birdPct}%` }} className="bg-sky-500 h-full transition-all" title={`조류 ${birdPct}%`} />
             <div style={{ width: `${insectPct}%` }} className="bg-amber-500 h-full transition-all" title={`곤충 ${insectPct}%`} />
             <div style={{ width: `${mammalPct}%` }} className="bg-orange-500 h-full rounded-r-full transition-all" title={`포유류 ${mammalPct}%`} />
@@ -463,15 +463,15 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
           {/* Category Badges Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-stone-900" />
                 <span>🌿 식물</span>
               </div>
-              <span className="text-xs font-mono font-black text-emerald-800">{plantCount}종 ({plantPct}%)</span>
+              <span className="text-xs font-mono font-black text-stone-900">{plantCount}종 ({plantPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
                 <span>🪶 조류</span>
@@ -479,7 +479,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <span className="text-xs font-mono font-black text-sky-800">{birdCount}종 ({birdPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                 <span>🐞 곤충</span>
@@ -487,7 +487,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <span className="text-xs font-mono font-black text-amber-800">{insectCount}종 ({insectPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                 <span>🐾 포유류</span>
@@ -497,8 +497,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
         </div>
 
-        {/* Observation Style AI Diagnostic summary card */}
-        <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
+        {/* Observation Style Diagnostic summary card with subtle point badge */}
+        <div className="p-3.5 rounded-2xl bg-stone-50 flex items-start gap-3 shadow-2xs border border-stone-100">
           <span className="text-base shrink-0 mt-0.5">💡</span>
           <div className="flex-1 text-xs text-stone-700 leading-relaxed font-medium">
             <strong className="text-stone-950 font-black block mb-0.5">
@@ -514,9 +514,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
       </section>
 
       {/* ================= 4. 시기별 포착 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+      <section className="bg-white rounded-3xl p-5 shadow-xs border border-stone-200/60">
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
             <Calendar className="w-4 h-4 text-stone-700" />
           </div>
           <div>
@@ -527,33 +527,33 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         {/* 4 Season Grid Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
             <span className="text-sm block font-bold mb-0.5">🌸 봄</span>
-            <span className="text-[10px] text-stone-500 font-bold block">3월~5월</span>
+            <span className="text-[10px] text-stone-400 font-bold block">3월~5월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.spring}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
             <span className="text-sm block font-bold mb-0.5">☀️ 여름</span>
-            <span className="text-[10px] text-stone-500 font-bold block">6월~8월</span>
+            <span className="text-[10px] text-stone-400 font-bold block">6월~8월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.summer}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
             <span className="text-sm block font-bold mb-0.5">🍁 가을</span>
-            <span className="text-[10px] text-stone-500 font-bold block">9월~11월</span>
+            <span className="text-[10px] text-stone-400 font-bold block">9월~11월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.autumn}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
             <span className="text-sm block font-bold mb-0.5">❄️ 겨울</span>
-            <span className="text-[10px] text-stone-500 font-bold block">12월~2월</span>
+            <span className="text-[10px] text-stone-400 font-bold block">12월~2월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.winter}건
             </span>
@@ -561,10 +561,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
 
         {/* Monthly Activity Histogram Bar Chart */}
-        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+        <div className="p-3.5 rounded-2xl bg-stone-50 shadow-2xs border border-stone-100">
           <h4 className="text-[11px] font-bold text-stone-800 mb-2 flex items-center justify-between">
             <span>월별 관찰 빈도 (포착 건수)</span>
-            <span className="text-[10px] text-stone-500 font-mono font-medium">2026 연간</span>
+            <span className="text-[10px] text-stone-400 font-mono font-medium">2026 연간</span>
           </h4>
 
           <div className="flex items-end justify-between gap-1.5 h-28 pt-4 pb-1 px-1">
@@ -578,11 +578,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   </span>
                   <div
                     className={`w-full max-w-[28px] rounded-t-lg transition-all duration-500 ${
-                      isActive ? 'bg-stone-900' : 'bg-stone-200'
+                      isActive ? 'bg-stone-900' : 'bg-stone-200/80'
                     }`}
                     style={{ height: `${heightPct}%` }}
                   />
-                  <span className="text-[10px] font-bold text-stone-600">{m.month}</span>
+                  <span className="text-[10px] font-bold text-stone-500">{m.month}</span>
                 </div>
               );
             })}
@@ -591,10 +591,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
       </section>
 
       {/* ================= 5. 내 뱃지 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+      <section className="bg-white rounded-3xl p-5 shadow-xs border border-stone-200/60">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
               <Award className="w-4 h-4 text-stone-700" />
             </div>
             <div>
@@ -603,7 +603,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
           </div>
 
-          <span className="text-xs font-mono font-black text-stone-800 bg-stone-100 px-2.5 py-1 rounded-xl border border-stone-200/60">
+          <span className="text-xs font-mono font-black text-stone-900 bg-stone-100 px-2.5 py-1 rounded-xl shadow-2xs">
             {BADGES.filter((b) => b.unlocked).length} / {BADGES.length} 획득
           </span>
         </div>
@@ -615,17 +615,17 @@ export const ReportView: React.FC<ReportViewProps> = ({
             return (
               <div
                 key={badge.id}
-                className={`p-3.5 rounded-2xl text-center flex flex-col items-center justify-between transition-all border ${
+                className={`p-3.5 rounded-2xl text-center flex flex-col items-center justify-between transition-all ${
                   isUnlocked
-                    ? 'bg-stone-50 border-stone-200/90 shadow-2xs'
-                    : 'bg-stone-50/60 border-stone-200/40 opacity-55'
+                    ? 'bg-stone-50 border border-stone-200/80 shadow-2xs'
+                    : 'bg-stone-50/50 border border-dashed border-stone-200 opacity-50'
                 }`}
               >
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl mb-2 bg-white shadow-2xs border border-stone-200/80">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl mb-2 bg-white shadow-2xs border border-stone-100">
                   {isUnlocked ? badge.icon : '🔒'}
                 </div>
 
-                <h4 className="text-xs font-black text-stone-900 tracking-tight mb-0.5">
+                <h4 className="text-xs font-black text-stone-900 mb-1 tracking-tight">
                   {badge.title}
                 </h4>
                 <p className="text-[10px] text-stone-500 leading-tight mb-2.5 line-clamp-2 h-7 flex items-center justify-center font-medium">
@@ -633,12 +633,12 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 </p>
 
                 {isUnlocked ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-stone-950 btn-point-gradient px-2.5 py-0.5 rounded-full shadow-2xs">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     달성 완료
                   </span>
                 ) : (
-                  <span className="text-[9px] font-medium text-stone-400 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200/60">
+                  <span className="text-[9px] font-medium text-stone-400 bg-white px-2.5 py-0.5 rounded-full shadow-2xs border border-stone-200/60">
                     도전 중
                   </span>
                 )}
@@ -661,7 +661,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#F8FAF7] rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] flex flex-col text-stone-900 border border-stone-300 select-none overflow-hidden"
+              className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] flex flex-col text-stone-900 border border-stone-200 select-none overflow-hidden"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-stone-200 shrink-0">

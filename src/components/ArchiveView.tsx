@@ -284,13 +284,13 @@ export function ArchiveView({
   return (
     <div className="px-3.5 py-3.5 pb-24" id="archive-view-container">
       {/* Sub-tabs Toggle Bar: 나의 도감 / 리포트 */}
-      <div className="flex bg-stone-200/70 p-1 rounded-2xl mb-4 border border-stone-200/60 shadow-2xs">
+      <div className="flex bg-white p-1 rounded-2xl mb-4 shadow-xs border border-stone-200/60">
         <button
           type="button"
           onClick={() => setActiveSubTab('collection')}
           className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'collection'
-              ? 'bg-white text-stone-950 shadow-xs'
+              ? 'bg-stone-900 text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -302,7 +302,7 @@ export function ArchiveView({
           onClick={() => setActiveSubTab('report')}
           className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'report'
-              ? 'bg-white text-stone-950 shadow-xs'
+              ? 'bg-stone-900 text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -314,8 +314,8 @@ export function ArchiveView({
       <div>
         {activeSubTab === 'collection' ? (
           (userCollectedList.length === 0 && (!pendingSpecimens || pendingSpecimens.length === 0)) ? (
-            <div className="py-24 flex flex-col items-center justify-center text-center px-6 bg-white rounded-3xl mt-2 shadow-sm border border-stone-200/80">
-              <div className="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-5 border border-emerald-200/80 text-3xl font-black">
+            <div className="py-24 flex flex-col items-center justify-center text-center px-6 bg-white rounded-3xl mt-2 shadow-xs border border-stone-200/60">
+              <div className="w-20 h-20 rounded-2xl bg-stone-900 text-white flex items-center justify-center mb-5 text-3xl font-black shadow-md">
                 ✦
               </div>
               <h3 className="text-base font-black text-stone-900 mb-2">아직 기록된 자연 도감이 없습니다</h3>
@@ -326,7 +326,7 @@ export function ArchiveView({
                 onClick={onOpenLens}
                 className="py-3 px-6 bg-stone-900 text-white text-sm font-black rounded-2xl shadow-md hover:bg-stone-800 transition-all inline-flex items-center gap-2 active:scale-95 cursor-pointer"
               >
-                <Camera className="w-4 h-4 text-emerald-400" />
+                <Camera className="w-4 h-4 text-white" />
                 <span>렌즈로 첫 생물 포착하기</span>
               </button>
             </div>
@@ -334,14 +334,14 @@ export function ArchiveView({
           <div className="space-y-4">
             {filterTaxonomy ? (
               /* Taxonomy Breadcrumb Header */
-              <div className="bg-stone-100 p-3 rounded-2xl flex items-center justify-between border border-stone-200/80">
+              <div className="bg-white p-3 rounded-2xl flex items-center justify-between shadow-2xs border border-stone-200/80">
                 <div className="flex items-center gap-1.5 text-xs text-stone-700">
                   <span className="font-extrabold text-stone-900">{filterTaxonomy}</span>
                   <span>필터링 중</span>
                 </div>
                 <button
                   onClick={onClearTaxonomyFilter}
-                  className="text-[10px] text-stone-600 hover:text-stone-900 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-stone-200 shadow-2xs"
+                  className="text-[10px] text-stone-700 hover:text-stone-900 font-extrabold bg-stone-100 px-2.5 py-1 rounded-lg shadow-2xs"
                 >
                   필터 해제
                 </button>
@@ -349,7 +349,7 @@ export function ArchiveView({
             ) : null}
 
             {showCategoryTabs && (
-              <div className="sticky top-[45px] z-20 bg-[#F6F8F6]/95 backdrop-blur-md -mx-3.5 px-3.5 py-2">
+              <div className="sticky top-[45px] z-20 bg-[#E8EFF7]/95 backdrop-blur-md -mx-3.5 px-3.5 py-2">
                 <div className="flex gap-2 overflow-x-auto scrollbar-none items-center">
                   {availableCategories.map((cat) => {
                     const Icon = cat.icon;
@@ -360,11 +360,11 @@ export function ArchiveView({
                         onClick={() => setSelectedCategory(cat.id as SpecimenCategory)}
                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                           isActive
-                            ? 'bg-stone-900 text-white font-extrabold shadow-xs'
-                            : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80 font-bold'
+                            ? 'bg-stone-900 text-white font-black shadow-xs'
+                            : 'bg-white text-stone-700 hover:bg-stone-100 shadow-2xs font-bold border border-stone-200/60'
                         }`}
                       >
-                        {Icon && <Icon className="w-3.5 h-3.5 text-emerald-800" />}
+                        {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-600'}`} />}
                         <span>{cat.label}</span>
                       </button>
                     );
@@ -579,10 +579,10 @@ export function ArchiveView({
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
                         onClick={() => handleSpecimenClick(sp)}
-                        className={`bg-white rounded-2xl p-2.5 shadow-xs border border-stone-200/80 flex flex-col items-center cursor-pointer relative transition-all hover:border-emerald-300 hover:shadow-md ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-emerald-500' : ''}`}
+                        className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-stone-200/60 flex flex-col items-center cursor-pointer relative transition-all hover:shadow-md ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-stone-900' : ''}`}
                       >
                         {sp.number && (
-                          <span className="absolute top-2 left-2 text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-stone-200">
+                          <span className="absolute top-2 left-2 text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                             <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
                             <span>{sp.number}</span>
                           </span>
@@ -646,16 +646,16 @@ export function ArchiveView({
                               onPointerUp={handlePointerUp}
                               onPointerLeave={handlePointerUp}
                               onClick={() => handleSpecimenClick(sp)}
-                              className={`bg-white rounded-2xl p-2.5 shadow-xs border border-stone-200/80 transition-all cursor-pointer flex flex-col justify-between relative hover:border-emerald-300 hover:shadow-md ${
-                                isMultiSelectMode && selectedIds.includes(sp.id) ? 'ring-2 ring-emerald-500' : ''
+                              className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-stone-200/60 transition-all cursor-pointer flex flex-col justify-between relative hover:shadow-md ${
+                                isMultiSelectMode && selectedIds.includes(sp.id) ? 'ring-2 ring-stone-900' : ''
                               }`}
                             >
                               {isMultiSelectMode && (
-                                <div className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
+                                <div className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${selectedIds.includes(sp.id) ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-400'}`}>
                                   {selectedIds.includes(sp.id) && <Check className="w-3 h-3" />}
                                 </div>
                               )}
-                              <div className="relative aspect-square w-full rounded-xl bg-stone-100 overflow-hidden mb-2 flex items-center justify-center border border-stone-200/60">
+                              <div className="relative aspect-square w-full rounded-xl bg-stone-100 overflow-hidden mb-2 flex items-center justify-center">
                                 {targetImage ? (
                                   <img
                                     src={targetImage}
@@ -671,7 +671,7 @@ export function ArchiveView({
                                 )}
 
                                 {sp.confidence && (
-                                  <span className="absolute bottom-1.5 right-1.5 bg-stone-900/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md font-extrabold border border-stone-700 shadow-2xs">
+                                  <span className="absolute bottom-1.5 right-1.5 bg-stone-900/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md font-extrabold shadow-2xs">
                                     {sp.confidence}%
                                   </span>
                                 )}
@@ -682,7 +682,7 @@ export function ArchiveView({
                                   <h4 className="text-xs font-black text-stone-900 truncate">
                                     {sp.koreanName}
                                   </h4>
-                                  <span className="text-[9px] font-mono font-bold text-emerald-950 bg-emerald-100/90 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1 border border-emerald-200/60">
+                                  <span className="text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1">
                                     <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
                                     <span>{sp.number || 'No.01'}</span>
                                   </span>
@@ -690,7 +690,7 @@ export function ArchiveView({
                                 <p className="text-[10px] text-stone-600 italic truncate font-serif mt-0.5">
                                   {sp.scientificName}
                                 </p>
-                                <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-200/60">
+                                <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-100">
                                   <span className="truncate max-w-[85px] font-medium">
                                     {sp.locationCoord?.name || sp.habitatType || '도심'}
                                   </span>
@@ -706,7 +706,7 @@ export function ArchiveView({
                 )
               )
             ) : (
-              <div className="py-16 text-center bg-white rounded-3xl p-6 border border-stone-100 shadow-sm mt-4">
+              <div className="py-16 text-center bg-[#ECECEC] rounded-3xl p-6 shadow-2xs mt-4">
                 <HelpCircle className="w-10 h-10 text-stone-300 mx-auto mb-3" />
                 <p className="text-sm font-bold text-stone-800 mb-1">
                   {searchQuery

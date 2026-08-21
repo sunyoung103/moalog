@@ -358,27 +358,27 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             type="button"
             disabled={isProcessing || isSuccess}
             onClick={handleCheckout}
-            className="flex-1 py-3.5 bg-[#202424] hover:bg-stone-850 text-white rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+            className="flex-1 py-3.5 btn-point-gradient hover:brightness-105 text-stone-950 rounded-2xl text-xs font-black shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
           >
             {isProcessing ? (
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-amber-300 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
                 <span>안전 결제 처리 중...</span>
               </div>
             ) : isSuccess ? (
-              <div className="flex items-center gap-1.5 text-emerald-400">
+              <div className="flex items-center gap-1.5 text-stone-950">
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>구독 완료! 환영합니다!</span>
               </div>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-amber-300" />
+                <Sparkles className="w-4 h-4 text-stone-950 fill-stone-950/20" />
                 <span>
                   {selectedPlan === 'yearly'
                     ? '연 39,000원 결제하고 시작 (월 3,250원)'
                     : '월 4,900원 결제하고 시작'}
                 </span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-stone-950" />
               </>
             )}
           </button>

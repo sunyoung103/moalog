@@ -1,47 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --color-stone-50: #F2F5F0;
-  --color-stone-100: #E4EAE0;
-  --color-stone-200: #D0D8CC;
-  --color-stone-300: #B6BEAF;
-  --color-stone-400: #929C8B;
-  --color-stone-500: #707B68;
-  --color-stone-600: #57614F;
-  --color-stone-700: #41493B;
-  --color-stone-800: #2E342A;
-  --color-stone-900: #202424;
-  --color-stone-950: #151818;
-
-  --color-emerald-50: #E6FBF2;
-  --color-emerald-100: #CDFAEA;
-  --color-emerald-200: #9CEFD3;
-  --color-emerald-300: #57E2AE;
-  --color-emerald-400: #23D093;
-  --color-emerald-500: #10B981;
-  --color-emerald-600: #059669;
-  --color-emerald-700: #047857;
-  --color-emerald-800: #065F46;
-  --color-emerald-900: #064E3B;
-
-  --color-amber-50: #FFFDF0;
-  --color-amber-100: #FFFBC3;
-  --color-amber-200: #FFF788;
-  --color-amber-300: #FFF04D;
-  --color-amber-400: #FACC15;
-  --color-amber-500: #EAB308;
-  --color-amber-600: #CA8A04;
-  --color-amber-700: #A16207;
-  --color-amber-800: #854D0E;
-  --color-amber-900: #713F12;
+  --color-cyan-point: #21CED8;
+  --color-mint-point: #74E4BD;
 }
 
 :root {
   font-family: 'Plus Jakarta Sans', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: -0.015em;
+  background-color: #E8EFF7;
 }
 
 @layer utilities {
+  /* Linear Point Gradient Utilities (#21CED8 -> #74E4BD -> #E8EFF7) - Use SPARINGLY on key focal points */
+  .btn-point-gradient {
+    background: linear-gradient(135deg, #21CED8 0%, #74E4BD 60%, #E8EFF7 100%);
+    color: #0F172A;
+  }
+
+  .accent-gradient-point {
+    background: linear-gradient(135deg, #21CED8 0%, #74E4BD 100%);
+  }
+
+  .bg-app-bg {
+    background-color: #E8EFF7;
+  }
+
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
@@ -51,16 +35,12 @@
   }
   
   .poster-grid-bg {
-    background-image: radial-gradient(rgba(18, 24, 22, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(18, 24, 22, 0.05) 1px, transparent 1px);
     background-size: 14px 14px;
   }
 
   .sticker-drop-shadow {
-    filter: drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 8px 16px rgba(16, 185, 129, 0.15));
-  }
-
-  .graphic-card-border {
-    border: 1.5px solid rgba(32, 36, 36, 0.12);
+    filter: drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 6px 12px rgba(15, 23, 42, 0.08));
   }
 }
 

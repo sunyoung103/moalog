@@ -263,7 +263,7 @@ export default function App() {
   const pendingCount = activeSpecimens.filter((s) => s.isPending).length;
 
   return (
-    <div className={`relative ${currentTab === 'map' || currentTab === 'lens' ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} bg-[#F6F8F6] text-stone-900 flex flex-col font-sans antialiased select-none`}>
+    <div className={`relative ${currentTab === 'map' || currentTab === 'lens' ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} bg-[#E8EFF7] text-stone-900 flex flex-col font-sans antialiased select-none`}>
       {/* Toast Notification */}
       {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
 

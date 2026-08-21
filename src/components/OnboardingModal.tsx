@@ -101,13 +101,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     <div
       id="onboarding-fullscreen-window"
-      className="fixed inset-0 z-50 bg-[#F2F5F0] text-stone-900 flex flex-col justify-between overflow-y-auto select-none p-5 sm:p-8"
+      className="fixed inset-0 z-50 bg-[#E8EFF7] text-stone-900 flex flex-col justify-between overflow-y-auto select-none p-5 sm:p-8"
     >
       {/* Top Header Bar with MOALOG Logo */}
       <div className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-3">
         {/* MOALOG Brand Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-[#202424] text-emerald-400 flex items-center justify-center font-black text-base shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-stone-950 text-[#06D181] flex items-center justify-center font-black text-base shadow-sm">
             M
           </div>
           <div className="flex flex-col">
@@ -355,7 +355,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         <button
           type="button"
           onClick={handleNext}
-          className="w-full py-4 bg-[#202424] hover:bg-stone-850 active:scale-[0.99] text-white font-black text-sm rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className="w-full py-4 btn-point-gradient hover:brightness-105 active:scale-[0.99] text-stone-950 font-black text-sm rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
         >
           <span>
             {step === 2
@@ -364,7 +364,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               ? '성향 선택 완료'
               : '다음'}
           </span>
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 text-stone-950" />
         </button>
       </div>
     </div>
