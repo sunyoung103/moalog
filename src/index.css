@@ -49,6 +49,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  
+  .poster-grid-bg {
+    background-image: radial-gradient(rgba(18, 24, 22, 0.08) 1px, transparent 1px);
+    background-size: 14px 14px;
+  }
+
+  .sticker-drop-shadow {
+    filter: drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 8px 16px rgba(16, 185, 129, 0.15));
+  }
+
+  .graphic-card-border {
+    border: 1.5px solid rgba(32, 36, 36, 0.12);
+  }
 }
 
 @keyframes fadeIn {

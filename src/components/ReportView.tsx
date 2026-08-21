@@ -265,18 +265,18 @@ export const ReportView: React.FC<ReportViewProps> = ({
   }
 
   return (
-    <div className="space-y-5 pb-12 select-none" id="report-view-container">
-      {/* ================= 1. 나의 탐험가 유형 ================= */}
-      <section className="relative pb-6 border-b border-stone-200 mb-6">
+    <div className="space-y-4 pb-12 select-none" id="report-view-container">
+      {/* ================= 1. 나의 탐험가 유형 (만능 탐험가 등) ================= */}
+      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
         <div
           onClick={() => setIsPersonaModalOpen(true)}
           className="w-full cursor-pointer group"
         >
-          {/* Top Label & Edit Prompt */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-stone-500">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-              <span>탐험가 성향</span>
+          {/* Top Label & Edit Button */}
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-stone-800">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>탐험가 성향 프로필</span>
             </div>
 
             <button
@@ -285,229 +285,274 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 e.stopPropagation();
                 setIsPersonaModalOpen(true);
               }}
-              className="flex items-center gap-1 text-xs font-bold text-stone-400 group-hover:text-stone-600 transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-bold text-stone-500 group-hover:text-stone-800 bg-stone-100 hover:bg-stone-200/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer border border-stone-200/60"
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className="w-3 h-3 text-stone-600" />
               <span>유형 변경</span>
             </button>
           </div>
 
-          {/* Center Explorer Identity Info */}
-          <div className="flex items-start gap-4 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-              <CurrentIcon className="w-6 h-6 stroke-[2.2px]" />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h2 className="text-xl font-black text-stone-900 tracking-tight">
-                  {currentPersona.title}
-                </h2>
-                <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md border border-stone-200">
-                  {currentPersona.level || 'Lv.3 관찰자'}
-                </span>
+          {/* Center Explorer Identity Info Box */}
+          <div className="bg-stone-50/90 rounded-2xl p-4 border border-stone-200/80 transition-all group-hover:border-emerald-300">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100/90 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200/80 shadow-2xs">
+                <CurrentIcon className="w-6 h-6 stroke-[2.2px]" />
               </div>
-              <p className="text-xs text-stone-500 leading-relaxed">
-                {currentPersona.description}
-              </p>
-            </div>
-          </div>
 
-          {/* Specialty Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-2">
-            <span className="text-[10px] text-stone-400 font-medium mr-1">관찰 테마:</span>
-            {currentPersona.specialtyChips?.map((chip) => (
-              <span
-                key={chip}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200"
-              >
-                {chip}
-              </span>
-            ))}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h2 className="text-base font-black text-stone-900 tracking-tight">
+                    {currentPersona.title}
+                  </h2>
+                  <span className="text-[10px] font-mono font-extrabold bg-emerald-100/80 text-emerald-900 px-2 py-0.5 rounded-md border border-emerald-200/70">
+                    {currentPersona.level || 'Lv.3 관찰자'}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600 leading-relaxed font-medium">
+                  {currentPersona.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Specialty Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-3 mt-3 border-t border-stone-200/60">
+              <span className="text-[10px] text-stone-500 font-extrabold mr-1">관찰 테마:</span>
+              {currentPersona.specialtyChips?.map((chip) => (
+                <span
+                  key={chip}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-stone-700 border border-stone-200/80 shadow-2xs"
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ================= 2. 나의 생태 관심 저널 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200">
+      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-stone-600" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+              <BookOpen className="w-4 h-4 text-stone-700" />
             </div>
             <div>
               <h3 className="text-sm font-black text-stone-900">나의 생태 관심 저널</h3>
-              <p className="text-[11px] text-stone-500">도감 수집 현황</p>
+              <p className="text-[11px] text-stone-500 font-medium">도감 수집 및 탐험 활동 현황</p>
             </div>
           </div>
 
-          <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl">
+          <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-xl border border-emerald-200/60">
             {collectedList.length}종 관찰됨
           </span>
         </div>
 
         {/* 3 Metrics Grid */}
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <div className="bg-[#F2F5F0] p-3 rounded-2xl text-center">
-            <span className="text-[10px] text-stone-500 font-bold block mb-1">총 포착</span>
-            <div className="flex items-baseline justify-center gap-0.5">
-              <span className="text-lg font-black text-stone-900">{collectedList.length}</span>
+          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+            <span className="text-[10px] text-stone-500 font-extrabold block mb-1">총 포착</span>
+            <div className="flex items-baseline justify-center gap-0.5 font-mono">
+              <span className="text-xl font-black text-stone-900">{collectedList.length}</span>
               <span className="text-[10px] text-stone-500 font-bold">종</span>
             </div>
           </div>
 
-          <div className="bg-[#F2F5F0] p-3 rounded-2xl text-center">
-            <span className="text-[10px] text-stone-500 font-bold block mb-1">연속 관찰</span>
-            <div className="flex items-baseline justify-center gap-0.5 text-amber-600">
-              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500 inline mr-0.5" />
-              <span className="text-lg font-black text-stone-900">{userStats.streakDays || 5}</span>
+          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+            <span className="text-[10px] text-stone-500 font-extrabold block mb-1">연속 관찰</span>
+            <div className="flex items-center justify-center gap-1 font-mono">
+              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+              <span className="text-xl font-black text-stone-900">{userStats.streakDays || 5}</span>
               <span className="text-[10px] text-stone-500 font-bold">일</span>
             </div>
           </div>
 
-          <div className="bg-[#F2F5F0] p-3 rounded-2xl text-center">
-            <span className="text-[10px] text-stone-500 font-bold block mb-1">방문 서식지</span>
-            <div className="flex items-baseline justify-center gap-0.5">
-              <span className="text-lg font-black text-stone-900">{userStats.exploredHabitats?.length || 4}</span>
+          <div className="bg-stone-50 border border-stone-200/80 p-3 rounded-2xl text-center flex flex-col items-center justify-center">
+            <span className="text-[10px] text-stone-500 font-extrabold block mb-1">방문 서식지</span>
+            <div className="flex items-baseline justify-center gap-0.5 font-mono">
+              <span className="text-xl font-black text-stone-900">{userStats.exploredHabitats?.length || 4}</span>
               <span className="text-[10px] text-stone-500 font-bold">곳</span>
             </div>
           </div>
         </div>
 
         {/* Completion Rate Progress Bar */}
-        <div className="bg-[#F2F5F0] p-3.5 rounded-2xl mb-4">
+        <div className="bg-stone-50 border border-stone-200/80 p-3.5 rounded-2xl mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-stone-800">생태 백과 도감 완성률</span>
-            <span className="text-xs font-black text-emerald-700">{completionRate}%</span>
+            <span className="text-xs font-black text-emerald-800 font-mono">{completionRate}%</span>
           </div>
-          <div className="w-full bg-stone-200 h-2.5 rounded-full overflow-hidden">
+          <div className="w-full bg-stone-200/80 h-2.5 rounded-full overflow-hidden p-0.5 border border-stone-200/60">
             <div
               className="bg-emerald-500 h-full rounded-full transition-all duration-700"
               style={{ width: `${Math.max(5, completionRate)}%` }}
             />
           </div>
-          <p className="text-[10px] text-stone-500 mt-1.5 text-right font-mono">
-            전체 {totalPossibleSpecies}종 중 {collectedList.length}종 수집
+          <p className="text-[10px] text-stone-500 mt-1.5 text-right font-mono font-medium">
+            전체 {totalPossibleSpecies}종 중 {collectedList.length}종 수집 완료
           </p>
         </div>
+
+        {/* Recent Journal Entries */}
+        {collectedList.length > 0 && (
+          <div className="pt-2 border-t border-stone-100">
+            <div className="flex items-center justify-between mb-2.5 px-0.5">
+              <span className="text-xs font-black text-stone-900">최근 관찰 기록 일지</span>
+              <span className="text-[10px] text-stone-500 font-mono">최신 3개 기록</span>
+            </div>
+
+            <div className="space-y-2">
+              {collectedList.slice(0, 3).map((sp) => {
+                const targetImg = sp.stickerImage || sp.originalImage;
+                const obs = sp.observations?.[0];
+                return (
+                  <div
+                    key={sp.id}
+                    onClick={() => onSelectSpecimen(sp)}
+                    className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100/80 border border-stone-200/70 transition-all flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-stone-200/80 flex items-center justify-center overflow-hidden shrink-0">
+                        {targetImg ? (
+                          <img src={targetImg} alt={sp.koreanName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-base">🌿</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-black text-stone-900">{sp.koreanName}</h4>
+                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-200/60 px-1.5 py-0.2 rounded">
+                            {sp.number || 'No.01'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-500 font-medium">
+                          {obs?.date || '2026.08.15'} • {obs?.locationName || sp.habitatType || '도심 공원'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ================= 3. 나의 관찰 성향 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
-            <PieChart className="w-4 h-4 text-stone-600" />
+      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+            <PieChart className="w-4 h-4 text-stone-700" />
           </div>
           <div>
             <h3 className="text-sm font-black text-stone-900">나의 관찰 성향</h3>
-            <p className="text-[11px] text-stone-500">생물군별 수집 비율 및 탐험 스타일 분석</p>
+            <p className="text-[11px] text-stone-500 font-medium">생물군별 수집 비율 및 탐험 스타일 분석</p>
           </div>
         </div>
 
-        {/* Category Distribution Bar */}
+        {/* Multi-color stacked segment bar */}
         <div className="space-y-3 mb-4">
-          {/* Multi-color stacked segment bar */}
-          <div className="w-full h-3 rounded-full overflow-hidden flex bg-stone-100">
-            <div style={{ width: `${plantPct}%` }} className="bg-emerald-500 h-full transition-all" title={`식물 ${plantPct}%`} />
+          <div className="w-full h-3 rounded-full overflow-hidden flex bg-stone-100 p-0.5 border border-stone-200/80">
+            <div style={{ width: `${plantPct}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`식물 ${plantPct}%`} />
             <div style={{ width: `${birdPct}%` }} className="bg-sky-500 h-full transition-all" title={`조류 ${birdPct}%`} />
             <div style={{ width: `${insectPct}%` }} className="bg-amber-500 h-full transition-all" title={`곤충 ${insectPct}%`} />
-            <div style={{ width: `${mammalPct}%` }} className="bg-orange-500 h-full transition-all" title={`포유류 ${mammalPct}%`} />
+            <div style={{ width: `${mammalPct}%` }} className="bg-orange-500 h-full rounded-r-full transition-all" title={`포유류 ${mammalPct}%`} />
           </div>
 
-          {/* Category Badges */}
+          {/* Category Badges Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2.5 rounded-xl bg-[#F2F5F0] flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span>🌿 식물</span>
               </div>
-              <span className="text-xs font-mono font-bold text-emerald-800">{plantCount}종 ({plantPct}%)</span>
+              <span className="text-xs font-mono font-black text-emerald-800">{plantCount}종 ({plantPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#F2F5F0] flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
                 <span>🪶 조류</span>
               </div>
-              <span className="text-xs font-mono font-bold text-sky-800">{birdCount}종 ({birdPct}%)</span>
+              <span className="text-xs font-mono font-black text-sky-800">{birdCount}종 ({birdPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#F2F5F0] flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                 <span>🐞 곤충</span>
               </div>
-              <span className="text-xs font-mono font-bold text-amber-800">{insectCount}종 ({insectPct}%)</span>
+              <span className="text-xs font-mono font-black text-amber-800">{insectCount}종 ({insectPct}%)</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#F2F5F0] flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                 <span>🐾 포유류</span>
               </div>
-              <span className="text-xs font-mono font-bold text-orange-800">{mammalCount}종 ({mammalPct}%)</span>
+              <span className="text-xs font-mono font-black text-orange-800">{mammalCount}종 ({mammalPct}%)</span>
             </div>
           </div>
         </div>
 
         {/* Observation Style AI Diagnostic summary card */}
-        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
-          <div className="flex items-start gap-2.5">
-            <span className="text-lg">💡</span>
-            <div className="flex-1 text-xs text-stone-700 leading-relaxed">
-              <strong className="text-stone-950 font-bold block mb-0.5">
-                {plantPct >= 50
-                  ? '도심 야생화와 틈새 식물에 높은 집중도를 보이는 식물 애호가입니다.'
-                  : birdPct >= 40
-                  ? '날카로운 관찰력으로 텃새와 물새를 찾아내는 탐조형 관찰자입니다.'
-                  : '다양한 생물군을 고르게 탐색하는 전천후 생태 탐험가입니다.'}
-              </strong>
-              오전 9시~오후 2시 시간대와 도심 공원 서식지에서 가장 높은 포착률을 보이고 있습니다.
-            </div>
+        <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
+          <span className="text-base shrink-0 mt-0.5">💡</span>
+          <div className="flex-1 text-xs text-stone-700 leading-relaxed font-medium">
+            <strong className="text-stone-950 font-black block mb-0.5">
+              {plantPct >= 50
+                ? '도심 야생화와 틈새 식물에 높은 집중도를 보이는 식물 애호가입니다.'
+                : birdPct >= 40
+                ? '날카로운 관찰력으로 텃새와 물새를 찾아내는 탐조형 관찰자입니다.'
+                : '다양한 생물군을 고르게 탐색하는 전천후 생태 탐험가입니다.'}
+            </strong>
+            오전 9시~오후 2시 시간대와 도심 공원 서식지에서 가장 높은 포착률을 보이고 있습니다.
           </div>
         </div>
       </section>
 
       {/* ================= 4. 시기별 포착 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
-            <Calendar className="w-4 h-4 text-stone-600" />
+      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+            <Calendar className="w-4 h-4 text-stone-700" />
           </div>
           <div>
             <h3 className="text-sm font-black text-stone-900">시기별 포착</h3>
-            <p className="text-[11px] text-stone-500">계절별 활동량</p>
+            <p className="text-[11px] text-stone-500 font-medium">계절별 및 월별 관찰 활동량</p>
           </div>
         </div>
 
         {/* 4 Season Grid Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 text-center">
-            <span className="text-base block mb-0.5">🌸 봄</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+            <span className="text-sm block font-bold mb-0.5">🌸 봄</span>
             <span className="text-[10px] text-stone-500 font-bold block">3월~5월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.spring}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 text-center">
-            <span className="text-base block mb-0.5">☀️ 여름</span>
+          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+            <span className="text-sm block font-bold mb-0.5">☀️ 여름</span>
             <span className="text-[10px] text-stone-500 font-bold block">6월~8월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.summer}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 text-center">
-            <span className="text-base block mb-0.5">🍁 가을</span>
+          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+            <span className="text-sm block font-bold mb-0.5">🍁 가을</span>
             <span className="text-[10px] text-stone-500 font-bold block">9월~11월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.autumn}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 text-center">
-            <span className="text-base block mb-0.5">❄️ 겨울</span>
+          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center flex flex-col justify-center">
+            <span className="text-sm block font-bold mb-0.5">❄️ 겨울</span>
             <span className="text-[10px] text-stone-500 font-bold block">12월~2월</span>
             <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
               {seasonStats.winter}건
@@ -516,28 +561,28 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
 
         {/* Monthly Activity Histogram Bar Chart */}
-        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-100">
-          <h4 className="text-[11px] font-bold text-stone-700 mb-3 flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+          <h4 className="text-[11px] font-bold text-stone-800 mb-2 flex items-center justify-between">
             <span>월별 관찰 빈도 (포착 건수)</span>
-            <span className="text-[10px] text-stone-500 font-normal">2026 연간</span>
+            <span className="text-[10px] text-stone-500 font-mono font-medium">2026 연간</span>
           </h4>
 
-          <div className="flex items-end justify-between gap-1.5 h-24 pt-2 px-1">
+          <div className="flex items-end justify-between gap-1.5 h-28 pt-4 pb-1 px-1">
             {monthlyData.map((m) => {
               const heightPct = Math.max(12, Math.round((m.count / maxMonthCount) * 100));
               const isActive = m.count > 0;
               return (
                 <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                  <span className="text-[9px] font-mono font-bold text-stone-600">
+                  <span className="text-[9px] font-mono font-bold text-stone-700 min-h-[14px] flex items-center justify-center">
                     {m.count > 0 ? m.count : ''}
                   </span>
                   <div
                     className={`w-full max-w-[28px] rounded-t-lg transition-all duration-500 ${
-                      isActive ? 'bg-[#202424]' : 'bg-stone-300/50'
+                      isActive ? 'bg-stone-900' : 'bg-stone-200'
                     }`}
                     style={{ height: `${heightPct}%` }}
                   />
-                  <span className="text-[10px] font-medium text-stone-500">{m.month}</span>
+                  <span className="text-[10px] font-bold text-stone-600">{m.month}</span>
                 </div>
               );
             })}
@@ -546,19 +591,19 @@ export const ReportView: React.FC<ReportViewProps> = ({
       </section>
 
       {/* ================= 5. 내 뱃지 ================= */}
-      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200">
+      <section className="bg-white rounded-3xl p-5 shadow-2xs border border-stone-200/90">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center">
-              <Award className="w-4 h-4 text-stone-600" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center border border-stone-200/60">
+              <Award className="w-4 h-4 text-stone-700" />
             </div>
             <div>
               <h3 className="text-sm font-black text-stone-900">내 뱃지</h3>
-              <p className="text-[11px] text-stone-500">생태 탐험 업적 및 획득 배지</p>
+              <p className="text-[11px] text-stone-500 font-medium">생태 탐험 업적 및 획득 배지</p>
             </div>
           </div>
 
-          <span className="text-xs font-mono font-bold text-stone-700 bg-stone-100 px-2.5 py-1 rounded-xl">
+          <span className="text-xs font-mono font-black text-stone-800 bg-stone-100 px-2.5 py-1 rounded-xl border border-stone-200/60">
             {BADGES.filter((b) => b.unlocked).length} / {BADGES.length} 획득
           </span>
         </div>
@@ -572,28 +617,28 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 key={badge.id}
                 className={`p-3.5 rounded-2xl text-center flex flex-col items-center justify-between transition-all border ${
                   isUnlocked
-                    ? 'bg-stone-50 border-stone-200 shadow-2xs'
-                    : 'bg-stone-50 border-stone-100 opacity-60'
+                    ? 'bg-stone-50 border-stone-200/90 shadow-2xs'
+                    : 'bg-stone-50/60 border-stone-200/40 opacity-55'
                 }`}
               >
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-2 bg-white shadow-2xs border border-stone-100">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl mb-2 bg-white shadow-2xs border border-stone-200/80">
                   {isUnlocked ? badge.icon : '🔒'}
                 </div>
 
-                <h4 className="text-xs font-bold text-stone-900 tracking-tight mb-0.5">
+                <h4 className="text-xs font-black text-stone-900 tracking-tight mb-0.5">
                   {badge.title}
                 </h4>
-                <p className="text-[10px] text-stone-500 leading-tight mb-2 line-clamp-2">
+                <p className="text-[10px] text-stone-500 leading-tight mb-2.5 line-clamp-2 h-7 flex items-center justify-center font-medium">
                   {badge.desc}
                 </p>
 
                 {isUnlocked ? (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-stone-700 bg-stone-200 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     달성 완료
                   </span>
                 ) : (
-                  <span className="text-[9px] font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+                  <span className="text-[9px] font-medium text-stone-400 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200/60">
                     도전 중
                   </span>
                 )}

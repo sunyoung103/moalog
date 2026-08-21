@@ -22,12 +22,12 @@ export const Navigation: React.FC<NavigationProps> = ({
       className="fixed bottom-3 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none"
     >
       <div className="pointer-events-auto flex items-center gap-1.5 bg-stone-900 text-stone-300 shadow-xl rounded-full px-2.5 py-1.5 transition-all">
-        {/* Tab 1: 내 도감 & 홈 (Archive & Home) */}
+        {/* Tab 1: 내 도감 (Archive) */}
         <button
           id="nav-tab-archive"
           type="button"
           onClick={() => onSelectTab('archive')}
-          className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+          className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
             currentTab === 'archive'
               ? 'bg-white text-stone-950 font-bold shadow-xs'
               : 'text-stone-300 hover:text-white hover:bg-white/10'
@@ -49,7 +49,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           id="nav-tab-lens"
           type="button"
           onClick={() => onSelectTab('lens')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
             currentTab === 'lens'
               ? 'bg-white text-stone-950 font-bold shadow-xs'
               : 'text-stone-300 hover:text-white hover:bg-white/10'
@@ -69,7 +69,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           id="nav-tab-map"
           type="button"
           onClick={() => onSelectTab('map')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
             currentTab === 'map'
               ? 'bg-white text-stone-950 font-bold shadow-xs'
               : 'text-stone-300 hover:text-white hover:bg-white/10'

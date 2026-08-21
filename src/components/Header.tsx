@@ -24,10 +24,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       id="app-global-header"
-      className="sticky top-0 z-30 bg-[#F6F8F6]/95 backdrop-blur-md px-4 py-2.5 transition-all border-b border-stone-200/80 select-none"
+      className="sticky top-0 z-30 bg-[#F6F8F6]/95 backdrop-blur-md px-4 py-2.5 transition-all border-b border-stone-200/90 select-none"
     >
       <div className="max-w-lg mx-auto flex items-center justify-between">
-        {/* Left: Clean title, collector tally, and PRO / 무료체험 badge */}
+        {/* Left: Title, collector tally, and PRO / Trial Badge */}
         <div className="flex items-center gap-2">
           <div className="flex items-baseline gap-1.5">
             <h1
@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="btn-header-free-trial-badge"
               type="button"
               onClick={onOpenSubscriptionModal}
-              className="flex items-center gap-1 text-[9px] bg-stone-200 hover:bg-stone-300 text-stone-700 font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[9px] bg-stone-200/80 hover:bg-stone-300 text-stone-700 font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono transition-colors cursor-pointer border border-stone-300/60"
               title="무료 체험 (결제 및 구독 페이지 열기)"
             >
               <Sparkles className="w-2.5 h-2.5 text-amber-600" />
@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
               isSearchOpen || searchQuery
                 ? 'bg-stone-900 text-white'
-                : 'text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200'
+                : 'text-stone-700 hover:text-stone-950 bg-white border border-stone-200/80 hover:bg-stone-100'
             }`}
             aria-label="생물 검색"
             title="생물 검색"
@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="btn-header-open-settings"
             type="button"
             onClick={onOpenMyPage}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-stone-700 hover:text-stone-950 bg-white border border-stone-200/80 hover:bg-stone-100 transition-colors"
             title="설정 및 통계"
             aria-label="설정 및 도감 설정"
           >

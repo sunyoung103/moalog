@@ -314,12 +314,12 @@ export function ArchiveView({
       <div>
         {activeSubTab === 'collection' ? (
           (userCollectedList.length === 0 && (!pendingSpecimens || pendingSpecimens.length === 0)) ? (
-            <div className="py-24 flex flex-col items-center justify-center text-center px-6 bg-white rounded-3xl mt-2 shadow-sm border border-stone-100">
-              <div className="w-20 h-20 rounded-full bg-stone-50 flex items-center justify-center mb-5 border border-stone-100">
-                <Leaf className="w-10 h-10 text-emerald-500" />
+            <div className="py-24 flex flex-col items-center justify-center text-center px-6 bg-white rounded-3xl mt-2 shadow-sm border border-stone-200/80">
+              <div className="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-5 border border-emerald-200/80 text-3xl font-black">
+                ✦
               </div>
               <h3 className="text-base font-black text-stone-900 mb-2">아직 기록된 자연 도감이 없습니다</h3>
-              <p className="text-xs text-stone-500 mb-8 leading-relaxed max-w-[220px]">
+              <p className="text-xs text-stone-600 mb-8 leading-relaxed max-w-[240px]">
                 카메라로 우리 주변의 놀라운 생물들을 포착하고, 나만의 생태 백과사전을 완성해보세요!
               </p>
               <button
@@ -334,14 +334,14 @@ export function ArchiveView({
           <div className="space-y-4">
             {filterTaxonomy ? (
               /* Taxonomy Breadcrumb Header */
-              <div className="bg-stone-50 p-3 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                  <span className="font-bold text-stone-900">{filterTaxonomy}</span>
+              <div className="bg-stone-100 p-3 rounded-2xl flex items-center justify-between border border-stone-200/80">
+                <div className="flex items-center gap-1.5 text-xs text-stone-700">
+                  <span className="font-extrabold text-stone-900">{filterTaxonomy}</span>
                   <span>필터링 중</span>
                 </div>
                 <button
                   onClick={onClearTaxonomyFilter}
-                  className="text-[10px] text-stone-500 hover:text-stone-800 font-bold"
+                  className="text-[10px] text-stone-600 hover:text-stone-900 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-stone-200 shadow-2xs"
                 >
                   필터 해제
                 </button>
@@ -358,14 +358,14 @@ export function ArchiveView({
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id as SpecimenCategory)}
-                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs whitespace-nowrap transition-all shrink-0 ${
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                           isActive
-                            ? 'bg-stone-950 text-white font-bold'
-                            : 'bg-white text-stone-600 hover:bg-stone-50'
+                            ? 'bg-stone-900 text-white font-extrabold shadow-xs'
+                            : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80 font-bold'
                         }`}
                       >
-                        {Icon && <Icon className="w-3 h-3" />}
-                        {cat.label}
+                        {Icon && <Icon className="w-3.5 h-3.5 text-emerald-800" />}
+                        <span>{cat.label}</span>
                       </button>
                     );
                   })}
@@ -567,31 +567,32 @@ export function ArchiveView({
             {filteredCollectedList && filteredCollectedList.length > 0 ? (
               displayMode === 'sticker' ? (
                 /* STICKER VIEW: 5px Solid White Sticker Border Styling */
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 py-2">
                   {filteredCollectedList.map((sp) => {
                     const stickerImg = sp.stickerImage || sp.originalImage;
                     return (
                       <motion.div
                         key={sp.id}
+                        whileHover={{ y: -3 }}
                         whileTap={{ scale: 0.94 }}
                         onPointerDown={() => handlePointerDown(sp.id)}
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
                         onClick={() => handleSpecimenClick(sp)}
-                        className={`flex flex-col items-center cursor-pointer relative pt-4 ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80' : ''}`}
+                        className={`bg-white rounded-2xl p-2.5 shadow-xs border border-stone-200/80 flex flex-col items-center cursor-pointer relative transition-all hover:border-emerald-300 hover:shadow-md ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-emerald-500' : ''}`}
                       >
                         {sp.number && (
-                          <span className="absolute top-0 left-0 text-[9px] font-mono font-bold text-stone-700 bg-white/90 backdrop-blur-xs px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs border border-stone-200/50">
+                          <span className="absolute top-2 left-2 text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center gap-1 border border-stone-200">
                             <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
                             <span>{sp.number}</span>
                           </span>
                         )}
                         {isMultiSelectMode && (
-                          <div className={`absolute top-0 right-0 z-10 w-6 h-6 rounded-full flex items-center justify-center shadow-md ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-white text-stone-400'}`}>
-                            {selectedIds.includes(sp.id) && <Check className="w-3.5 h-3.5" />}
+                          <div className={`absolute top-2 right-2 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-xs ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
+                            {selectedIds.includes(sp.id) && <Check className="w-3 h-3" />}
                           </div>
                         )}
-                        <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center relative p-1">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center relative p-1 mt-3">
                           {stickerImg ? (
                             <img
                               src={stickerImg}
@@ -601,14 +602,15 @@ export function ArchiveView({
                               }}
                               className="w-full h-full object-contain"
                               style={{
-                                filter: 'drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 6px 12px rgba(0,0,0,0.14))',
+                                filter:
+                                  'drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 6px 12px rgba(0,0,0,0.14))',
                               }}
                             />
                           ) : (
                             <span className="text-3xl">🌿</span>
                           )}
                         </div>
-                        <span className="mt-2 text-xs font-bold text-stone-900 text-center tracking-tight truncate max-w-full">
+                        <span className="mt-2 text-xs font-black text-stone-900 text-center tracking-tight truncate max-w-full">
                           {sp.koreanName}
                         </span>
                       </motion.div>
@@ -616,16 +618,17 @@ export function ArchiveView({
                   })}
                 </div>
               ) : (
-                /* STANDARD PHOTO CARD VIEW: Color tone contrast separation (No lines) */
+                /* STANDARD PHOTO CARD VIEW: Exhibition Poster Card Layout */
                 groupedByFamily && Object.entries(groupedByFamily).length > 0 &&
                 (Object.entries(groupedByFamily) as [string, Specimen[]][]).map(
                   ([family, items]) => (
-                    <div key={family} className="space-y-1.5 mb-4">
+                    <div key={family} className="space-y-2 mb-4">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-bold text-stone-700 tracking-tight">
-                          {family}
+                        <span className="text-xs font-black text-stone-900 tracking-tight flex items-center gap-1.5">
+                          <span className="text-emerald-800 text-[10px]">✦</span>
+                          <span>{family}</span>
                         </span>
-                        <span className="text-[10px] text-stone-400 font-mono">
+                        <span className="text-[10px] text-stone-600 font-mono font-bold bg-stone-200/60 px-2 py-0.5 rounded-md">
                           {items.length}개 표본
                         </span>
                       </div>
@@ -637,21 +640,22 @@ export function ArchiveView({
                           return (
                             <motion.div
                               key={sp.id}
+                              whileHover={{ y: -2 }}
                               whileTap={{ scale: 0.97 }}
                               onPointerDown={() => handlePointerDown(sp.id)}
                               onPointerUp={handlePointerUp}
                               onPointerLeave={handlePointerUp}
                               onClick={() => handleSpecimenClick(sp)}
-                              className={`bg-white rounded-3xl p-3 shadow-xs transition-all cursor-pointer flex flex-col justify-between relative ${
+                              className={`bg-white rounded-2xl p-2.5 shadow-xs border border-stone-200/80 transition-all cursor-pointer flex flex-col justify-between relative hover:border-emerald-300 hover:shadow-md ${
                                 isMultiSelectMode && selectedIds.includes(sp.id) ? 'ring-2 ring-emerald-500' : ''
                               }`}
                             >
                               {isMultiSelectMode && (
-                                <div className={`absolute top-3 right-3 z-10 w-6 h-6 rounded-full flex items-center justify-center shadow-sm ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
-                                  {selectedIds.includes(sp.id) && <Check className="w-3.5 h-3.5" />}
+                                <div className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
+                                  {selectedIds.includes(sp.id) && <Check className="w-3 h-3" />}
                                 </div>
                               )}
-                              <div className="relative aspect-square w-full rounded-2xl bg-stone-100 overflow-hidden mb-2 flex items-center justify-center">
+                              <div className="relative aspect-square w-full rounded-xl bg-stone-100 overflow-hidden mb-2 flex items-center justify-center border border-stone-200/60">
                                 {targetImage ? (
                                   <img
                                     src={targetImage}
@@ -667,7 +671,7 @@ export function ArchiveView({
                                 )}
 
                                 {sp.confidence && (
-                                  <span className="absolute bottom-1.5 right-1.5 bg-stone-900/85 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md font-bold shadow-xs">
+                                  <span className="absolute bottom-1.5 right-1.5 bg-stone-900/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md font-extrabold border border-stone-700 shadow-2xs">
                                     {sp.confidence}%
                                   </span>
                                 )}
@@ -675,19 +679,19 @@ export function ArchiveView({
 
                               <div>
                                 <div className="flex items-baseline justify-between">
-                                  <h4 className="text-xs font-bold text-stone-900 truncate">
+                                  <h4 className="text-xs font-black text-stone-900 truncate">
                                     {sp.koreanName}
                                   </h4>
-                                  <span className="text-[9px] font-mono font-bold text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1 border border-emerald-200/60">
+                                  <span className="text-[9px] font-mono font-bold text-emerald-950 bg-emerald-100/90 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1 border border-emerald-200/60">
                                     <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
                                     <span>{sp.number || 'No.01'}</span>
                                   </span>
                                 </div>
-                                <p className="text-[10px] text-stone-500 italic truncate font-serif mt-0.5">
+                                <p className="text-[10px] text-stone-600 italic truncate font-serif mt-0.5">
                                   {sp.scientificName}
                                 </p>
-                                <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-stone-400 bg-stone-50 p-1.5 rounded-xl">
-                                  <span className="truncate max-w-[80px]">
+                                <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-200/60">
+                                  <span className="truncate max-w-[85px] font-medium">
                                     {sp.locationCoord?.name || sp.habitatType || '도심'}
                                   </span>
                                   <ChevronRight className="w-3 h-3 text-stone-400" />
