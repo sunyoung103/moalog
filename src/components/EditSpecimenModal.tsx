@@ -27,14 +27,14 @@ export const EditSpecimenModal: React.FC<EditSpecimenModalProps> = ({
   const initialSpecies = useMemo(() => {
     return (
       SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
-        (e) => e.koreanName === specimen.koreanName
+        (e) => e.koreanName === specimen?.koreanName
       ) ||
       SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
-        (e) => e.scientificName.toLowerCase() === specimen.scientificName.toLowerCase()
+        (e) => (e.scientificName || '').toLowerCase() === (specimen?.scientificName || '').toLowerCase()
       ) ||
       SPECIES_ECOLOGY_ENCYCLOPEDIA[0]
     );
-  }, [specimen.koreanName, specimen.scientificName]);
+  }, [specimen?.koreanName, specimen?.scientificName]);
 
   const [selectedSpecies, setSelectedSpecies] = useState<SpeciesEcologyDetail>(initialSpecies);
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,11 +50,11 @@ export const EditSpecimenModal: React.FC<EditSpecimenModalProps> = ({
       if (!q) return true;
 
       return (
-        item.koreanName.toLowerCase().includes(q) ||
-        item.scientificName.toLowerCase().includes(q) ||
-        item.family.toLowerCase().includes(q) ||
-        item.keyIdentification.toLowerCase().includes(q) ||
-        item.tags.some((t) => t.toLowerCase().includes(q))
+        (item.koreanName || '').toLowerCase().includes(q) ||
+        (item.scientificName || '').toLowerCase().includes(q) ||
+        (item.family || '').toLowerCase().includes(q) ||
+        (item.keyIdentification || '').toLowerCase().includes(q) ||
+        (item.tags && item.tags.some((t) => (t || '').toLowerCase().includes(q)))
       );
     });
   }, [searchQuery, selectedCategory]);
@@ -91,7 +91,7 @@ export const EditSpecimenModal: React.FC<EditSpecimenModalProps> = ({
       taxonomyPath: updatedTaxonomy,
       isPending: false,
       wikiSummary: selectedSpecies.keyIdentification || specimen.wikiSummary,
-      traitChips: selectedSpecies.tags.length > 0 ? selectedSpecies.tags : specimen.traitChips,
+      traitChips: (selectedSpecies.tags && selectedSpecies.tags.length > 0) ? selectedSpecies.tags : specimen.traitChips,
     };
 
     onSave(updated);

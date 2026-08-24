@@ -58,11 +58,11 @@ export const ReclassifyModal: React.FC<ReclassifyModalProps> = ({
       }
       if (!query) return true;
 
-      const matchKr = item.koreanName.toLowerCase().includes(query);
-      const matchSci = item.scientificName.toLowerCase().includes(query);
-      const matchFam = item.family.toLowerCase().includes(query);
-      const matchKey = item.keyIdentification.toLowerCase().includes(query);
-      const matchTag = item.tags.some((t) => t.toLowerCase().includes(query));
+      const matchKr = (item.koreanName || '').toLowerCase().includes(query);
+      const matchSci = (item.scientificName || '').toLowerCase().includes(query);
+      const matchFam = (item.family || '').toLowerCase().includes(query);
+      const matchKey = (item.keyIdentification || '').toLowerCase().includes(query);
+      const matchTag = (item.tags && item.tags.some((t) => (t || '').toLowerCase().includes(query)));
 
       return matchKr || matchSci || matchFam || matchKey || matchTag;
     });

@@ -76,7 +76,7 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({
 
       const cityName = sp.locationCoord?.city || '';
       const locName = sp.locationCoord?.name || '';
-      const obsLoc = sp.observations[0]?.location || '';
+      const obsLoc = sp.observations?.[0]?.location || '';
       const fullText = `${cityName} ${locName} ${obsLoc} ${sp.koreanName}`;
 
       if (fullText.includes('제주') || fullText.includes('토끼섬') || fullText.includes('곶자왈') || fullText.includes('문섬')) {
@@ -142,12 +142,12 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({
     return specimenMapPoints.filter((pt) => {
       const sp = pt.specimen;
       return (
-        sp.koreanName.toLowerCase().includes(q) ||
-        sp.scientificName.toLowerCase().includes(q) ||
-        sp.family.toLowerCase().includes(q) ||
+        (sp.koreanName || '').toLowerCase().includes(q) ||
+        (sp.scientificName || '').toLowerCase().includes(q) ||
+        (sp.family || '').toLowerCase().includes(q) ||
         (sp.locationCoord?.name || '').toLowerCase().includes(q) ||
         (sp.locationCoord?.city || '').toLowerCase().includes(q) ||
-        pt.regionTag.toLowerCase().includes(q)
+        (pt.regionTag || '').toLowerCase().includes(q)
       );
     });
   }, [specimenMapPoints, localSearch]);
@@ -176,7 +176,7 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({
           representativePhoto:
             pt.specimen.stickerImage ||
             pt.specimen.originalImage ||
-            pt.specimen.observations[0]?.photoUrl ||
+            pt.specimen.observations?.[0]?.photoUrl ||
             '',
         });
       }
@@ -222,7 +222,7 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({
           representativePhoto:
             pt.specimen.stickerImage ||
             pt.specimen.originalImage ||
-            pt.specimen.observations[0]?.photoUrl ||
+            pt.specimen.observations?.[0]?.photoUrl ||
             '',
         });
       }
@@ -840,7 +840,7 @@ export const FieldMapView: React.FC<FieldMapViewProps> = ({
               const photoImg =
                 sp.stickerImage ||
                 sp.originalImage ||
-                sp.observations[0]?.photoUrl ||
+                sp.observations?.[0]?.photoUrl ||
                 '';
 
               const isSelected = activeTrailSpecimenId === sp.id;

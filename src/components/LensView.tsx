@@ -527,7 +527,7 @@ export const LensView: React.FC<LensViewProps> = ({
 
   // 08-1 예술 점수 산출 (포켓몬 스냅 · 젤다 5대 구도 기반 채점)
   const getArtScore = (preset: any, seedIndex: number) => {
-    const name = preset.name;
+    const name = preset?.name || 'specimen';
 
     let seed = 0;
     for (let i = 0; i < name.length; i++) {
@@ -580,11 +580,17 @@ export const LensView: React.FC<LensViewProps> = ({
 
     const primaryShot = sessionShots[0];
     const aiData = primaryShot.preset;
+    const safeExistingSpecimens = existingSpecimens || [];
 
-    const existingMatch = existingSpecimens.find(
+    const displayName = aiData.name || (aiData as any).koreanName || '자연 생물';
+    const displayScientific = aiData.scientific || (aiData as any).scientificName || 'Species';
+    const displayCategory = aiData.category || 'birds';
+    const displayFamily = aiData.family || '미분류과';
+    const displayGenus = aiData.genus || (displayScientific ? displayScientific.split(' ')[0] : '미분류속');
+
+    const existingMatch = safeExistingSpecimens.find(
       (s) =>
-        s.koreanName.includes(aiData.name) ||
-        aiData.name.includes(s.koreanName)
+        Boolean(s.koreanName && displayName && (s.koreanName.includes(displayName) || displayName.includes(s.koreanName)))
     );
 
     const locInfo = {
@@ -616,27 +622,35 @@ export const LensView: React.FC<LensViewProps> = ({
       };
     });
 
+    const isAnimal = displayCategory === 'birds' || displayCategory === 'mammals' || displayCategory === 'insects';
+    const defaultTaxonomy = [
+      isAnimal ? '동물계' : '식물계',
+      displayCategory === 'birds' ? '조강' : displayCategory === 'insects' ? '곤충강' : displayCategory === 'mammals' ? '포유강' : '속씨식물문',
+      displayFamily,
+      displayName
+    ];
+
     const specimenToSave: Specimen = {
       id: existingMatch ? existingMatch.id : `sp-${Date.now()}`,
-      number: existingMatch ? existingMatch.number : `No.0${existingSpecimens.length + 1}`,
-      koreanName: aiData.name,
-      scientificName: aiData.scientific,
-      category: aiData.category,
-      family: aiData.family,
-      genus: aiData.genus,
+      number: existingMatch ? existingMatch.number : `No.0${safeExistingSpecimens.length + 1}`,
+      koreanName: displayName,
+      scientificName: displayScientific,
+      category: displayCategory,
+      family: displayFamily,
+      genus: displayGenus,
       isCollected: true,
       isPending: false,
       confidence: aiData.confidence || 98,
       stickerImage: primaryShot.imageUrl,
       originalImage: primaryShot.imageUrl,
-      colorPalette: aiData.colorPalette,
-      taxonomyPath: aiData.taxonomyPath,
-      traitChips: aiData.traitChips,
-      habitatType: aiData.habitatType,
-      wikiSummary: aiData.wikiSummary,
-      wikiUrl: aiData.wikiUrl,
-      seasonalTip: aiData.seasonalTip,
-      observations: existingMatch ? [...newObservations, ...existingMatch.observations] : newObservations,
+      colorPalette: aiData.colorPalette || ['#2e4033', '#8c7a6b', '#d9c8b4'],
+      taxonomyPath: aiData.taxonomyPath || defaultTaxonomy,
+      traitChips: aiData.traitChips || (aiData as any).tags || ['자생종', '야생 생물'],
+      habitatType: aiData.habitatType || (aiData as any).habitat || '도심 공원 및 야생 생태계',
+      wikiSummary: aiData.wikiSummary || (aiData as any).keyIdentification || `${displayName}은(는) 한반도 자연 생태계의 주요 구성원입니다.`,
+      wikiUrl: aiData.wikiUrl || '',
+      seasonalTip: aiData.seasonalTip || (aiData as any).bestObservationTip || '',
+      observations: existingMatch ? [...newObservations, ...(existingMatch.observations || [])] : newObservations,
       locationCoord: locInfo,
     };
 
@@ -1100,7 +1114,7 @@ export const LensView: React.FC<LensViewProps> = ({
                         <>
                           <div className="flex items-center justify-between pb-3 border-b border-stone-200/60 mb-3">
                             <div>
-                              <h3 className="text-base font-black text-stone-900">{sessionShots[reviewActiveIndex].preset.name}</h3>
+                              <h3 className="text-base font-black text-stone-900">{sessionShots[reviewActiveIndex].preset.name || (sessionShots[reviewActiveIndex].preset as any).koreanName || '자연 생물'}</h3>
                               <p className="text-[10px] text-stone-500 font-mono mt-0.5">
                                 신뢰도 {sessionShots[reviewActiveIndex].preset.confidence}%
                               </p>
@@ -1274,19 +1288,51 @@ export const LensView: React.FC<LensViewProps> = ({
                     const q = manualSearchQuery.trim().toLowerCase();
                     if (!q) return true;
                     return (
-                      item.koreanName.toLowerCase().includes(q) ||
-                      item.scientificName.toLowerCase().includes(q) ||
-                      item.family.toLowerCase().includes(q)
+                      (item.koreanName || '').toLowerCase().includes(q) ||
+                      (item.scientificName || '').toLowerCase().includes(q) ||
+                      (item.family || '').toLowerCase().includes(q)
                     );
                   }).map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => {
+                        const isAnimal = item.category === 'birds' || item.category === 'mammals' || item.category === 'insects';
+                        const presetObj = {
+                          name: item.koreanName,
+                          scientific: item.scientificName,
+                          category: item.category,
+                          family: item.family,
+                          genus: item.order || item.family,
+                          confidence: 99,
+                          image: customPhotoUrl || currentPreset.image,
+                          photos: [customPhotoUrl || currentPreset.image],
+                          colorPalette: ['#2e4033', '#8c7a6b', '#d9c8b4'],
+                          taxonomyPath: [
+                            isAnimal ? '동물계' : '식물계',
+                            item.categoryLabel || (item.category === 'birds' ? '조강' : item.category === 'insects' ? '곤충강' : item.category === 'mammals' ? '포유강' : '속씨식물문'),
+                            item.family,
+                            item.koreanName
+                          ],
+                          traitChips: item.tags || ['자생종', '도심생태'],
+                          habitatType: item.habitat,
+                          wikiSummary: item.keyIdentification,
+                          wikiUrl: '',
+                          seasonalTip: item.bestObservationTip || '',
+                          locationInfo: {
+                            name: liveEnv.name || '서울숲 생태공원',
+                            city: liveEnv.city || '서울',
+                            district: liveEnv.district || '성동구',
+                            country: '대한민국',
+                            environmentType: 'nature_wild' as const,
+                            x: 50,
+                            y: 50
+                          }
+                        };
                         const newShot: SessionShot = {
                           id: Date.now().toString(),
                           imageUrl: customPhotoUrl || currentPreset.image,
-                          preset: item as any,
+                          preset: presetObj as any,
                           isAlbum: false,
                           zoomScale: 1.0,
                         };

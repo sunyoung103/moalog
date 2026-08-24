@@ -41,7 +41,7 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const activeObs = specimen.observations[0];
+  const activeObs = specimen.observations?.[0] || { location: specimen.locationCoord?.name || '서울', date: '2026.08.15', weather: '☀️ 맑음' };
   const isPro = userStats.isProUser;
 
   const frameOptions: {

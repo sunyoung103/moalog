@@ -156,7 +156,7 @@ export function ArchiveView({
 
       oscillatorRef.current = osc;
 
-      if (description.includes('짹')) {
+      if ((description || '').includes('짹')) {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(2500, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(3200, ctx.currentTime + 0.15);
@@ -198,16 +198,18 @@ export function ArchiveView({
     };
   }, []);
 
+  const safeSpecimens = specimens || [];
+  const safePendingSpecimens = pendingSpecimens || [];
   const totalPossibleSpecies = SPECIES_ECOLOGY_ENCYCLOPEDIA.length;
-  const userCollectedList = specimens.filter((s) => s.isCollected && !s.isPending);
+  const userCollectedList = safeSpecimens.filter((s) => s.isCollected && !s.isPending);
   const collectionPercentage = totalPossibleSpecies > 0
     ? Math.round((userCollectedList.length / totalPossibleSpecies) * 100)
     : 0;
 
-  const filteredCollectedList = specimens.filter((sp) => {
+  const filteredCollectedList = safeSpecimens.filter((sp) => {
     if (!sp.isCollected || sp.isPending) return false;
 
-    if (filterTaxonomy && !sp.taxonomyPath.includes(filterTaxonomy) && sp.family !== filterTaxonomy) {
+    if (filterTaxonomy && !sp.taxonomyPath?.includes(filterTaxonomy) && sp.family !== filterTaxonomy) {
       return false;
     }
 
@@ -216,10 +218,10 @@ export function ArchiveView({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       return (
-        sp.koreanName.toLowerCase().includes(q) ||
-        sp.scientificName.toLowerCase().includes(q) ||
-        (sp.family && sp.family.toLowerCase().includes(q)) ||
-        (sp.traitChips && sp.traitChips.some((t) => t.toLowerCase().includes(q)))
+        (sp.koreanName || '').toLowerCase().includes(q) ||
+        (sp.scientificName || '').toLowerCase().includes(q) ||
+        ((sp.family || '').toLowerCase().includes(q)) ||
+        (sp.traitChips && sp.traitChips.some((t) => (t || '').toLowerCase().includes(q)))
       );
     }
 
@@ -253,23 +255,23 @@ export function ArchiveView({
   }, {});
 
   const filteredHotspots = HOTSPOT_DATA.filter((spot) => {
-    const currentPersona = NATURALIST_PERSONAS[userStats.persona || 'general'];
-    const recommended = currentPersona.recommendedCategories;
+    const currentPersona = NATURALIST_PERSONAS[userStats?.persona || 'general'] || NATURALIST_PERSONAS.general;
+    const recommended = currentPersona?.recommendedCategories || [];
 
-    const hasMatchingSpecies = spot.targetSpecies.some((target) => {
+    const hasMatchingSpecies = spot.targetSpecies?.some((target) => {
       const item = SPECIES_ECOLOGY_ENCYCLOPEDIA.find((e) => e.koreanName === target.koreanName);
       if (!item) return false;
 
-      const categoryMatch = recommended.includes(item.category as any) || recommended.includes('all' as any);
+      const categoryMatch = (item.category && recommended.includes(item.category as any)) || recommended.includes('all' as any);
       if (!categoryMatch) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         return (
-          item.koreanName.toLowerCase().includes(q) ||
-          item.scientificName.toLowerCase().includes(q) ||
-          item.keyIdentification.toLowerCase().includes(q) ||
-          item.tags.some((t) => t.toLowerCase().includes(q))
+          (item.koreanName || '').toLowerCase().includes(q) ||
+          (item.scientificName || '').toLowerCase().includes(q) ||
+          (item.keyIdentification || '').toLowerCase().includes(q) ||
+          (item.tags && item.tags.some((t) => (t || '').toLowerCase().includes(q)))
         );
       }
       return true;
@@ -278,7 +280,7 @@ export function ArchiveView({
     return hasMatchingSpecies;
   });
 
-  const selectedForShareSpecimens = specimens.filter((s) => selectedIds.includes(s.id));
+  const selectedForShareSpecimens = safeSpecimens.filter((s) => (selectedIds || []).includes(s.id));
   const showCategoryTabs = activeSubTab === 'collection' && !filterTaxonomy;
 
   return (

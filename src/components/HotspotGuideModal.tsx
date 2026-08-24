@@ -69,13 +69,13 @@ export const HotspotGuideModal: React.FC<HotspotGuideModalProps> = ({
       // 2. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = item.koreanName.toLowerCase().includes(q);
-        const matchesSci = item.scientificName.toLowerCase().includes(q);
-        const matchesEng = item.englishName.toLowerCase().includes(q);
-        const matchesFamily = item.family.toLowerCase().includes(q);
-        const matchesIdent = item.keyIdentification.toLowerCase().includes(q);
-        const matchesHabitat = item.habitat.toLowerCase().includes(q);
-        const matchesTags = item.tags.some((t) => t.toLowerCase().includes(q));
+        const matchesName = (item.koreanName || '').toLowerCase().includes(q);
+        const matchesSci = (item.scientificName || '').toLowerCase().includes(q);
+        const matchesEng = (item.englishName || '').toLowerCase().includes(q);
+        const matchesFamily = (item.family || '').toLowerCase().includes(q);
+        const matchesIdent = (item.keyIdentification || '').toLowerCase().includes(q);
+        const matchesHabitat = (item.habitat || '').toLowerCase().includes(q);
+        const matchesTags = (item.tags && item.tags.some((t) => (t || '').toLowerCase().includes(q)));
         return (
           matchesName ||
           matchesSci ||
@@ -98,11 +98,11 @@ export const HotspotGuideModal: React.FC<HotspotGuideModalProps> = ({
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = item.name.toLowerCase().includes(q);
-        const matchesLoc = item.locationName.toLowerCase().includes(q);
-        const matchesSpecies = item.targetSpecies.some((s) =>
-          s.koreanName.toLowerCase().includes(q)
-        );
+        const matchesName = (item.name || '').toLowerCase().includes(q);
+        const matchesLoc = (item.locationName || '').toLowerCase().includes(q);
+        const matchesSpecies = (item.targetSpecies && item.targetSpecies.some((s) =>
+          (s.koreanName || '').toLowerCase().includes(q)
+        ));
         return matchesName || matchesLoc || matchesSpecies;
       }
       return true;

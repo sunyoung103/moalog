@@ -49,7 +49,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const currentPersonaKey = userStats.persona || 'general';
   const currentPersona = NATURALIST_PERSONAS[currentPersonaKey] || NATURALIST_PERSONAS.general;
 
-  const collectedList = specimens.filter((s) => s.isCollected && !s.isPending);
+  const safeSpecimens = specimens || [];
+  const collectedList = safeSpecimens.filter((s) => s.isCollected && !s.isPending);
   const totalPossibleSpecies = SPECIES_ECOLOGY_ENCYCLOPEDIA.length;
   const completionRate = totalPossibleSpecies > 0
     ? Math.round((collectedList.length / totalPossibleSpecies) * 100)
@@ -377,20 +378,35 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
 
         {/* Completion Rate Progress Bar */}
-        <div className="bg-stone-50 p-3.5 rounded-2xl mb-4 shadow-2xs border border-stone-100">
+        <div className="bg-stone-50 p-4 rounded-2xl mb-4 shadow-2xs border border-stone-200/80">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-stone-800">생태 백과 도감 완성률</span>
-            <span className="text-xs font-black text-stone-950 font-mono">{completionRate}%</span>
+            <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+              <span>생태 백과 도감 완성률</span>
+              <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100/80 font-bold px-1.5 py-0.2 rounded">
+                수집 진행중
+              </span>
+            </span>
+            <span className="text-xs font-black text-stone-950 font-mono bg-white px-2 py-0.5 rounded-md shadow-2xs border border-stone-200/60">
+              {completionRate}%
+            </span>
           </div>
-          <div className="w-full bg-stone-200/80 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner">
+          <div className="relative w-full bg-stone-200/90 h-3 rounded-full overflow-hidden p-0.5 shadow-inner">
+            {/* Target tick lines at 25%, 50%, 75% */}
+            <div className="absolute left-[25%] top-0 bottom-0 w-px bg-white/60 z-10" />
+            <div className="absolute left-[50%] top-0 bottom-0 w-px bg-white/60 z-10" />
+            <div className="absolute left-[75%] top-0 bottom-0 w-px bg-white/60 z-10" />
+            
             <div
-              className="bg-stone-900 h-full rounded-full transition-all duration-700"
+              className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 h-full rounded-full transition-all duration-700 shadow-2xs"
               style={{ width: `${Math.max(5, completionRate)}%` }}
             />
           </div>
-          <p className="text-[10px] text-stone-500 mt-1.5 text-right font-mono font-medium">
-            전체 {totalPossibleSpecies}종 중 {collectedList.length}종 수집 완료
-          </p>
+          <div className="flex items-center justify-between mt-2 text-[10px] text-stone-500 font-medium">
+            <span className="font-mono">목표: 100% 도감 완성</span>
+            <span className="font-mono font-bold text-stone-700">
+              전체 {totalPossibleSpecies}종 중 {collectedList.length}종 수집 완료
+            </span>
+          </div>
         </div>
 
         {/* Recent Journal Entries */}
@@ -454,45 +470,69 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         {/* Multi-color stacked segment bar */}
         <div className="space-y-3 mb-4">
-          <div className="w-full h-3 rounded-full overflow-hidden flex bg-stone-100 p-0.5">
-            <div style={{ width: `${plantPct}%` }} className="bg-stone-900 h-full rounded-l-full transition-all" title={`식물 ${plantPct}%`} />
+          <div className="w-full h-3.5 rounded-xl overflow-hidden flex bg-stone-200/80 p-0.5 shadow-inner">
+            <div style={{ width: `${plantPct}%` }} className="bg-emerald-800 h-full rounded-l-lg transition-all" title={`식물 ${plantPct}%`} />
             <div style={{ width: `${birdPct}%` }} className="bg-sky-500 h-full transition-all" title={`조류 ${birdPct}%`} />
             <div style={{ width: `${insectPct}%` }} className="bg-amber-500 h-full transition-all" title={`곤충 ${insectPct}%`} />
-            <div style={{ width: `${mammalPct}%` }} className="bg-orange-500 h-full rounded-r-full transition-all" title={`포유류 ${mammalPct}%`} />
+            <div style={{ width: `${mammalPct}%` }} className="bg-orange-500 h-full rounded-r-lg transition-all" title={`포유류 ${mammalPct}%`} />
           </div>
 
           {/* Category Badges Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-stone-900" />
-                <span>🌿 식물</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="p-3 rounded-2xl bg-stone-50/80 flex flex-col justify-between shadow-2xs border border-stone-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-800" />
+                  <span>🌿 식물</span>
+                </span>
+                <span className="text-xs font-mono font-black text-emerald-900">{plantPct}%</span>
               </div>
-              <span className="text-xs font-mono font-black text-stone-900">{plantCount}종 ({plantPct}%)</span>
+              <div className="w-full h-1.5 bg-stone-200/80 rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-emerald-800 rounded-full" style={{ width: `${plantPct}%` }} />
+              </div>
+              <span className="text-[10px] text-stone-500 font-mono font-bold mt-1.5">{plantCount}종 포착 완료</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-                <span>🪶 조류</span>
+            <div className="p-3 rounded-2xl bg-stone-50/80 flex flex-col justify-between shadow-2xs border border-stone-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                  <span>🪶 조류</span>
+                </span>
+                <span className="text-xs font-mono font-black text-sky-800">{birdPct}%</span>
               </div>
-              <span className="text-xs font-mono font-black text-sky-800">{birdCount}종 ({birdPct}%)</span>
+              <div className="w-full h-1.5 bg-stone-200/80 rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-sky-500 rounded-full" style={{ width: `${birdPct}%` }} />
+              </div>
+              <span className="text-[10px] text-stone-500 font-mono font-bold mt-1.5">{birdCount}종 포착 완료</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span>🐞 곤충</span>
+            <div className="p-3 rounded-2xl bg-stone-50/80 flex flex-col justify-between shadow-2xs border border-stone-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span>🐞 곤충</span>
+                </span>
+                <span className="text-xs font-mono font-black text-amber-800">{insectPct}%</span>
               </div>
-              <span className="text-xs font-mono font-black text-amber-800">{insectCount}종 ({insectPct}%)</span>
+              <div className="w-full h-1.5 bg-stone-200/80 rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-amber-500 rounded-full" style={{ width: `${insectPct}%` }} />
+              </div>
+              <span className="text-[10px] text-stone-500 font-mono font-bold mt-1.5">{insectCount}종 포착 완료</span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-stone-50 flex items-center justify-between shadow-2xs border border-stone-100">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-stone-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                <span>🐾 포유류</span>
+            <div className="p-3 rounded-2xl bg-stone-50/80 flex flex-col justify-between shadow-2xs border border-stone-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                  <span>🐾 포유류</span>
+                </span>
+                <span className="text-xs font-mono font-black text-orange-800">{mammalPct}%</span>
               </div>
-              <span className="text-xs font-mono font-black text-orange-800">{mammalCount}종 ({mammalPct}%)</span>
+              <div className="w-full h-1.5 bg-stone-200/80 rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${mammalPct}%` }} />
+              </div>
+              <span className="text-[10px] text-stone-500 font-mono font-bold mt-1.5">{mammalCount}종 포착 완료</span>
             </div>
           </div>
         </div>
@@ -527,65 +567,109 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         {/* 4 Season Grid Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
+          <div className="p-3 rounded-2xl bg-stone-50/80 text-center flex flex-col justify-center shadow-2xs border border-stone-200/80">
             <span className="text-sm block font-bold mb-0.5">🌸 봄</span>
             <span className="text-[10px] text-stone-400 font-bold block">3월~5월</span>
-            <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
+            <span className="text-sm font-black text-emerald-800 font-mono mt-1 block">
               {seasonStats.spring}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
+          <div className="p-3 rounded-2xl bg-stone-50/80 text-center flex flex-col justify-center shadow-2xs border border-stone-200/80">
             <span className="text-sm block font-bold mb-0.5">☀️ 여름</span>
             <span className="text-[10px] text-stone-400 font-bold block">6월~8월</span>
-            <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
+            <span className="text-sm font-black text-emerald-800 font-mono mt-1 block">
               {seasonStats.summer}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
+          <div className="p-3 rounded-2xl bg-stone-50/80 text-center flex flex-col justify-center shadow-2xs border border-stone-200/80">
             <span className="text-sm block font-bold mb-0.5">🍁 가을</span>
             <span className="text-[10px] text-stone-400 font-bold block">9월~11월</span>
-            <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
+            <span className="text-sm font-black text-emerald-800 font-mono mt-1 block">
               {seasonStats.autumn}건
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-stone-50 text-center flex flex-col justify-center shadow-2xs border border-stone-100">
+          <div className="p-3 rounded-2xl bg-stone-50/80 text-center flex flex-col justify-center shadow-2xs border border-stone-200/80">
             <span className="text-sm block font-bold mb-0.5">❄️ 겨울</span>
             <span className="text-[10px] text-stone-400 font-bold block">12월~2월</span>
-            <span className="text-sm font-black text-stone-900 font-mono mt-1 block">
+            <span className="text-sm font-black text-emerald-800 font-mono mt-1 block">
               {seasonStats.winter}건
             </span>
           </div>
         </div>
 
-        {/* Monthly Activity Histogram Bar Chart */}
-        <div className="p-3.5 rounded-2xl bg-stone-50 shadow-2xs border border-stone-100">
-          <h4 className="text-[11px] font-bold text-stone-800 mb-2 flex items-center justify-between">
-            <span>월별 관찰 빈도 (포착 건수)</span>
-            <span className="text-[10px] text-stone-400 font-mono font-medium">2026 연간</span>
-          </h4>
+        {/* Monthly Activity Histogram Bar Chart with sleek Gridlines */}
+        <div className="p-4 rounded-2xl bg-stone-50/90 shadow-2xs border border-stone-200/80 relative">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[11px] font-black text-stone-900 flex items-center gap-1.5">
+              <span>월별 관찰 빈도 (포착 건수)</span>
+            </h4>
+            <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100/80 font-bold px-2 py-0.5 rounded-full">
+              2026 연간 통계
+            </span>
+          </div>
 
-          <div className="flex items-end justify-between gap-1.5 h-28 pt-4 pb-1 px-1">
-            {monthlyData.map((m) => {
-              const heightPct = Math.max(12, Math.round((m.count / maxMonthCount) * 100));
-              const isActive = m.count > 0;
-              return (
-                <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                  <span className="text-[9px] font-mono font-bold text-stone-700 min-h-[14px] flex items-center justify-center">
-                    {m.count > 0 ? m.count : ''}
-                  </span>
-                  <div
-                    className={`w-full max-w-[28px] rounded-t-lg transition-all duration-500 ${
-                      isActive ? 'bg-stone-900' : 'bg-stone-200/80'
-                    }`}
-                    style={{ height: `${heightPct}%` }}
-                  />
-                  <span className="text-[10px] font-bold text-stone-500">{m.month}</span>
-                </div>
-              );
-            })}
+          {/* Chart Canvas Area with background Grid Lines */}
+          <div className="relative pt-6 pb-1">
+            {/* Background horizontal grid lines */}
+            <div className="absolute inset-x-0 top-8 bottom-6 flex flex-col justify-between pointer-events-none opacity-40">
+              <div className="border-b border-dashed border-stone-300 w-full" />
+              <div className="border-b border-dashed border-stone-300 w-full" />
+              <div className="border-b border-dashed border-stone-300 w-full" />
+            </div>
+
+            <div className="relative z-10 flex items-end justify-between gap-2 h-32 px-1">
+              {monthlyData.map((m) => {
+                const heightPct = Math.max(14, Math.round((m.count / maxMonthCount) * 100));
+                const isActive = m.count > 0;
+                const isPeak = m.count === maxMonthCount && m.count > 0;
+
+                return (
+                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
+                    {/* Top Value Tag */}
+                    <div className="min-h-[18px] flex items-center justify-center">
+                      {isActive ? (
+                        <span className={`text-[10px] font-mono font-black px-1.5 py-0.2 rounded ${
+                          isPeak ? 'bg-amber-400 text-stone-950 shadow-2xs' : 'text-stone-800 bg-stone-200/80'
+                        }`}>
+                          {m.count}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-stone-300 font-mono">0</span>
+                      )}
+                    </div>
+
+                    {/* Bar Pill Column */}
+                    <div className="w-full max-w-[32px] h-full flex items-end justify-center">
+                      <div
+                        className={`w-full rounded-t-xl transition-all duration-500 shadow-2xs relative overflow-hidden ${
+                          isPeak
+                            ? 'bg-gradient-to-t from-emerald-700 via-emerald-600 to-teal-500'
+                            : isActive
+                            ? 'bg-gradient-to-t from-stone-800 to-stone-700'
+                            : 'bg-stone-200/60'
+                        }`}
+                        style={{ height: `${heightPct}%` }}
+                      >
+                        {/* Top highlight line for active bars */}
+                        {isActive && (
+                          <div className="w-full h-1 bg-white/30 rounded-t-xl" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Month Label */}
+                    <span className={`text-[10px] font-extrabold mt-1 ${
+                      isPeak ? 'text-emerald-800 font-black' : isActive ? 'text-stone-800' : 'text-stone-400'
+                    }`}>
+                      {m.month}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>

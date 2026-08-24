@@ -305,7 +305,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
     const chosenObs = activeObs;
     const reorderedObservations = [
       chosenObs,
-      ...specimen.observations.filter(
+      ...(specimen.observations || []).filter(
         (_, idx) => idx !== selectedObservationIndex
       ),
     ];
@@ -352,15 +352,17 @@ export const DetailView: React.FC<DetailViewProps> = ({
   };
 
   // Species Classification text parsing
+  const taxonomyList = specimen.taxonomyPath || [];
   const orderString =
-    specimen.taxonomyPath.find((t) => t.endsWith('목')) || specimen.family;
+    taxonomyList.find((t) => t.endsWith('목')) || specimen.family;
   const kingdomString =
-    specimen.taxonomyPath.find((t) => t.endsWith('계')) || '동물계';
+    taxonomyList.find((t) => t.endsWith('계')) || '동물계';
 
   // Specific size or physical stats
+  const traitList = specimen.traitChips || [];
   const speciesSizeText =
     ecoDetail?.size ||
-    specimen.traitChips.find((t) => t.includes('cm') || t.includes('mm') || t.includes('길이')) ||
+    traitList.find((t) => (t || '').includes('cm') || (t || '').includes('mm') || (t || '').includes('길이')) ||
     '몸길이 약 27~28cm (날개 약 40cm)';
 
   // Diet and enemies / interactions
@@ -428,7 +430,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
 '찌비-, 피비-' 하고 매우 크고 날카롭게 울며, 무리를 지어 나무 사이를 빠르게 날아다닌다. 한반도 외에도 일본 열도, 타이완, 중국 동남부, 필리핀 북부 등 동아시아 전역에 널리 분포한다.`
       : specimen.wikiSummary ||
-        `${specimen.koreanName}(${specimen.scientificName})는 ${specimen.taxonomyPath.join(' ')}에 속하는 생물종으로, 한반도 자연 생태계의 주요 구성원입니다.`;
+        `${specimen.koreanName}(${specimen.scientificName})는 ${(specimen.taxonomyPath || []).join(' ')}에 속하는 생물종으로, 한반도 자연 생태계의 주요 구성원입니다.`;
 
   // Summary Description for top overview
   const summaryDescription =
@@ -903,76 +905,76 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
                 {/* 5개 평가 지표 2열 카드 그리드 */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                      <span>📸 포즈 (Pose)</span>
-                      <span className="font-mono text-emerald-800 font-black text-xs">
+                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-stone-900">
+                      <span className="flex items-center gap-1">📸 포즈 (Pose)</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-[11px] bg-emerald-100/70 px-1.5 py-0.2 rounded">
                         {photoArtScore.pose} / 20
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-2 bg-stone-200/90 rounded-full mt-2.5 overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-emerald-600 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500 shadow-2xs"
                         style={{ width: `${(photoArtScore.pose / 20) * 100}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                      <span>🔍 배율 (Zoom)</span>
-                      <span className="font-mono text-emerald-800 font-black text-xs">
+                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-stone-900">
+                      <span className="flex items-center gap-1">🔍 배율 (Zoom)</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-[11px] bg-emerald-100/70 px-1.5 py-0.2 rounded">
                         {photoArtScore.zoom} / 20
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-2 bg-stone-200/90 rounded-full mt-2.5 overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-emerald-600 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500 shadow-2xs"
                         style={{ width: `${(photoArtScore.zoom / 20) * 100}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                      <span>👁️ 시선 (Gaze)</span>
-                      <span className="font-mono text-emerald-800 font-black text-xs">
+                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-stone-900">
+                      <span className="flex items-center gap-1">👁️ 시선 (Gaze)</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-[11px] bg-emerald-100/70 px-1.5 py-0.2 rounded">
                         {photoArtScore.gaze} / 20
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-2 bg-stone-200/90 rounded-full mt-2.5 overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-emerald-600 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500 shadow-2xs"
                         style={{ width: `${(photoArtScore.gaze / 20) * 100}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                      <span>🏞️ 배경 (BG)</span>
-                      <span className="font-mono text-emerald-800 font-black text-xs">
+                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-stone-900">
+                      <span className="flex items-center gap-1">🏞️ 배경 (BG)</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-[11px] bg-emerald-100/70 px-1.5 py-0.2 rounded">
                         {photoArtScore.bg} / 20
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-2 bg-stone-200/90 rounded-full mt-2.5 overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-emerald-600 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500 shadow-2xs"
                         style={{ width: `${(photoArtScore.bg / 20) * 100}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between col-span-2 sm:col-span-1">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                      <span>✨ 선명도 (Clarity)</span>
-                      <span className="font-mono text-emerald-800 font-black text-xs">
+                  <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 flex flex-col justify-between col-span-2 sm:col-span-1 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-stone-900">
+                      <span className="flex items-center gap-1">✨ 선명도 (Clarity)</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-[11px] bg-emerald-100/70 px-1.5 py-0.2 rounded">
                         {photoArtScore.sharpness} / 20
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-2 bg-stone-200/90 rounded-full mt-2.5 overflow-hidden p-0.5">
                       <div
-                        className="h-full bg-emerald-600 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500 shadow-2xs"
                         style={{ width: `${(photoArtScore.sharpness / 20) * 100}%` }}
                       />
                     </div>

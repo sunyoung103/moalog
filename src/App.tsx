@@ -203,7 +203,7 @@ export default function App() {
         if (s.id === specimenId) {
           return {
             ...s,
-            observations: [observation, ...s.observations],
+            observations: [observation, ...(s.observations || [])],
           };
         }
         return s;

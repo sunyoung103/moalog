@@ -76,9 +76,10 @@ export const ArtScoreModal: React.FC<ArtScoreModalProps> = ({
   // Deterministically compute art score for a specific photo based on specimen name & index
   const scoreData: ScoreBreakdown = useMemo(() => {
     // Seed hash based on specimen ID and index
+    const nameStr = specimen.koreanName || specimen.scientificName || 'specimen';
     let seed = 0;
-    for (let i = 0; i < specimen.koreanName.length; i++) {
-      seed += specimen.koreanName.charCodeAt(i);
+    for (let i = 0; i < nameStr.length; i++) {
+      seed += nameStr.charCodeAt(i);
     }
     seed += activePhotoIdx * 17;
 
@@ -291,88 +292,98 @@ export const ArtScoreModal: React.FC<ArtScoreModalProps> = ({
           </div>
 
           {/* 5 Evaluation Criteria Bars */}
-          <div className="space-y-2.5 bg-stone-900/80 rounded-2xl p-3.5">
-            <h4 className="text-[11px] font-bold text-stone-300 flex items-center justify-between">
+          <div className="space-y-3 bg-stone-900/90 rounded-2xl p-4 border border-stone-800">
+            <h4 className="text-[11px] font-black text-stone-200 flex items-center justify-between">
               <span>5대 구도 세부 평가</span>
-              <span className="text-[10px] text-stone-500 font-normal">표준 생태 사진학 기준</span>
+              <span className="text-[10px] text-stone-400 font-mono">생태 사진학 기준</span>
             </h4>
 
             {/* 1. Pose */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-medium">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-stone-300">1. 포즈 & 액션 (생동감)</span>
-                <span className="font-mono text-amber-300 font-bold">{scoreData.pose}/25</span>
+                <span className="font-mono text-amber-400 font-black text-[11px] bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-400/20">
+                  {scoreData.pose} / 25
+                </span>
               </div>
-              <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-stone-800/90 rounded-full overflow-hidden p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(scoreData.pose / 25) * 100}%` }}
                   transition={{ duration: 0.6, ease: 'easeOut' }}
-                  className="h-full bg-amber-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full shadow-xs"
                 />
               </div>
             </div>
 
             {/* 2. Size & Framing */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-medium">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-stone-300">2. 피사체 크기 & 프레임 채움</span>
-                <span className="font-mono text-amber-300 font-bold">{scoreData.size}/25</span>
+                <span className="font-mono text-emerald-400 font-black text-[11px] bg-emerald-400/10 px-2 py-0.5 rounded-md border border-emerald-400/20">
+                  {scoreData.size} / 25
+                </span>
               </div>
-              <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-stone-800/90 rounded-full overflow-hidden p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(scoreData.size / 25) * 100}%` }}
                   transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-                  className="h-full bg-emerald-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full shadow-xs"
                 />
               </div>
             </div>
 
             {/* 3. Direction & Gaze */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-medium">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-stone-300">3. 피사체 방향 & 카메라 시선</span>
-                <span className="font-mono text-amber-300 font-bold">{scoreData.direction}/20</span>
+                <span className="font-mono text-sky-400 font-black text-[11px] bg-sky-400/10 px-2 py-0.5 rounded-md border border-sky-400/20">
+                  {scoreData.direction} / 20
+                </span>
               </div>
-              <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-stone-800/90 rounded-full overflow-hidden p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(scoreData.direction / 20) * 100}%` }}
                   transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-                  className="h-full bg-sky-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-sky-500 to-blue-400 rounded-full shadow-xs"
                 />
               </div>
             </div>
 
             {/* 4. Background */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-medium">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-stone-300">4. 자연 배경 조화도</span>
-                <span className="font-mono text-amber-300 font-bold">{scoreData.background}/15</span>
+                <span className="font-mono text-purple-400 font-black text-[11px] bg-purple-400/10 px-2 py-0.5 rounded-md border border-purple-400/20">
+                  {scoreData.background} / 15
+                </span>
               </div>
-              <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-stone-800/90 rounded-full overflow-hidden p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(scoreData.background / 15) * 100}%` }}
                   transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-                  className="h-full bg-purple-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full shadow-xs"
                 />
               </div>
             </div>
 
             {/* 5. Clarity & Lighting */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-medium">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-stone-300">5. 선명도 & 자연광 조명</span>
-                <span className="font-mono text-amber-300 font-bold">{scoreData.clarity}/15</span>
+                <span className="font-mono text-rose-400 font-black text-[11px] bg-rose-400/10 px-2 py-0.5 rounded-md border border-rose-400/20">
+                  {scoreData.clarity} / 15
+                </span>
               </div>
-              <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-stone-800/90 rounded-full overflow-hidden p-0.5">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(scoreData.clarity / 15) * 100}%` }}
                   transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-                  className="h-full bg-rose-400 rounded-full"
+                  className="h-full bg-gradient-to-r from-rose-500 to-red-400 rounded-full shadow-xs"
                 />
               </div>
             </div>

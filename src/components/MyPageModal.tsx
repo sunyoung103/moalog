@@ -232,26 +232,37 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                       삭제된 기록은 30일 후 영구적으로 삭제됩니다.
                     </p>
                   </div>
-                  {specimens.filter((s) => s.isDeleted).length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmEmptyTrashOpen(true)}
-                      className="text-[11px] font-bold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors"
-                    >
-                      휴지통 비우기
-                    </button>
-                  )}
+                  {(() => {
+                    const safeSpecimens = specimens || [];
+                    const deletedSpecimens = safeSpecimens.filter((s) => s.isDeleted);
+                    return (
+                      <>
+                        {deletedSpecimens.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsConfirmEmptyTrashOpen(true)}
+                            className="text-[11px] font-bold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            휴지통 비우기
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2 pt-1">
-                  {specimens.filter((s) => s.isDeleted).length === 0 ? (
-                    <div className="py-12 text-center text-stone-400 text-xs">
-                      휴지통이 비어 있습니다.
-                    </div>
-                  ) : (
-                    specimens
-                      .filter((s) => s.isDeleted)
-                      .map((sp) => {
+                  {(() => {
+                    const safeSpecimens = specimens || [];
+                    const deletedSpecimens = safeSpecimens.filter((s) => s.isDeleted);
+                    if (deletedSpecimens.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-stone-400 text-xs">
+                          휴지통이 비어 있습니다.
+                        </div>
+                      );
+                    }
+                    return deletedSpecimens.map((sp) => {
                         const daysLeft = sp.deletedAt
                           ? Math.max(0, 30 - Math.floor((Date.now() - sp.deletedAt) / 86400000))
                           : 30;
@@ -295,8 +306,8 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                             </div>
                           </div>
                         );
-                      })
-                  )}
+                      });
+                  })()}
                 </div>
               </div>
             </motion.div>

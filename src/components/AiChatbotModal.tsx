@@ -57,16 +57,17 @@ export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, onClos
 
   // AI Response Generator based on specimen knowledge
   const generateAiAnswer = (query: string): string => {
-    const q = query.trim().toLowerCase();
-    const name = specimen.koreanName;
-    const isBird = specimen.category === 'birds';
-    const isPlant = specimen.category === 'plants';
-    const isInsect = specimen.category === 'insects';
-    const isMammal = specimen.category === 'mammals';
+    const q = (query || '').trim().toLowerCase();
+    const name = specimen?.koreanName || '이 생물';
+    const isBird = specimen?.category === 'birds';
+    const isPlant = specimen?.category === 'plants';
+    const isInsect = specimen?.category === 'insects';
+    const isMammal = specimen?.category === 'mammals';
 
     if (q.includes('특징') || q.includes('알려줘') || q.includes('설명')) {
       if (ecoDetail?.keyIdentification) {
-        return `도심과 자연에서 만날 수 있는 ${specimen.family} ${isBird ? '조류' : isPlant ? '식물' : isInsect ? '곤충' : '생물'}예요.\n\n${ecoDetail.keyIdentification}\n\n식별 포인트: ${ecoDetail.tags.join(', ')}`;
+        const tagStr = (ecoDetail.tags && ecoDetail.tags.length > 0) ? ecoDetail.tags.join(', ') : '자연관찰';
+        return `도심과 자연에서 만날 수 있는 ${specimen.family} ${isBird ? '조류' : isPlant ? '식물' : isInsect ? '곤충' : '생물'}예요.\n\n${ecoDetail.keyIdentification}\n\n식별 포인트: ${tagStr}`;
       }
       return `${name}은(는) ${specimen.family}에 속하는 ${isPlant ? '식물' : '생물'}입니다. ${specimen.wikiSummary}`;
     }
@@ -112,7 +113,8 @@ export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, onClos
     }
 
     if (q.includes('구분') || q.includes('비슷') || q.includes('차이') || q.includes('동정')) {
-      return `【비슷한 종과의 구분 팁】\n${specimen.koreanName}의 가장 큰 특징은 ${specimen.traitChips.slice(0, 3).join(', ')}입니다. 크기와 ${specimen.family} 고유의 형태적 특징을 확인하면 쉽게 동정할 수 있습니다.`;
+      const traitsStr = (specimen.traitChips && specimen.traitChips.length > 0) ? specimen.traitChips.slice(0, 3).join(', ') : '고유 생태적 특성';
+      return `【비슷한 종과의 구분 팁】\n${specimen.koreanName}의 가장 큰 특징은 ${traitsStr}입니다. 크기와 ${specimen.family} 고유의 형태적 특징을 확인하면 쉽게 동정할 수 있습니다.`;
     }
 
     // Default friendly answer
