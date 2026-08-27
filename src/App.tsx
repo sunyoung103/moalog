@@ -237,7 +237,14 @@ export default function App() {
       name: '',
       provider: 'none',
     });
-    showToast('로그아웃 되었습니다. 게스트 모드로 전환되었습니다.');
+    // Safely reset active session PRO status to guest free plan upon logout
+    setUserStats((prev) => ({
+      ...prev,
+      isProUser: false,
+      planType: 'free',
+      freeScans: 10,
+    }));
+    showToast('로그아웃되었습니다. 게스트(무료) 모드로 안전하게 전환되었습니다.');
   };
 
   const handleDeleteAccount = () => {
@@ -401,6 +408,13 @@ export default function App() {
         onClose={() => setIsLoginOpen(false)}
         onLoginSuccess={(acc) => {
           setUserAccount(acc);
+          // Auto link PRO membership status to registered accounts (e.g. Google pjp1997103@gmail.com or subscribed account)
+          setUserStats((prev) => ({
+            ...prev,
+            isProUser: true,
+            planType: prev.planType === 'free' ? 'yearly' : prev.planType,
+            freeScans: 9999,
+          }));
         }}
         onShowToast={showToast}
       />

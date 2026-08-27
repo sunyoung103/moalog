@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Specimen, UserStats, NaturalistPersona } from '../types';
 import { NATURALIST_PERSONAS, SPECIES_ECOLOGY_ENCYCLOPEDIA } from '../data/hotspots';
+import { RecentSpecimenBasket } from './RecentSpecimenBasket';
 
 interface ReportViewProps {
   specimens: Specimen[];
@@ -409,50 +410,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
         </div>
 
-        {/* Recent Journal Entries */}
+        {/* Recent Journal Basket Slider */}
         {collectedList.length > 0 && (
-          <div className="pt-2 border-t border-stone-100">
-            <div className="flex items-center justify-between mb-2.5 px-0.5">
-              <span className="text-xs font-black text-stone-900">최근 관찰 기록 일지</span>
-              <span className="text-[10px] text-stone-400 font-mono">최신 3개 기록</span>
-            </div>
-
-            <div className="space-y-2">
-              {collectedList.slice(0, 3).map((sp) => {
-                const targetImg = sp.stickerImage || sp.originalImage;
-                const obs = sp.observations?.[0];
-                return (
-                  <div
-                    key={sp.id}
-                    onClick={() => onSelectSpecimen(sp)}
-                    className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 transition-all flex items-center justify-between cursor-pointer border border-stone-100 shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-stone-200/60 flex items-center justify-center overflow-hidden shrink-0">
-                        {targetImg ? (
-                          <img src={targetImg} alt={sp.koreanName} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-base">🌿</span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-black text-stone-900">{sp.koreanName}</h4>
-                          <span className="text-[9px] font-mono font-bold text-stone-600 bg-stone-200/60 px-1.5 py-0.2 rounded">
-                            {sp.number || 'No.01'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-stone-500 font-medium">
-                          {obs?.date || '2026.08.15'} • {obs?.locationName || sp.habitatType || '도심 공원'}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <RecentSpecimenBasket
+            specimens={specimens}
+            onSelectSpecimen={onSelectSpecimen}
+            title="최근 관찰 기록 일지"
+          />
         )}
       </section>
 

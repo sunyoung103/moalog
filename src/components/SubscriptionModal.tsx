@@ -151,55 +151,28 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </div>
           </div>
 
-          {/* Core Benefits Checklist (Exact User Requirements) */}
-          <div className="bg-stone-50 rounded-2xl p-3.5 space-y-2.5 border border-stone-200/70">
-            <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mb-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>PRO 멤버십 전용 혜택</span>
+          {/* Core Benefits List (Clean Minimal Design without Icon Clutter) */}
+          <div className="bg-stone-50 rounded-2xl p-4 space-y-3 border border-stone-200/70">
+            <h4 className="text-xs font-bold text-stone-900 border-b border-stone-200/60 pb-2">
+              PRO 멤버십 주요 혜택
             </h4>
 
-            {/* Benefit 1 */}
-            <div className="flex items-start gap-2.5 text-xs text-stone-700">
-              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Cloud className="w-3 h-3" />
-              </div>
-              <div>
-                <p className="font-bold text-stone-900">촬영한 사진 클라우드 저장</p>
-                <p className="text-[11px] text-stone-500">기기를 바꿔도 도감이 그대로 유지돼요</p>
-              </div>
+            {/* Clean Text Highlight 1 */}
+            <div className="text-xs space-y-0.5">
+              <p className="font-bold text-stone-900">클라우드 백업 가동 중</p>
+              <p className="text-[11px] text-stone-500">기기를 바꿔도 촬영 사진 및 관찰 도감 데이터 안전 자동 동기화</p>
             </div>
 
-            {/* Benefit 2 */}
-            <div className="flex items-start gap-2.5 text-xs text-stone-700">
-              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Cpu className="w-3 h-3" />
-              </div>
-              <div>
-                <p className="font-bold text-stone-900">무제한 AI 종 식별 &amp; 예술점수 분석</p>
-                <p className="text-[11px] text-stone-500">일일 스캔 제한 없이 무제한으로 종 동정 및 구도 점수 채점</p>
-              </div>
+            {/* Clean Text Highlight 2 */}
+            <div className="text-xs space-y-0.5">
+              <p className="font-bold text-stone-900">무제한 AI 스캔</p>
+              <p className="text-[11px] text-stone-500">제한 없는 AI 생물 종 자동 동정 &amp; 예술 구도 채점 무제한 제공</p>
             </div>
 
-            {/* Benefit 3 */}
-            <div className="flex items-start gap-2.5 text-xs text-stone-700">
-              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <BookOpen className="w-3 h-3" />
-              </div>
-              <div>
-                <p className="font-bold text-stone-900">생태 백과 · 프리미엄 관찰 가이드 열람</p>
-                <p className="text-[11px] text-stone-500">사계절 관찰 팁 및 전국 핫스팟 탐사 루트 전체 공개</p>
-              </div>
-            </div>
-
-            {/* Benefit 4 */}
-            <div className="flex items-start gap-2.5 text-xs text-stone-700">
-              <div className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                <Bot className="w-3 h-3" />
-              </div>
-              <div>
-                <p className="font-bold text-stone-900">AI 생태백과 챗봇 사용 가능</p>
-                <p className="text-[11px] text-stone-500">궁금한 생물 특성 및 동정 질문을 24시간 실시간 질의응답</p>
-              </div>
+            {/* Clean Text Highlight 3 */}
+            <div className="text-xs space-y-0.5">
+              <p className="font-bold text-stone-900">생태 백과 &amp; AI 탐사 챗봇</p>
+              <p className="text-[11px] text-stone-500">전국 핫스팟 가이드 및 24시간 실시간 AI 생태 질의응답</p>
             </div>
           </div>
 

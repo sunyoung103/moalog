@@ -23,6 +23,8 @@ import {
   LogIn,
   AlertTriangle,
   UserCheck,
+  Cloud,
+  Cpu,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
@@ -65,6 +67,7 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
   const [isPersonaSubPageOpen, setIsPersonaSubPageOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isTrashSubPageOpen, setIsTrashSubPageOpen] = useState(false);
+  const [isSubManagementSubPageOpen, setIsSubManagementSubPageOpen] = useState(false);
 
   // Logout & Delete Account confirm modals
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
@@ -191,6 +194,98 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                     );
                   })}
                 </div>
+              </div>
+            </motion.div>
+          ) : isSubManagementSubPageOpen ? (
+            /* ================= [SUB-PAGE] Subscription Contract & Payment Management (Deep Depth) ================= */
+            <motion.div
+              key="sub-management-subpage"
+              initial={{ x: 30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -30, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col h-full flex-1 overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsSubManagementSubPageOpen(false)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>설정으로 돌아가기</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-4 flex-1 overflow-y-auto pr-1 scrollbar-none">
+                <div>
+                  <h3 className="text-sm font-bold text-stone-900">결제 및 서비스 계약 세부 관리</h3>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    현재 적용 중인 플랜 상세 정보 및 결제 약관을 관리합니다.
+                  </p>
+                </div>
+
+                {/* Plan detail card */}
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                    <span className="text-xs font-bold text-stone-700">이용 중인 플랜</span>
+                    <span className="text-xs font-black text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                      {userStats.planType === 'yearly' ? 'MOALOG PRO (연간 결제)' : 'MOALOG PRO (월간 결제)'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs text-stone-600">
+                    <div className="flex justify-between">
+                      <span className="text-stone-400">결제 수단</span>
+                      <span className="font-medium text-stone-800">App Store / Google Play 안전 인앱 결제</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-stone-400">결제 금액</span>
+                      <span className="font-bold text-stone-900">
+                        {userStats.planType === 'yearly' ? '연 39,000원 (VAT 포함)' : '월 4,900원 (VAT 포함)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-stone-400">서비스 상태</span>
+                      <span className="font-bold text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> 무제한 혜택 적용 중 (자동 갱신)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Terms and data protection notice */}
+                <div className="bg-stone-100/70 rounded-2xl p-4 border border-stone-200/60 text-xs text-stone-600 space-y-2">
+                  <p className="font-bold text-stone-800 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-stone-500" /> 서비스 이용 및 약관 안내
+                  </p>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    구독 기간 동안 무제한 AI 종 분석 및 클라우드 동기화 서비스가 계속 제공됩니다. 결제 취소 및 환불 조항은 각 플랫폼 구매 약관을 준수합니다.
+                  </p>
+                </div>
+
+                {/* Deeply hidden Cancellation Link at the bottom of subpage */}
+                {userStats.isProUser && (
+                  <div className="pt-8 border-t border-stone-200/60 text-center">
+                    <p className="text-[10px] text-stone-400 mb-2">
+                      더 이상 PRO 혜택을 이용하지 않으시려면 아래 신청 절차를 진행하세요.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelModalOpen(true)}
+                      className="text-[11px] font-medium text-stone-400 hover:text-red-500 underline transition-colors py-1.5 px-3 rounded-lg hover:bg-stone-100"
+                    >
+                      구독 서비스 해지 및 무료 플랜 전환 신청
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : isTrashSubPageOpen ? (
@@ -373,38 +468,29 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <div className="bg-amber-50 text-amber-950 rounded-2xl p-4 flex flex-col justify-between space-y-3 border border-amber-200">
+                    /* Simple, Minimal PRO Status Card without icon clutter */
+                    <div className="bg-stone-900 text-white rounded-2xl p-4 shadow-sm select-none">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl bg-amber-400/30 flex items-center justify-center text-amber-700 shrink-0 font-bold">
-                            <Crown className="w-5 h-5 fill-current" />
-                          </div>
-                          <div>
-                            <p className="font-black text-xs text-amber-950">
-                              이용 중인 플랜:{' '}
-                              {userStats.planType === 'yearly'
-                                ? '연간 정기 구독 (PRO)'
-                                : '월간 정기 구독 (PRO)'}
-                            </p>
-                            <p className="text-[11px] text-amber-850 mt-0.5">
-                              {userStats.planType === 'yearly'
-                                ? '연 39,000원으로 모든 기능을 무제한 이용 중입니다.'
-                                : '매월 4,900원으로 자동 갱신되는 구독 플랜 이용 중입니다.'}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="text-[10px] font-mono text-stone-400">
+                            MOALOG PRO 멤버십
+                          </p>
+                          <h4 className="text-xs font-black text-white mt-0.5">
+                            {userStats.planType === 'yearly'
+                              ? '연간 정기 구독 이용 중'
+                              : '월간 정기 구독 이용 중'}
+                          </h4>
                         </div>
-                        <span className="text-[10px] font-black bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full shrink-0">
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 rounded-full">
                           구독 중
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setIsCancelModalOpen(true)}
-                        className="w-full py-2.5 bg-white hover:bg-stone-100 text-stone-700 rounded-xl text-[11px] font-bold transition-colors text-center shadow-2xs border border-stone-200"
-                      >
-                        무료 플랜으로 전환 (구독 해지)
-                      </button>
+                      <div className="mt-3 pt-2.5 border-t border-stone-800 flex items-center justify-between text-xs font-medium text-stone-300">
+                        <span>클라우드 백업 가동 중</span>
+                        <span className="text-stone-700">|</span>
+                        <span>무제한 AI 스캔</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -582,6 +668,26 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                           보기
                         </button>
                       </div>
+
+                      {userStats.isProUser && (
+                        <div className="flex items-center justify-between pt-2.5 border-t border-stone-100">
+                          <div className="flex items-center gap-2.5">
+                            <CreditCard className="w-4 h-4 text-amber-600" />
+                            <div>
+                              <p className="text-xs font-semibold text-stone-800">결제 및 서비스 계약 관리</p>
+                              <p className="text-[10px] text-stone-400">구독 플랜 상세 정보 및 계약 내역</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsSubManagementSubPageOpen(true)}
+                            className="text-[11px] font-bold text-stone-700 hover:text-stone-900 flex items-center gap-0.5 bg-stone-100 px-2 py-1 rounded-lg transition-colors"
+                          >
+                            <span>계약 관리</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
