@@ -121,6 +121,7 @@ export interface Specimen {
   colorPalette?: string[]; // 5 harmonic nature hex colors extracted from specimen
   isDeleted?: boolean;
   deletedAt?: number;
+  isDataValidated?: boolean; // New flag for data validation
   locationCoord?: {
     name: string;
     city?: string;      // e.g. "서울", "도쿄", "파리", "제주", "뉴욕"

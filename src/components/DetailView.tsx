@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Specimen, Observation, SpeciesEcologyDetail } from '../types';
 import { getApiSource, getIdentificationSourceMetadata, API_SOURCES } from '../utils/apiSources';
+import { isValidEcologyDetail, isSpecimenDataMatch, isMeaningfulContent } from '../utils/validation';
 import {
   MapPin,
   Sparkles,
@@ -427,9 +428,12 @@ export const DetailView: React.FC<DetailViewProps> = ({
       })
       .then((resData) => {
         if (!isMounted) return;
-        if (resData?.success && resData?.data) {
+        if (resData?.success && resData?.data && isValidEcologyDetail(resData.data) && isSpecimenDataMatch(resData.data, specimen)) {
           clientEcologyDetailsCache.set(cacheKey, resData.data);
           setLiveEcologyDetail(resData.data);
+          if (onUpdateSpecimen) {
+            onUpdateSpecimen({ ...specimen, isDataValidated: true });
+          }
         }
       })
       .catch((err) => {
@@ -2462,15 +2466,30 @@ export const DetailView: React.FC<DetailViewProps> = ({
                   const slot4Theme = isFungi ? 'normal' : globalProfile.slot4Theme;
 
                   // Data availability checks
-                  const appearanceText = ecoDetail?.keyIdentification || specimen?.description || '';
-                  const habitatText = ecoDetail?.habitat || specimen?.habitatType || '';
-                  const ecologyText = ecoDetail?.dietAndBehavior || ecoDetail?.callOrSound || '';
-                  const etymologyText = ecoDetail?.etymology || '';
+                  const appearanceText = isMeaningfulContent(ecoDetail?.keyIdentification)
+                    ? ecoDetail!.keyIdentification!
+                    : isMeaningfulContent(specimen?.description)
+                    ? specimen!.description!
+                    : '';
+
+                  const habitatText = isMeaningfulContent(ecoDetail?.habitat)
+                    ? ecoDetail!.habitat!
+                    : isMeaningfulContent(specimen?.habitatType)
+                    ? specimen!.habitatType!
+                    : '';
+
+                  const ecologyText = isMeaningfulContent(ecoDetail?.dietAndBehavior)
+                    ? ecoDetail!.dietAndBehavior!
+                    : isMeaningfulContent(ecoDetail?.callOrSound)
+                    ? ecoDetail!.callOrSound!
+                    : '';
+
+                  const etymologyText = isMeaningfulContent(ecoDetail?.etymology) ? ecoDetail!.etymology! : '';
                   
                   // Replace ecoDetail.specialNotes with a fixed disclaimer for fungi
                   const FUNGI_SAFETY_DISCLAIMER = '야생 버섯의 식독 여부는 절대 임의로 판단하거나 섭취하지 마시고, 반드시 국립산림과학원 등 공인 전문 기관 및 균류 전문가에게 확인하세요.';
-                  const effectiveSpecialNotes = isFungi ? FUNGI_SAFETY_DISCLAIMER : ecoDetail?.specialNotes;
-                  const specialText = effectiveSpecialNotes || (isFungi ? '' : ecoDetail?.status) || (isFungi ? '' : ecoDetail?.lynxBirdLifeNote) || (isFungi ? FUNGI_SAFETY_DISCLAIMER : '');
+                  const effectiveSpecialNotes = isFungi ? FUNGI_SAFETY_DISCLAIMER : (isMeaningfulContent(ecoDetail?.specialNotes) ? ecoDetail!.specialNotes! : '');
+                  const specialText = effectiveSpecialNotes || (isFungi ? '' : (isMeaningfulContent(ecoDetail?.status) ? ecoDetail!.status! : '')) || (isFungi ? '' : (isMeaningfulContent(ecoDetail?.lynxBirdLifeNote) ? ecoDetail!.lynxBirdLifeNote! : '')) || (isFungi ? FUNGI_SAFETY_DISCLAIMER : '');
 
                   // Authentic raw tags directly from API response (excluding fungi toxicity keywords)
                   const rawApiTags = Array.from(new Set([
@@ -2762,7 +2781,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                             >
                               <div className="p-3.5 sm:p-4 rounded-2xl bg-white text-stone-900 border border-stone-200 shadow-sm space-y-3">
                                 {/* Slot 1 내용: 계통 분류 체계 */}
-                                {activeEcoSlot === 'slot1' && (
+                                {activeEcoSlot === 'slot1' && specimen.isDataValidated && (
                                   <div className="space-y-3">
                                     {/* 계통 체인 */}
                                     <div className="flex items-center gap-1.5 flex-wrap text-xs bg-stone-50 p-3 rounded-xl border border-stone-200/80">
@@ -2788,36 +2807,21 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                       </div>
                                       <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
 
-                                      <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-900 shadow-2xs">
-                                        <span className="text-[10px] text-emerald-700 font-bold">목</span>
-                                        <span className="font-extrabold">
+                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
+                                        <span className="text-[10px] text-stone-400 font-bold">목</span>
+                                        <span className="text-stone-800 font-bold">
                                           {(ecoDetail?.order || specimen.order || '기록목').split('(')[0].trim()}
                                         </span>
                                       </div>
                                       <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
 
-                                      <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-900 shadow-2xs">
-                                        <span className="text-[10px] text-emerald-700 font-bold">과</span>
-                                        <span className="font-extrabold">
+                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
+                                        <span className="text-[10px] text-stone-400 font-bold">과</span>
+                                        <span className="text-stone-800 font-bold">
                                           {(ecoDetail?.family || specimen.family || '기록과').split('(')[0].trim()}
                                         </span>
                                       </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">속</span>
-                                        <span className="text-stone-800 font-serif italic font-bold">
-                                          {specimen.scientificName.split(' ')[0] || 'Genus'}
-                                        </span>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">종</span>
-                                        <span className="text-stone-800 font-serif italic font-bold">
-                                          {specimen.scientificName.split(' ').slice(0, 2).join(' ')}
-                                        </span>
-                                      </div>
+                                      
                                     </div>
 
                                     {/* 상세 설명 */}
@@ -2991,8 +2995,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
                       {/* --- API 연동 기반 백과사전 아코디언 (Accordion Items) - 데이터가 존재하는 항목만 조건부 렌더링 --- */}
                       <div className="space-y-2.5 pt-1">
-                        {/* 1. 생김새 아코디언 (appearanceText가 존재할 때만 렌더링) */}
-                        {appearanceText && appearanceText.trim().length > 0 && (
+                        {/* 1. 생김새 아코디언 (appearanceText가 유효한 내용일 때만 렌더링) */}
+                        {isMeaningfulContent(appearanceText) && (
                           <div className="rounded-xl border border-stone-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                             <button
                               type="button"
@@ -3032,8 +3036,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
                           </div>
                         )}
 
-                        {/* 2. 서식지 아코디언 (habitatText가 존재할 때만 렌더링) */}
-                        {habitatText && habitatText.trim().length > 0 && (
+                        {/* 2. 서식지 아코디언 (habitatText가 유효한 내용일 때만 렌더링) */}
+                        {isMeaningfulContent(habitatText) && (
                           <div className="rounded-xl border border-stone-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                             <button
                               type="button"
@@ -3046,7 +3050,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                   <span>서식 환경</span>
                                 </span>
                                 {habitatBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
                                     #{badge}
                                   </span>
                                 ))}
@@ -3073,8 +3077,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
                           </div>
                         )}
 
-                        {/* 3. 식성 & 먹이 습성 아코디언 (dietAndBehavior가 존재할 때만 렌더링) */}
-                        {ecoDetail?.dietAndBehavior && ecoDetail.dietAndBehavior.trim().length > 0 && (
+                        {/* 3. 식성 & 먹이 습성 아코디언 (dietAndBehavior가 유효한 내용일 때만 렌더링) */}
+                        {isMeaningfulContent(ecoDetail?.dietAndBehavior) && (
                           <div className="rounded-xl border border-stone-200/80 bg-white overflow-hidden shadow-2xs transition-all">
                             <button
                               type="button"

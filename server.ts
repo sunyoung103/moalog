@@ -1017,7 +1017,9 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (isMammal) {
+  const isSquirrel = koreanName.includes("다람쥐") || koreanName.includes("청설모");
+
+  if (isMammal && isSquirrel) {
     return {
       koreanName: koreanName || "다람쥐",
       scientificName: scientificName || "Tamias sibiricus",
@@ -1047,6 +1049,36 @@ function getFallbackEcologyDetail(
         dietAndBehavior: "국립생태원 포유류 생태연구집",
         etymology: "국립국어원 표준국어대사전",
         conservation: "국가생물다양성정보공유체계 (LC)"
+      }
+    };
+  }
+
+  if (isMammal) {
+    return {
+      koreanName: koreanName || "포유류",
+      scientificName: scientificName || "Mammalia",
+      englishName: "Mammal",
+      category: "mammals",
+      categoryLabel: "포유강 (Mammalia)",
+      family: family || "",
+      order: "",
+      size: "",
+      status: "",
+      categoryFocus: "",
+      keyIdentification: "",
+      callOrSound: "",
+      dietAndBehavior: "",
+      habitat: "",
+      etymology: "",
+      specialNotes: "",
+      bestObservationTip: "",
+      photoGearTip: "",
+      fieldEtiquette: "",
+      seasonality: "",
+      tags: ["포유류"],
+      sources: {
+        taxonomy: "GBIF",
+        conservation: "IUCN Red List"
       }
     };
   }
