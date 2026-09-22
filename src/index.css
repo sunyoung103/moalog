@@ -1,8 +1,8 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
-  --color-cyan-point: #21CED8;
-  --color-mint-point: #74E4BD;
+  --color-stone-950: #0C0A09;
 }
 
 :root {
@@ -12,14 +12,59 @@
 }
 
 @layer utilities {
-  /* Linear Point Gradient Utilities (#21CED8 -> #74E4BD -> #E8EFF7) - Use SPARINGLY on key focal points */
+  /* WABI 3D Glassmorphism Utilities - Monochromatic Translucent Glass */
+  .wabi-glass-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 250, 252, 0.7) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 
+      0 10px 30px -8px rgba(15, 23, 42, 0.08),
+      0 4px 12px -4px rgba(15, 23, 42, 0.04),
+      inset 0 1.5px 1.5px rgba(255, 255, 255, 1),
+      inset 0 -1.5px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .wabi-glass-bubble {
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.85) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 
+      0 6px 16px -4px rgba(15, 23, 42, 0.1),
+      inset 0 2px 2px rgba(255, 255, 255, 1),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .wabi-glass-dark {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.88) 100%);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+      0 10px 25px -5px rgba(0, 0, 0, 0.25),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .wabi-3d-btn {
+    background: linear-gradient(180deg, #334155 0%, #0F172A 100%);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 4px 14px rgba(15, 23, 42, 0.25),
+      inset 0 1px 1px rgba(255, 255, 255, 0.3),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Monochromatic Point Gradient Utility - No bright blue or green backgrounds */
   .btn-point-gradient {
-    background: linear-gradient(135deg, #21CED8 0%, #74E4BD 60%, #E8EFF7 100%);
-    color: #0F172A;
+    background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
   }
 
   .accent-gradient-point {
-    background: linear-gradient(135deg, #21CED8 0%, #74E4BD 100%);
+    background: linear-gradient(135deg, #334155 0%, #0F172A 100%);
   }
 
   .bg-app-bg {

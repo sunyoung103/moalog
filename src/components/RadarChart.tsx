@@ -20,7 +20,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   totalScore = 89,
 }) => {
   const chartData = data || [];
-  const count = chartData.length; // 5: 포즈, 배율, 시선, 배경, 선명도
+  const count = chartData.length; // 5~6 axes
   if (count === 0) return null;
 
   const radius = size * 0.36;
@@ -61,6 +61,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
+
+  // Find highest scoring axis for intentional legend summary
+  const highestAxis = [...chartData].sort((a, b) => b.value - a.value)[0];
 
   return (
     <div className="relative flex flex-col items-center justify-center select-none py-2 px-1 my-1">
@@ -199,9 +202,6 @@ export const RadarChart: React.FC<RadarChartProps> = ({
           const isLeft = x < center - 12;
           const textAnchor = isCenter ? 'middle' : isLeft ? 'end' : 'start';
 
-          // Score ratio percentage
-          const pct = Math.round((item.value / item.fullMark) * 100);
-
           return (
             <g key={`label-${i}`} transform={`translate(${x}, ${y})`}>
               <text
@@ -246,7 +246,20 @@ export const RadarChart: React.FC<RadarChartProps> = ({
           </text>
         </g>
       </svg>
+
+      {/* Modern Side Legend & High-Score Axis Indicator Pill (inspired by image 9.png & card.png) */}
+      <div className="w-full max-w-sm mt-3 pt-2 border-t border-stone-200/70 flex items-center justify-between gap-2 text-[10px] font-medium text-stone-600">
+        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-200/80 font-bold">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>최고 우수: {highestAxis?.label || '초점'} ({highestAxis?.value || 20}점)</span>
+        </div>
+        <div className="flex items-center gap-1 font-mono text-stone-500 bg-stone-100 px-2 py-1 rounded-md">
+          <span className="text-emerald-700 font-bold">↗ 94%</span>
+          <span>식별 정밀도</span>
+        </div>
+      </div>
     </div>
   );
 };
+
 

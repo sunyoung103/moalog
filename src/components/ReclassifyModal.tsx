@@ -31,16 +31,18 @@ export const ReclassifyModal: React.FC<ReclassifyModalProps> = ({
   // Clean category label helper in pure Korean without translation jargon
   const getCleanCategoryLabel = (category: string) => {
     switch (category) {
-      case 'birds':
-        return '조류';
-      case 'plants':
-        return '식물';
-      case 'insects':
-        return '곤충류';
-      case 'mammals':
-        return '포유류';
-      default:
-        return '생물';
+      case 'birds': return '조류';
+      case 'plants': return '식물';
+      case 'insects': return '곤충류';
+      case 'mammals': return '포유류';
+      case 'reptiles': return '파충류';
+      case 'amphibians': return '양서류';
+      case 'fishes': return '어류';
+      case 'fungi': return '균류/버섯';
+      case 'arachnids': return '거미류';
+      case 'mollusks': return '연체동물';
+      case 'crustaceans': return '갑각류';
+      default: return '기타 생물';
     }
   };
 
@@ -53,8 +55,14 @@ export const ReclassifyModal: React.FC<ReclassifyModalProps> = ({
   const filteredSuggestions = useMemo(() => {
     const query = searchFilter.trim().toLowerCase();
     return SPECIES_ECOLOGY_ENCYCLOPEDIA.filter((item) => {
-      if (selectedSearchCat !== 'all' && item.category !== selectedSearchCat) {
-        return false;
+      if (selectedSearchCat !== 'all') {
+        if (selectedSearchCat === 'invertebrates') {
+          if (item.category !== 'arachnids' && item.category !== 'mollusks' && item.category !== 'crustaceans') return false;
+        } else if (selectedSearchCat === 'herptiles') {
+          if (item.category !== 'amphibians' && item.category !== 'reptiles') return false;
+        } else if (item.category !== selectedSearchCat) {
+          return false;
+        }
       }
       if (!query) return true;
 
@@ -157,9 +165,13 @@ export const ReclassifyModal: React.FC<ReclassifyModalProps> = ({
             {[
               { id: 'all', label: '전체' },
               { id: 'plants', label: '식물' },
+              { id: 'insects', label: '곤충' },
               { id: 'birds', label: '조류' },
-              { id: 'insects', label: '곤충류' },
+              { id: 'invertebrates', label: '거미&연체' },
               { id: 'mammals', label: '포유류' },
+              { id: 'herptiles', label: '양서&파충류' },
+              { id: 'fishes', label: '어류' },
+              { id: 'fungi', label: '균류' },
             ].map((c) => (
               <button
                 key={c.id}

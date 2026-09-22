@@ -22,8 +22,12 @@ import {
   VolumeX,
   Volume2,
   SlidersHorizontal,
+  Radio,
+  Video,
+  HelpCircle,
 } from 'lucide-react';
 import { Specimen, Observation } from '../types';
+import { getApiSource, getIdentificationSourceMetadata } from '../utils/apiSources';
 import { sounds, getFormattedNow } from '../utils/cutoutHelper';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,8 +51,8 @@ const SCAN_PRESETS = [
     name: '서양민들레',
     scientific: 'Taraxacum officinale',
     category: 'plants' as const,
-    family: '국화과 (Asteraceae)',
-    genus: '민들레속 (Taraxacum)',
+    family: '',
+    genus: '',
     confidence: 99,
     image: 'https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=800&auto=format&fit=crop&q=80',
     photos: [
@@ -77,8 +81,8 @@ const SCAN_PRESETS = [
     name: '참새',
     scientific: 'Passer montanus',
     category: 'birds' as const,
-    family: '참새과 (Passeridae)',
-    genus: '참새속 (Passer)',
+    family: '',
+    genus: '',
     confidence: 99,
     image: 'https://images.unsplash.com/photo-1522926197415-e580a2dfa733?w=800&auto=format&fit=crop&q=80',
     photos: [
@@ -107,8 +111,8 @@ const SCAN_PRESETS = [
     name: '몬스테라 델리시오사',
     scientific: 'Monstera deliciosa',
     category: 'plants' as const,
-    family: '천남성과 (Araceae)',
-    genus: '몬스테라속 (Monstera)',
+    family: '',
+    genus: '',
     confidence: 98,
     image: 'https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&auto=format&fit=crop&q=80',
     photos: [
@@ -136,8 +140,8 @@ const SCAN_PRESETS = [
     name: '유럽 울새 (로빈)',
     scientific: 'Erithacus rubecula',
     category: 'birds' as const,
-    family: '솔딱새과 (Muscicapidae)',
-    genus: '울새속 (Erithacus)',
+    family: '',
+    genus: '',
     confidence: 97,
     image: 'https://images.unsplash.com/photo-1544860707-c352cc5a92e3?w=800&auto=format&fit=crop&q=80',
     photos: [
@@ -165,8 +169,8 @@ const SCAN_PRESETS = [
     name: '청둥오리',
     scientific: 'Anas platyrhynchos',
     category: 'birds' as const,
-    family: '오리과 (Anatidae)',
-    genus: '오리속 (Anas)',
+    family: '',
+    genus: '',
     confidence: 98,
     image: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=800&auto=format&fit=crop&q=80',
     photos: [
@@ -188,6 +192,179 @@ const SCAN_PRESETS = [
       environmentType: 'nature_wild' as const,
       x: 55,
       y: 56,
+    },
+  },
+  {
+    name: '루비목벌새',
+    scientific: 'Archilochus colubris',
+    category: 'birds' as const,
+    family: '벌새과',
+    genus: '벌새속',
+    confidence: 99,
+    image: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1551085254-e96b210df58a?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#dc2626', '#15803d', '#1e293b', '#f8fafc'],
+    taxonomyPath: ['동물계', '척삭동물문', '조강', '칼새목', '벌새과', '루비목벌새'],
+    traitChips: ['초고속 날갯짓(초당 50회+)', '공중정지비행(호버링)', '에메랄드/루비빛 광택', '꽃꿀 전문 섭식'],
+    habitatType: '열대/아열대 운무림',
+    wikiSummary: '루비목벌새는 공중정지 비행과 후진 비행이 가능한 신비로운 소형 조류로 햇빛 각도에 따라 목 부위가 붉은 보석처럼 빛납니다.',
+    wikiUrl: 'https://en.wikipedia.org/wiki/Ruby-throated_hummingbird',
+    seasonalTip: '밝은 붉은색 꽃이나 허밍버드 피더 주변에서 고속 셔터로 날개짓을 촬영할 수 있습니다.',
+    locationInfo: {
+      name: '몬테베르데 운무림 허밍버드 가든',
+      city: '몬테베르데',
+      district: '푼타레나스',
+      country: '코스타리카',
+      environmentType: 'nature_wild' as const,
+      x: 25,
+      y: 52,
+    },
+  },
+  {
+    name: '붉은눈나무개구리',
+    scientific: 'Agalychnis callidryas',
+    category: 'amphibians' as const,
+    family: '청개구리과',
+    genus: '나무개구리속',
+    confidence: 99,
+    image: 'https://images.unsplash.com/photo-1559253664-ca249d4608c6?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1559253664-ca249d4608c6?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1535083783855-76ae62b2914e?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#ef4444', '#22c55e', '#3b82f6', '#f97316'],
+    taxonomyPath: ['동물계', '척삭동물문', '양서강', '무미목', '청개구리과', '붉은눈나무개구리'],
+    traitChips: ['선명한 붉은 눈', '형광 연두빛 체색', '주황색 발가락 흡반', '열대우림 야행성'],
+    habitatType: '열대우림/수목',
+    wikiSummary: '중남미 열대우림을 상징하는 대표적 양서류로 붉은 눈과 파란 옆구리, 주황색 발가락 흡반으로 천적을 놀라게 하는 섬광 채색을 가집니다.',
+    wikiUrl: 'https://en.wikipedia.org/wiki/Agalychnis_callidryas',
+    seasonalTip: '우기철 밤 몬스테라나 헬리코니아 큰 잎 위에서 휴식하거나 울음소리를 냅니다.',
+    locationInfo: {
+      name: '아레날 화산 국립공원 레인포레스트',
+      city: '알라후엘라',
+      district: '라포르투나',
+      country: '코스타리카',
+      environmentType: 'nature_wild' as const,
+      x: 24,
+      y: 50,
+    },
+  },
+  {
+    name: '블루 모르포 나비',
+    scientific: 'Morpho peleides',
+    category: 'insects' as const,
+    family: '네발나비과',
+    genus: '모르포나비속',
+    confidence: 98,
+    image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1545063914-a1a6ec821c88?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#0284c7', '#0369a1', '#1e293b', '#e0f2fe'],
+    taxonomyPath: ['동물계', '절지동물문', '곤충강', '나비목', '네발나비과', '블루모르포'],
+    traitChips: ['나노 미세구조색', '코발트블루 광택', '뒷면 눈알무늬(의태)', '열대 캐노피 비행'],
+    habitatType: '열대우림/숲길',
+    wikiSummary: '날개 표면의 미세 격자 구조가 빛을 회절시켜 눈부신 금속성 푸른빛을 발산하는 세계에서 가장 아름다운 나비 중 하나입니다.',
+    wikiUrl: 'https://en.wikipedia.org/wiki/Morpho_peleides',
+    seasonalTip: '오전 10시~오후 2시 햇볕이 비치는 숲길 캐노피 틈새에서 활공하는 모습을 만날 수 있습니다.',
+    locationInfo: {
+      name: '마누엘 안토니오 국립공원 숲길',
+      city: '푼타레나스',
+      district: '케포스',
+      country: '코스타리카',
+      environmentType: 'nature_wild' as const,
+      x: 26,
+      y: 54,
+    },
+  },
+  {
+    name: '흰동가리',
+    scientific: 'Amphiprion ocellaris',
+    category: 'marine' as const,
+    family: '자리돔과',
+    genus: '흰동가리속',
+    confidence: 99,
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1520315342629-6ea920342047?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#f97316', '#ffffff', '#0f172a', '#fb923c'],
+    taxonomyPath: ['동물계', '척삭동물문', '조기어강', '농어목', '자리돔과', '흰동가리'],
+    traitChips: ['말미잘과 절대공생', '주황 바탕 3줄 흰 띠', '점액질 피부 보호막', '모계 사회 성전환'],
+    habitatType: '산호초/해양',
+    wikiSummary: '말미잘의 독성 촉수에 면역 점액질을 지녀 공생하며 살아가는 산호초 어류로, 주황색 몸체와 선명한 3개의 흰색 세로 줄무늬가 특징입니다.',
+    wikiUrl: 'https://ko.wikipedia.org/wiki/%ED%9D%B0%EB%8F%99%EA%B0%80%EB%A6%AC',
+    seasonalTip: '산호초 얕은 수심의 카펫말미잘 촉수 사이에서 머리를 내미는 모습을 수중 촬영하기 좋습니다.',
+    locationInfo: {
+      name: '그레이트 배리어 리프 아우터 리프',
+      city: '케언즈',
+      district: '퀸즐랜드주',
+      country: '호주',
+      environmentType: 'nature_wild' as const,
+      x: 85,
+      y: 64,
+    },
+  },
+  {
+    name: '팬서 카멜레온',
+    scientific: 'Furcifer pardalis',
+    category: 'reptiles' as const,
+    family: '카멜레온과',
+    genus: '카멜레온속',
+    confidence: 99,
+    image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1535083783855-76ae62b2914e?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#06b6d4', '#10b981', '#f59e0b', '#ef4444'],
+    taxonomyPath: ['동물계', '척삭동물문', '파충강', '뱀목', '카멜레온과', '팬서카멜레온'],
+    traitChips: ['화려한 무지개 발색', '독립 회전 원추형 눈', '초고속 탄도 혀', '마다가스카르 고유종'],
+    habitatType: '아열대 해안림',
+    wikiSummary: '마다가스카르 고유종으로 서식 로컬리티(노시베, 암반자 등)에 따라 터키옥색, 루비색, 라임색 등 환상적인 발색 변이를 자랑합니다.',
+    wikiUrl: 'https://en.wikipedia.org/wiki/Panther_chameleon',
+    seasonalTip: '해안 관목이나 덤불 가지 위에서 독립적으로 움직이는 두 눈을 관찰해보세요.',
+    locationInfo: {
+      name: '노시베 섬 해안 관목림',
+      city: '노시베',
+      district: '디아나구',
+      country: '마다가스카르',
+      environmentType: 'nature_wild' as const,
+      x: 62,
+      y: 68,
+    },
+  },
+  {
+    name: '푸른바다민달팽이',
+    scientific: 'Glaucus atlanticus',
+    category: 'marine' as const,
+    family: '글라우쿠스과',
+    genus: '글라우쿠스속',
+    confidence: 99,
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop&q=80',
+    photos: [
+      'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop&q=80',
+    ],
+    colorPalette: ['#38bdf8', '#1e40af', '#e2e8f0', '#0f172a'],
+    taxonomyPath: ['동물계', '연체동물문', '복족강', '나선달팽이목', '글라우쿠스과', '글라우쿠스'],
+    traitChips: ['바다의 푸른 용', '수면 거꾸로 부유', '자포동물 독소 축적', '환상적 사파이어 체색'],
+    habitatType: '원양 표층/조수웅덩이',
+    wikiSummary: '신화 속 미니 드래곤을 닮은 부유성 갯민숭달팽이로, 위장 배색과 포르투갈전쟁이의 독소를 체내에 축적하는 놀라운 생태를 지닙니다.',
+    wikiUrl: 'https://en.wikipedia.org/wiki/Glaucus_atlanticus',
+    seasonalTip: '남동풍이 부는 여름철 해안 조수 웅덩이로 밀려온 수면 거품 속에서 만날 수 있습니다(맨손 접촉 금지).',
+    locationInfo: {
+      name: '케이프타운 외해 수면 부유물',
+      city: '케이프타운',
+      district: '서케이프주',
+      country: '남아프리카공화국',
+      environmentType: 'nature_wild' as const,
+      x: 52,
+      y: 78,
     },
   },
   {
@@ -226,6 +403,8 @@ interface SessionShot {
   preset: typeof SCAN_PRESETS[0];
   isAlbum: boolean;
   zoomScale: number;
+  focusPoint?: { x: number; y: number };
+  focusAfMode?: 'Auto Multi-AF' | 'Spot Tap-AF' | 'Macro Focus' | 'Center Eye-AF';
 }
 
 export const LensView: React.FC<LensViewProps> = ({
@@ -266,15 +445,7 @@ export const LensView: React.FC<LensViewProps> = ({
     return 'auto';
   });
 
-  const [startWithCamera, setStartWithCamera] = useState(() => {
-    try {
-      return localStorage.getItem('moalog_startup_tab') === 'lens';
-    } catch {
-      return false;
-    }
-  });
-
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLiveMotionEnabled, setIsLiveMotionEnabled] = useState(true);
 
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('4:3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -286,8 +457,9 @@ export const LensView: React.FC<LensViewProps> = ({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [reviewActiveIndex, setReviewActiveIndex] = useState(0);
 
-  // Tap-to-focus state
+  // Tap-to-focus state & percentage ref
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const lastFocusPercentRef = useRef<{ x: number; y: number; isTap: boolean }>({ x: 50, y: 44, isTap: false });
 
   // Real-time live environmental data
   const [liveEnv, setLiveEnv] = useState<{
@@ -320,6 +492,16 @@ export const LensView: React.FC<LensViewProps> = ({
   const [isManualSpeciesPickerOpen, setIsManualSpeciesPickerOpen] = useState(false);
   const [manualSearchQuery, setManualSearchQuery] = useState('');
   const [manualCategory, setManualCategory] = useState('all');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const currentPreset = SCAN_PRESETS[selectedPresetIndex];
   const activeImage = customPhotoUrl || currentPreset.image;
@@ -460,6 +642,10 @@ export const LensView: React.FC<LensViewProps> = ({
     const y = e.clientY - rect.top;
     setFocusPoint({ x, y });
     
+    const pctX = Math.round(Math.max(5, Math.min(95, (x / rect.width) * 100)));
+    const pctY = Math.round(Math.max(5, Math.min(95, (y / rect.height) * 100)));
+    lastFocusPercentRef.current = { x: pctX, y: pctY, isTap: true };
+
     if (!isSilentMode) {
       sounds.playTone(880, 0.05);
     }
@@ -512,13 +698,16 @@ export const LensView: React.FC<LensViewProps> = ({
         return;
       }
 
-      // Add to session queue instead of analyzing immediately, store zoomScale
+      // Add to session queue instead of analyzing immediately, store zoomScale and focus point
+      const focusInfo = lastFocusPercentRef.current;
       const newShot: SessionShot = {
         id: Date.now().toString(),
         imageUrl: customPhotoUrl || currentPreset.image,
         preset: currentPreset,
         isAlbum: false,
         zoomScale: zoomScale,
+        focusPoint: { x: focusInfo.x, y: focusInfo.y },
+        focusAfMode: focusInfo.isTap ? 'Spot Tap-AF' : 'Auto Multi-AF',
       };
 
       setSessionShots((prev) => [...prev, newShot]);
@@ -618,7 +807,9 @@ export const LensView: React.FC<LensViewProps> = ({
         temperature: isAlbum ? '' : (liveEnv.temperature || '24°C'),
         photoUrl: shot.imageUrl,
         seasonLabel: isAlbum ? '앨범 포착 기록' : '실시간 포착',
-        memo: `생태 렌즈 다중 포착. 예술점수 ${score.total}점 (${score.grade}등급)`,
+        focusPoint: shot.focusPoint || { x: 50, y: 44 },
+        focusAfMode: shot.focusAfMode || 'Auto Multi-AF',
+        memo: `생태 렌즈 포착 기록. 초점 타깃 (${shot.focusPoint?.x || 50}%, ${shot.focusPoint?.y || 44}%) [${shot.focusAfMode || 'Auto Multi-AF'}]. 예술점수 ${score.total}점 (${score.grade}등급)`,
       };
     });
 
@@ -703,6 +894,20 @@ export const LensView: React.FC<LensViewProps> = ({
       onTouchEnd={handleTouchEnd}
       className="relative w-full h-[100dvh] bg-stone-950 text-white overflow-hidden select-none"
     >
+      {/* Toast notification message (3 seconds auto-dismiss) */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-14 left-1/2 -translate-x-1/2 z-[100] bg-stone-900/95 text-amber-300 px-4 py-3 rounded-2xl shadow-2xl border border-amber-500/40 text-xs font-bold flex items-center gap-2.5 backdrop-blur-md max-w-sm w-[90%] text-center justify-center pointer-events-none"
+          >
+            <HelpCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* 1. Camera Viewfinder Feed */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {hasCameraStream ? (
@@ -752,6 +957,27 @@ export const LensView: React.FC<LensViewProps> = ({
       {/* 2. Top Clean Minimal Toolbar */}
       <div className="absolute top-0 left-0 right-0 z-30 px-4 pt-3.5 pb-2 flex items-center justify-between pointer-events-auto select-none">
         <div className="flex items-center gap-2">
+          {/* 3.5s Live Ecological Motion Camera Toggle Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLiveMotionEnabled(!isLiveMotionEnabled);
+              if (!isSilentMode) {
+                sounds.playTone(800, 0.05);
+              }
+            }}
+            className={`h-10 px-3.5 rounded-full flex items-center gap-1.5 transition-all text-xs font-black shadow-md border cursor-pointer active:scale-95 ${
+              isLiveMotionEnabled
+                ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-300 ring-2 ring-rose-500/40'
+                : 'bg-stone-900/80 text-stone-400 hover:text-white border-white/10'
+            }`}
+            title="포착렌즈 3.5초 생태 모션 LIVE 자동 촬영"
+          >
+            <span className={`w-2 h-2 rounded-full ${isLiveMotionEnabled ? 'bg-white animate-pulse' : 'bg-stone-500'}`} />
+            <span>{isLiveMotionEnabled ? 'LIVE ON' : 'LIVE OFF'}</span>
+          </button>
+
           {/* Flash Setting Switcher */}
           <button
             type="button"
@@ -788,22 +1014,6 @@ export const LensView: React.FC<LensViewProps> = ({
               </div>
             )}
             {flashSetting === 'off' && <ZapOff className="w-4 h-4 text-stone-400" />}
-          </button>
- 
-          {/* Camera Gear Settings Icon */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSettingsOpen(true);
-              if (!isSilentMode) {
-                sounds.playTone(720, 0.05);
-              }
-            }}
-            className="w-10 h-10 rounded-full bg-stone-900/80 text-stone-300 hover:bg-stone-800 border border-white/10 flex items-center justify-center transition-all shadow-md"
-            title="카메라 앱 설정"
-          >
-            <Settings className="w-4 h-4 text-stone-300" />
           </button>
         </div>
 
@@ -859,6 +1069,14 @@ export const LensView: React.FC<LensViewProps> = ({
               내 사진
             </span>
           )}
+        </div>
+      </div>
+
+      {/* Live Motion Value Proposition Banner */}
+      <div className="absolute top-[106px] left-0 right-0 z-30 flex justify-center pointer-events-none select-none">
+        <div className="px-3 py-1 rounded-full bg-stone-950/90 text-rose-300 text-[10px] font-black border border-rose-500/30 shadow-xl flex items-center gap-1.5 backdrop-blur-md">
+          <Radio className="w-3 h-3 text-rose-400 animate-pulse" />
+          <span>포착 렌즈 전용: 3.5초 생태 모션 LIVE 자동 촬영</span>
         </div>
       </div>
 
@@ -1171,6 +1389,15 @@ export const LensView: React.FC<LensViewProps> = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-60 bg-stone-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center select-none"
           >
+            <button
+              type="button"
+              onClick={() => setIsRecognitionFailed(false)}
+              className="absolute top-4 right-4 p-2 rounded-full text-stone-400 hover:text-white bg-stone-900/80 transition-colors"
+              title="닫기"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
             <div className="w-16 h-16 rounded-3xl bg-stone-900 flex items-center justify-center text-white mb-5 relative">
               <Camera className="w-6 h-6 text-stone-300" />
               <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-stone-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white">!</span>
@@ -1236,19 +1463,20 @@ export const LensView: React.FC<LensViewProps> = ({
               <div className="p-4 bg-stone-50 flex items-center justify-between shrink-0">
                 <div>
                   <h3 className="text-sm font-bold text-stone-900">직접 종 선택하기</h3>
-                  <p className="text-[11px] text-stone-500 mt-0.5">도감 목록에서 포착한 생물 종을 직접 선택하세요</p>
+                  <p className="text-[11px] text-stone-500 mt-0.5">도감 목록에서 원하는 생물 종을 직접 터치하세요</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsManualSpeciesPickerOpen(false)}
                   className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+                  title="닫기"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-4 space-y-3 flex-1 overflow-y-auto">
-                <div className="relative">
+              <div className="p-4 space-y-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="relative shrink-0">
                   <input
                     type="text"
                     value={manualSearchQuery}
@@ -1259,32 +1487,77 @@ export const LensView: React.FC<LensViewProps> = ({
                   <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 </div>
 
-                <div className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-none">
-                  {[
-                    { key: 'all', label: '전체' },
-                    { key: 'birds', label: '조류' },
-                    { key: 'plants', label: '식물' },
-                    { key: 'insects', label: '곤충류' },
-                    { key: 'mammals', label: '포유류' },
-                  ].map((cat) => (
-                    <button
-                      key={cat.key}
-                      type="button"
-                      onClick={() => setManualCategory(cat.key)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
-                        manualCategory === cat.key
-                          ? 'bg-stone-900 text-white'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      const el = (e.currentTarget.nextElementSibling as HTMLDivElement);
+                      if (el) el.scrollBy({ left: -140, behavior: 'smooth' });
+                    }}
+                    className="flex items-center justify-center w-6 h-6 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 shrink-0 cursor-pointer text-xs"
+                    title="왼쪽 스크롤"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div 
+                    onWheel={(e) => {
+                      if (e.deltaY !== 0) {
+                        e.currentTarget.scrollLeft += e.deltaY;
+                      }
+                    }}
+                    className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-none touch-pan-x flex-1"
+                  >
+                    {[
+                      { key: 'all', label: '전체' },
+                      { key: 'plants', label: '식물' },
+                      { key: 'insects', label: '곤충' },
+                      { key: 'birds', label: '조류' },
+                      { key: 'invertebrates', label: '거미&연체동물' },
+                      { key: 'mammals', label: '포유류' },
+                      { key: 'herptiles', label: '양서&파충류' },
+                      { key: 'fishes', label: '어류' },
+                      { key: 'fungi', label: '균류' },
+                    ].map((cat) => (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setManualCategory(cat.key)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                          manualCategory === cat.key
+                            ? 'bg-stone-900 text-white'
+                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      const el = (e.currentTarget.previousElementSibling as HTMLDivElement);
+                      if (el) el.scrollBy({ left: 140, behavior: 'smooth' });
+                    }}
+                    className="flex items-center justify-center w-6 h-6 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 shrink-0 cursor-pointer text-xs"
+                    title="오른쪽 스크롤"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                <div className="flex-1 min-h-[200px] overflow-y-auto overscroll-contain touch-pan-y pr-1 space-y-1.5">
                   {SPECIES_ECOLOGY_ENCYCLOPEDIA.filter((item) => {
-                    if (manualCategory !== 'all' && item.category !== manualCategory) return false;
+                    if (manualCategory !== 'all') {
+                      if (manualCategory === 'invertebrates') {
+                        if (item.category !== 'arachnids' && item.category !== 'mollusks' && item.category !== 'crustaceans') return false;
+                      } else if (manualCategory === 'herptiles') {
+                        if (item.category !== 'amphibians' && item.category !== 'reptiles') return false;
+                      } else if (item.category !== manualCategory) {
+                        return false;
+                      }
+                    }
                     const q = manualSearchQuery.trim().toLowerCase();
                     if (!q) return true;
                     return (
@@ -1297,7 +1570,17 @@ export const LensView: React.FC<LensViewProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => {
-                        const isAnimal = item.category === 'birds' || item.category === 'mammals' || item.category === 'insects';
+                        const isFungi = item.category === 'fungi';
+                        const isPlant = item.category === 'plants';
+                        const isAnimal = !isFungi && !isPlant;
+                        
+                        let fallbackClass = '강';
+                        if (item.category === 'birds') fallbackClass = '조강';
+                        else if (item.category === 'insects') fallbackClass = '곤충강';
+                        else if (item.category === 'mammals') fallbackClass = '포유강';
+                        else if (item.category === 'fungi') fallbackClass = '담자균강';
+                        else if (item.category === 'plants') fallbackClass = '쌍떡잎식물강';
+                        
                         const presetObj = {
                           name: item.koreanName,
                           scientific: item.scientificName,
@@ -1309,8 +1592,8 @@ export const LensView: React.FC<LensViewProps> = ({
                           photos: [customPhotoUrl || currentPreset.image],
                           colorPalette: ['#2e4033', '#8c7a6b', '#d9c8b4'],
                           taxonomyPath: [
-                            isAnimal ? '동물계' : '식물계',
-                            item.categoryLabel || (item.category === 'birds' ? '조강' : item.category === 'insects' ? '곤충강' : item.category === 'mammals' ? '포유강' : '속씨식물문'),
+                            isFungi ? '균계' : isPlant ? '식물계' : '동물계',
+                            item.categoryLabel || fallbackClass,
                             item.family,
                             item.koreanName
                           ],
@@ -1360,174 +1643,6 @@ export const LensView: React.FC<LensViewProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Camera App Settings Drawer / Modal (카메라 설정) */}
-      <AnimatePresence>
-        {isSettingsOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-60 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none"
-            onClick={() => setIsSettingsOpen(false)}
-          >
-            <motion.div
-              initial={{ y: '100%', opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '100%', opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-stone-900 text-white rounded-t-3xl sm:rounded-3xl max-w-md w-full flex flex-col shadow-2xl border border-white/10 overflow-hidden"
-            >
-              {/* Header */}
-              <div className="p-4 bg-stone-900 border-b border-white/10 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-amber-400" />
-                  <h3 className="text-sm font-bold tracking-tight">포착렌즈 카메라 설정</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Settings List */}
-              <div className="p-5 space-y-6">
-                
-                {/* 1. Flash Defaults */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs font-black">기본 플래시 모드</span>
-                  </div>
-                  <p className="text-[10px] text-stone-400 leading-relaxed">
-                    셔터를 누를 때 적용될 플래시 모드를 지정합니다. 자동(Auto) 설정 시 빛이 부족한 환경에서 스마트 플래시가 적용됩니다.
-                  </p>
-                  <div className="grid grid-cols-3 gap-1.5 pt-1.5">
-                    {([
-                      { key: 'off', label: '항상 꺼짐' },
-                      { key: 'auto', label: '자동 (Auto)' },
-                      { key: 'on', label: '항상 켬' },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => {
-                          setFlashSetting(opt.key);
-                          try {
-                            localStorage.setItem('moalog_flash_setting', opt.key);
-                          } catch {}
-                          if (!isSilentMode) sounds.playTone(600, 0.05);
-                        }}
-                        className={`py-2 rounded-xl text-[11px] font-bold transition-all border ${
-                          flashSetting === opt.key
-                            ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-sm'
-                            : 'bg-stone-800 text-stone-300 border-white/5 hover:bg-stone-750'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-white/5" />
-
-                {/* 2. Silent Camera Mode Toggle */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {isSilentMode ? (
-                        <VolumeX className="w-3.5 h-3.5 text-rose-400" />
-                      ) : (
-                        <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                      )}
-                      <span className="text-xs font-black">카메라 무음 모드</span>
-                    </div>
-                    <p className="text-[10px] text-stone-400 leading-relaxed pr-2">
-                      주변 야생 생물(조류, 곤충 등)의 소리 자극을 방지하기 위해 셔터 및 초점 알림 소리를 완전히 끕니다.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !isSilentMode;
-                      setIsSilentMode(next);
-                      try {
-                        localStorage.setItem('moalog_silent_camera', String(next));
-                      } catch {}
-                      if (!next) {
-                        sounds.playTone(880, 0.05);
-                      }
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 shrink-0 ${
-                      isSilentMode ? 'bg-rose-500 flex justify-end' : 'bg-stone-700 flex justify-start'
-                    }`}
-                  >
-                    <motion.div
-                      layout
-                      className="w-5 h-5 rounded-full bg-white shadow-md"
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  </button>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-white/5" />
-
-                {/* 3. Startup Tab Toggle */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-xs font-black">앱 시작 시 카메라로 시작</span>
-                    </div>
-                    <p className="text-[10px] text-stone-400 leading-relaxed pr-2">
-                      도감 목록 페이지 대신 포착렌즈 카메라 뷰파인더가 첫 화면으로 즉시 실행되도록 지정합니다.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !startWithCamera;
-                      setStartWithCamera(next);
-                      try {
-                        localStorage.setItem('moalog_startup_tab', next ? 'lens' : 'archive');
-                      } catch {}
-                      if (!isSilentMode) sounds.playTone(700, 0.05);
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 shrink-0 ${
-                      startWithCamera ? 'bg-emerald-500 flex justify-end' : 'bg-stone-700 flex justify-start'
-                    }`}
-                  >
-                    <motion.div
-                      layout
-                      className="w-5 h-5 rounded-full bg-white shadow-md"
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  </button>
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 bg-stone-900/60 border-t border-white/10 flex items-center justify-center shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="w-full py-2.5 bg-white hover:bg-stone-150 text-stone-900 text-[11px] font-black rounded-xl transition-all active:scale-98"
-                >
-                  설정 완료
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 };

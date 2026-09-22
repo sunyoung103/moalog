@@ -50,7 +50,18 @@ export default function App() {
   const [specimens, setSpecimens] = useState<Specimen[]>(() => {
     try {
       const saved = localStorage.getItem('moalog_specimens');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Specimen[];
+        // Merge missing initial specimens (if new ones were added to the hardcoded list)
+        const currentIds = new Set(parsed.map(p => p.id));
+        const missingSpecimens = INITIAL_SPECIMENS.filter(initSp => !currentIds.has(initSp.id));
+        if (missingSpecimens.length > 0) {
+          const merged = [...missingSpecimens, ...parsed];
+          localStorage.setItem('moalog_specimens', JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
     } catch {}
     return INITIAL_SPECIMENS;
   });

@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 
 interface AiChatbotModalProps {
   specimen: Specimen;
+  ecoDetail?: SpeciesEcologyDetail | null;
   onClose: () => void;
 }
 
@@ -16,10 +17,11 @@ interface ChatMessage {
   timestamp: string;
 }
 
-export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, onClose }) => {
-  const ecoDetail = SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
+export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, ecoDetail: propEcoDetail, onClose }) => {
+  const staticEcoDetail = SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
     (e) => e.koreanName === specimen.koreanName
   );
+  const ecoDetail = propEcoDetail || staticEcoDetail;
 
   const initialGreeting = `${specimen.koreanName}, 무엇이 궁금한가요?`;
 
@@ -47,11 +49,11 @@ export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, onClos
 
   // Recommended question chips
   const questionChips = [
-    '이 새 특징 알려줘',
-    '먹이는?',
-    '울음소리는?',
-    '서식지는?',
-    '계절별 변화는?',
+    `${specimen.category === 'birds' ? '이 새' : specimen.category === 'plants' ? '이 식물' : specimen.category === 'fungi' ? '이 버섯' : '이 생물'} 특징 알려줘`,
+    '관찰 및 촬영 팁은?',
+    '탐사 에티켓 & 안전 주의점은?',
+    '먹이나 영양 습성은?',
+    '주요 서식처 환경은?',
     '비슷한 종과 구분법은?',
   ];
 
@@ -115,6 +117,20 @@ export const AiChatbotModal: React.FC<AiChatbotModalProps> = ({ specimen, onClos
     if (q.includes('구분') || q.includes('비슷') || q.includes('차이') || q.includes('동정')) {
       const traitsStr = (specimen.traitChips && specimen.traitChips.length > 0) ? specimen.traitChips.slice(0, 3).join(', ') : '고유 생태적 특성';
       return `【비슷한 종과의 구분 팁】\n${specimen.koreanName}의 가장 큰 특징은 ${traitsStr}입니다. 크기와 ${specimen.family} 고유의 형태적 특징을 확인하면 쉽게 동정할 수 있습니다.`;
+    }
+
+    if (q.includes('촬영') || q.includes('사진') || q.includes('팁') || q.includes('관찰')) {
+      if (ecoDetail?.bestObservationTip) {
+        return `【${name} 관찰 & 촬영 팁】\n${ecoDetail.bestObservationTip}${ecoDetail.photoGearTip ? `\n\n추천 장비: ${ecoDetail.photoGearTip}` : ''}`;
+      }
+      return `${name} 관찰 시 피사체에 무리하게 접근하지 않고 자연스러운 생태 행동을 담는 것이 좋습니다.`;
+    }
+
+    if (q.includes('에티켓') || q.includes('주의') || q.includes('안전') || q.includes('독')) {
+      if (ecoDetail?.fieldEtiquette) {
+        return `【탐사 에티켓 & 안전 수칙】\n${ecoDetail.fieldEtiquette}${ecoDetail.specialNotes ? `\n\n특이사항: ${ecoDetail.specialNotes}` : ''}`;
+      }
+      return `야생생물의 서식지를 훼손하지 않고 5m 이상 안전거리를 유지하며 관찰해 주세요.`;
     }
 
     // Default friendly answer

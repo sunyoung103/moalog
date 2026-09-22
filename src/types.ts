@@ -1,6 +1,6 @@
-export type SpecimenCategory = 'all' | 'plants' | 'birds' | 'insects' | 'mammals';
+export type SpecimenCategory = 'all' | 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
 
-export type NaturalistPersona = 'general' | 'botanist' | 'birder' | 'mammalogist' | 'entomologist';
+export type NaturalistPersona = 'general' | 'botanist' | 'birder' | 'mammalogist' | 'entomologist' | 'herpetologist' | 'ichthyologist' | 'mycologist';
 
 export type AuthProvider = 'google' | 'kakao' | 'apple' | 'email' | 'guest';
 
@@ -18,26 +18,40 @@ export interface SpeciesEcologyDetail {
   koreanName: string;
   scientificName: string;
   englishName: string;
-  category: 'birds' | 'plants' | 'mammals' | 'insects';
+  category: 'birds' | 'plants' | 'mammals' | 'insects' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
   categoryLabel: string;
   family: string;
   order?: string;
   size: string;
   status: string; // e.g. "관심대상(LC)", "천연기념물 제327호", "도심 흔한 텃새"
-  keyIdentification: string; // 주요 외형 및 식별 형질
+  keyIdentification: string; // 생김새 (주요 외형 및 식별 형질)
   callOrSound: string; // 울음소리, 소리 패턴 또는 향기/감촉
-  dietAndBehavior: string; // 먹이 활동, 비행/이동 행동, 번식 습성
-  habitat: string; // 주 서식지 환경
-  bestObservationTip: string; // 필드 관찰 요령
+  dietAndBehavior: string; // 생태 (먹이 활동, 비행/이동 행동, 번식 습성 / 개화 결실)
+  habitat: string; // 서식지 (주 서식지 환경)
+  etymology?: string; // 어원 (이름의 유래 - 선택)
+  specialNotes?: string; // 특이사항 (보호등급, 약용/식용, 독성, 꽃말 등 - 선택)
+  bestObservationTip: string; // 필드 관찰 및 촬영 요령
+  photoGearTip?: string; // 추천 탐사 및 촬영 장비
+  fieldEtiquette?: string; // 생태 탐사 에티켓 및 안전 주의사항
+  categoryFocus?: string; // 카테고리별 핵심 초점 (식독판별/주야활동/개화결실 등)
   lynxBirdLifeNote: string; // BirdLife / Lynx Edicions / Flora of Korea 학술 인용
   seasonality: string; // 사계절 관찰 시기
   tags: string[];
+  sources?: {
+    taxonomy?: string;
+    appearance?: string;
+    habitat?: string;
+    dietAndBehavior?: string;
+    etymology?: string;
+    conservation?: string;
+    general?: string;
+  };
 }
 
 export interface HotspotEcology {
   id: string;
   name: string;
-  category: 'birds' | 'plants' | 'mammals' | 'insects' | 'general';
+  category: 'birds' | 'plants' | 'mammals' | 'insects' | 'general' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
   categoryLabel: string;
   distanceKm: number;
   locationName: string;
@@ -69,6 +83,8 @@ export interface Observation {
   memo?: string;
   detectedHabitatName?: string;
   environmentalCharacteristics?: string;
+  focusPoint?: { x: number; y: number }; // Relative percentage (0-100) target point on photo
+  focusAfMode?: 'Auto Multi-AF' | 'Spot Tap-AF' | 'Macro Focus' | 'Center Eye-AF';
 }
 
 export interface Candidate {
@@ -77,7 +93,7 @@ export interface Candidate {
   confidence: number;
   family?: string;
   genus?: string;
-  category?: 'plants' | 'birds' | 'insects' | 'mammals' | 'others';
+  category?: 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
 }
 
 export interface Specimen {
@@ -85,7 +101,7 @@ export interface Specimen {
   number: string;
   koreanName: string;
   scientificName: string;
-  category: 'plants' | 'birds' | 'insects' | 'mammals';
+  category: 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
   family: string; // e.g. "국화과 (Asteraceae)"
   genus: string;  // e.g. "민들레속 (Taraxacum)"
   isCollected: boolean;
@@ -110,7 +126,7 @@ export interface Specimen {
     city?: string;      // e.g. "서울", "도쿄", "파리", "제주", "뉴욕"
     district?: string;  // e.g. "성수동", "마포구", "강남", "시부야", "몽마르트르"
     country?: string;   // e.g. "대한민국", "일본", "프랑스", "미국"
-    environmentType?: 'urban_alley' | 'apartment_garden' | 'street' | 'indoor_terrace' | 'urban_park' | 'nature_wild';
+    environmentType?: 'urban_alley' | 'apartment_garden' | 'street' | 'indoor_terrace' | 'urban_park' | 'nature_wild' | 'forest' | 'wetland';
     lat?: number;       // e.g. 37.544
     lng?: number;       // e.g. 127.037
     x: number; // 0-100% on local map or projected
@@ -134,7 +150,7 @@ export interface Badge {
 export interface HabitatRegion {
   id: string;
   name: string;
-  type: 'wetland' | 'forest' | 'urban' | 'grassland' | 'urban_alley' | 'apartment_garden';
+  type: 'wetland' | 'forest' | 'urban' | 'grassland' | 'urban_alley' | 'apartment_garden' | 'nature_wild';
   typeName: string;
   color: string;
   description: string;
