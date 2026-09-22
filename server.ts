@@ -509,6 +509,8 @@ app.post("/api/analyze-photo-art", async (req, res) => {
 // Category-aware Deep Ecology Encyclopedia & Field Tips API
 app.post("/api/ecology-details", async (req, res) => {
   const {
+    id = "",
+    taxonId = "",
     koreanName = "서양민들레",
     scientificName = "",
     category = "plants",
@@ -516,7 +518,8 @@ app.post("/api/ecology-details", async (req, res) => {
     persona = "general",
   } = req.body;
 
-  const cacheKey = `${koreanName.trim().toLowerCase()}_${(scientificName || '').trim().toLowerCase()}_${category}_${persona}`;
+  const effectiveTaxonId = taxonId || id || "";
+  const cacheKey = `${koreanName.trim().toLowerCase()}_${(scientificName || '').trim().toLowerCase()}_${category}_${persona}_${effectiveTaxonId}`;
   if (ecologyDetailsCache.has(cacheKey)) {
     return res.json({
       success: true,
@@ -527,7 +530,11 @@ app.post("/api/ecology-details", async (req, res) => {
   try {
     const ai = getGemini();
     if (!ai) {
-      const fallback = getFallbackEcologyDetail(koreanName, category, scientificName, family);
+      const fallback = {
+        ...getFallbackEcologyDetail(koreanName, category, scientificName, family),
+        taxonId: effectiveTaxonId,
+        scientificName: scientificName || "Taraxacum officinale",
+      };
       ecologyDetailsCache.set(cacheKey, fallback);
       return res.json({
         success: true,
@@ -537,128 +544,9 @@ app.post("/api/ecology-details", async (req, res) => {
     }
 
     const systemPrompt = `당신은 대한민국 국립생물자원관(NIBR) 및 세계생물다양성정보기구(GBIF) 기준의 생물생태학 전문 수석 연구원입니다.
-생물종 이름, 학명, 카테고리 분류군에 맞춰 생태 백과 도감의 모든 세부 요소(관찰 및 촬영 팁, 장비 추천, 탐사 에티켓, 핵심 식별 포인트, 생태 주기, 카테고리별 특화 정보)를 정밀 분석하여 JSON 형식으로 반환하세요.
+생물종 이름, 학명, 카테고리 분류군에 맞춰 생태 백과 도감의 모든 세부 요소(관찰 및 촬영 팁, 장비 추천, 탐사 에티켓, 핵심 식별 포인트, 생태 주기, 카테고리별 특화 정보)를 정밀 분석하여 JSON 형식으로 반환하세요.`;
 
-**★ 생물 식별 핵심 필드 [keyIdentification] 서술 절대 원칙 (형태 형질 Morphological Traits 중심):**
-- **단순 관찰 인상이나 모호한 정성적 묘사 금지:** "예쁘다", "흔히 보인다", "숲에서 발견된다", "귀엽다", "물속을 헤엄친다"와 같은 단순 목격담, 생태 습성, 일반론적 묘사를 나열하지 마십시오.
-- **분류군(Taxon) 고유의 학술적 '형태 형질(Morphological Diagnostic Characters)' 중심 서술:**
-  해당 생물종을 유사종(Confounded Species)과 명확히 구분(Diagnosis)해 주는 계통분류학적 표징 형질을 정확한 생물학 전문 용어로 기술하십시오.
-  1. **식물(plants):** 엽서(잎차례 - 대생/호생/윤생), 엽연(잎가장자리 결각/거치), 엽맥(망상맥/평행맥), 털의 유무(선모/복모), 화서(꽃차례 - 산형/총상/두상), 화관 및 악편(꽃받침/총포편) 반곡 여부, 자예/웅예(암수술) 수와 돌출 형태, 수피/줄기 단면 구조.
-  2. **균류/버섯(fungi):** 자실체 형태, 갓 표면 인편/조직, 주름살 부착 형태(이생/완전붙은형/내린형) 및 밀도, 대 표면 턱받이(ring/annulus) 유무와 형태, 대 밑동 대주머니(volva/대주머니) 유무, 포자문(spore print) 색상.
-  3. **곤충(insects):** 시맥(날개맥 venation) 배열, 촉각(더듬이) 마디 형태(사상/곤봉상/즐치상), 구기(입틀) 구조, 전흉배판(앞가슴등판) 반점/융기선, 부절(발목마디) 수, 미모/산란관 형태.
-  4. **조류(birds):** 부리 형태(원추형/구곡/치열), 날개깃(초열/차열 배열), 미우(꼬리깃 결각 - 연미/원미), 안선/눈썹선/악선 패턴, 족저(발가락 구조 - 삼지/대지/합지), 깃털 털갈이 판별선.
-  5. **어류(fishes):** 등지느러미/뒷지느러미 극조(가시) 및 연조(살) 수, 측선비늘(측선린) 수, 수염(barbel) 유무 및 개수, 입의 위치(상위/단위/하위), 지느러미 부착 위치 및 안점/가로무늬/혼인색 반점 배치, 기름지느러미(Adipose fin) 유무.
-  6. **포유류(mammals):** 치식(치아 배열 구조), 이개(귓바퀴) 및 이주(tragus) 형태, 족저반점 및 발톱 구조(인입성 여부), 꼬리 척추 및 피모(보호모/하모) 배색 패턴.
-  7. **파충·양서류(reptiles/amphibians):** 인판(비늘 배열 판 - 두부 판배열, 배면 능선, 항문판), 고막 크기 및 눈과의 거리, 측선 융기선(dorsolateral fold), 발가락 물갈퀴 발달 정도 및 흡반(발가락 패드) 구조.
-  8. **거미/절지/연체/갑각(others):** 안군(눈의 배열), 보각 가시 배열, 배갑 무늬, 생식기(외생식기/촉지) 구조, 패각 나선층(whorl) 및 방사륵, 각구 순판 형태.
-
-**카테고리별(생물군별) 특화 가이드 지침:**
-- **fungi (버섯/균류 - 식독 안전 최우선 원칙):**
-  - **식독 판정 절대 원칙:** 
-    - 붉은사슴뿔버섯(Podostroma cornu-damae, 트리코테센), 독우산광대버섯(Amanita virosa, 아마톡신), 개나리광대버섯, 흰알광대버섯 등은 반드시 "💀 치명적 맹독버섯 (접촉/식용 절대 불가)"로 분류하고 치사성 및 접촉 위험성을 경고할 것.
-    - 광대버섯(Amanita muscaria), 화경버섯, 노란다발 등은 "⚠️ 맹독성/유독성 독버섯 (식용 불가)"로 명확히 명시할 것.
-    - 느타리버섯(Pleurotus ostreatus), 송이버섯(Tricholoma matsutake), 표고버섯, 능이버섯 등 확실한 자생/재배 식용종은 "🍄 안전 식용 버섯"으로 서술하되 반드시 유사 독버섯과의 오동정 주의사항(화경버섯 등)을 명시할 것.
-    - 영지버섯(Ganoderma lucidum), 상황버섯 등은 "🪵 약용 버섯(비식용/달임용)"으로 분류할 것.
-  - categoryFocus: 종의 성격에 따라 "식독 판별: 치명적 맹독 주의" 또는 "식독 판별: 안전 식용 버섯" 또는 "식독 판별: 약용종" 등으로 정밀 표기.
-  - keyIdentification: 갓의 형태, 주름살/관공 모양, 턱받이, 대주머니 여부 등 독버섯/식용버섯 구별 핵심 형질 서술.
-  - bestObservationTip: "갓의 윗면, 대의 턱받이와 밑동(대주머니)까지 땅을 파헤치지 않고 원형 그대로 측면에서 촬영하세요."
-  - photoGearTip: "로우앵글 미니 삼각대, 휴대용 링라이트, 반사판, 돋보기(루페)"
-  - fieldEtiquette: "⚠️ 야생 버섯은 야생에서 함부로 만지거나 섭취하지 말 것. 맹독종(붉은사슴뿔버섯 등)은 피부 괴사를 일으키므로 맨손 접촉 절대 금지."
-- **insects (곤충):**
-  - categoryFocus: "주간/야간 활동성 및 변태 단계"
-  - bestObservationTip: "이른 아침 활동성이 둔한 시간대(체온 상승 전) 역광이나 측광으로 날개맥 디테일을 접사 촬영하세요."
-  - photoGearTip: "1:1 매크로 렌즈, 디퓨저 장착 플래시, 포충망, 루페"
-  - fieldEtiquette: "날개를 강하게 잡지 않기. 자포나 벌침에 주의하고, 관찰 후 원래 나뭇가지나 꽃에 놓아주기."
-- **plants (식물):**
-  - categoryFocus: "개화·결실 주기 및 잎차례/수분 매개"
-  - bestObservationTip: "자연광에서 꽃의 암수술 구조와 잎 뒷면의 털/잎맥, 줄기의 포 조각을 접사 촬영하세요."
-  - photoGearTip: "접사 렌즈, 바람 가림용 클립, 분무기(수분 방울 연출)"
-  - fieldEtiquette: "뿌리째 뽑거나 서식지 군락을 훼손하지 않기. 지정 보호종 무단 채취 금지."
-- **birds (조류):**
-  - categoryFocus: "울음소리(송/콜) 및 도래 번식 주기"
-  - bestObservationTip: "일출 직후 2시간 또는 일몰 전 먹이 활동 시간에 나무 그늘에 은폐하여 눈높이에서 셔터스피드 1/1000s 이상으로 포착하세요."
-  - photoGearTip: "400mm 이상 초망원 렌즈, 쌍안경(8x42), 짐벌 헤드 삼각대"
-  - fieldEtiquette: "번식기 둥지 주변 50m 이내 접근 엄금. 플래시 사용 금지, 플레이백(음원 재생 유인) 자제."
-- **mammals (포유류):**
-  - categoryFocus: "트래킹(발자국/배설물 흔적) 및 야행성 주기"
-  - bestObservationTip: "새벽녘 또는 해질 무렵 능선 바람 부는 반대 방향에서 은폐하여 관찰하세요."
-  - photoGearTip: "초망원 줌렌즈, 야간 적외선 트레일 카메라, 방수 트래킹화"
-  - fieldEtiquette: "최소 20m 이상 안전 거리 유지. 음식물 주지 않기, 야생 동물 위협하지 않기."
-- **reptiles / amphibians (파충·양서류):**
-  - categoryFocus: "변온동물 일광욕 시간 및 습지 환경"
-  - bestObservationTip: "기온이 오르는 오전 10시경 돌 틈이나 양지바른 낙엽 위 일광욕 중일 때 낮은 자세로 접근하세요."
-  - photoGearTip: "중망원 매크로 렌즈, 편광(CPL) 필터(물 반사 제거), 장화"
-  - fieldEtiquette: "⚠️ 살모사 등 독사 접촉 주의(스틱으로 바닥 치며 이동). 피부 호흡하는 양서류 맨손 접촉 자제."
-- **fishes (어류 - 수생태학 및 어류학자 검증 기준):**
-  - **어류 이름 유래 및 학명 엄격 원칙 (절대 환각 금지):**
-    - 쉬리 (Coreoleuciscus splendidus): 여울의 자갈 바닥에서 매우 재빠르게 스쳐 지나가듯 헤엄치는 모습에서 '쉬리'라는 순우리말 이름이 유래됨. 학명의 Coreo-(한국의) + leuciscus(흰 피라미류) + splendidus(눈부시게 화려한)의 합성어로 1935년 모리 다메조(Mori) 교수가 한국 고유종으로 기재.
-    - 각시붕어 (Rhodeus uyekii): 번식기에 수컷이 새색시(각시)처럼 분홍빛·에메랄드빛의 화려한 혼인색을 띠고 몸집이 작고 아담하다 하여 '각시붕어'라 부름.
-    - 꺽지 (Coreoperca herzi): 몸체가 단단하고 지느러미 가시가 억세며, 성질이 꺾이지 않고 당당하여 '꺽지'라 불림. 아가미덮개 뒤쪽에 에메랄드빛 청록색 눈모양 반점(안점)이 특징.
-    - 쏘가리 (Siniperca scherzeri): 등지느러미에 날카롭고 억센 독가시가 있어 찔리면 몹시 쑤시고 아프다는 뜻(쏘다)에서 '쏘가리'라는 이름이 유래됨. 조선시대 자산어보에서는 금린어(錦鱗魚)로 기록.
-    - 버들치 (Rhynchocypris oxycephalus): 버드나무 잎처럼 유선형으로 날씬하며, 버드나무 그늘이 드리워진 맑은 산간 계곡물에 떼 지어 산다고 하여 붙여짐.
-    - 은어 (Plecoglossus altivelis): 은빛 고운 비늘이 햇빛에 반짝인다고 하여 은어(銀魚)라 불리며, 특유의 수박 향 또는 오이 향기가 남.
-    - 피라미 (Zacco platypus): 붉고 푸른 비단 줄무늬가 있는 작고 날렵한 민물고기를 뜻하는 순우리말 '피라미'에서 유래.
-    - 금강모치 (Rhynchocypris kumgangensis): 금강산 계곡에서 처음 발견되어 명명된 한국 특산 고유종.
-    - 열목어 (Brachymystax lenok): 눈에 열이 많아 차가운 1급수 계곡물에 눈을 식힌다는 민간 설화에서 유래된 냉수성 연어과 어류(천연기념물).
-  - categoryFocus: "여울/소 유영성, 산란 혼인색 및 수생태 먹이망"
-  - bestObservationTip: "물결이 잔잔한 맑은 날 편광(CPL) 렌즈를 착용하고 수면 위 빛 반사를 피해 유영하는 순간을 촬영하세요."
-  - photoGearTip: "방수 액션캠, 수중 하우징, CPL 편광 필터"
-  - fieldEtiquette: "산란지 자갈밭 밟지 않기. 하천 바위 뒤집은 후 원위치시키기."
-- **arachnids (거미/절지):**
-  - categoryFocus: "거미줄 형태(방사원망/불규칙망) 및 포식 행동"
-  - bestObservationTip: "이른 아침 이슬이 맺힌 거미줄을 배경으로 역광을 활용해 섬세한 방사선 구조를 담으세요."
-  - photoGearTip: "매크로 렌즈, LED 미니 지속광 조명"
-  - fieldEtiquette: "거미줄을 고의로 훼손하지 않기. 독성 거미 체액에 닿지 않도록 주의."
-- **mollusks / crustaceans (연체·갑각류):**
-  - categoryFocus: "체표 수분 유지, 석회질 패각/키틴질 외골격 및 저서 생태"
-  - bestObservationTip: "비 온 직후나 습한 야간 시간대 이동 경로를 방해하지 않고 자연스러운 섭식 모습을 촬영하세요."
-  - photoGearTip: "매크로 렌즈, 디퓨저 플래시, 방수 케이스"
-  - fieldEtiquette: "패각을 억지로 떼어내지 않기. 연체동물 체표 점액을 손상시키지 않기."
-
-**출처 API 명시 원칙:**
-각 영역별로 근거가 되는 정부/학술 공공기관 및 데이터베이스 출처를 JSON 내 sources 객체에 반드시 명시하세요:
-- taxonomy: NIBR(국립생물자원관 국가생물종목록) 또는 GBIF(세계생물다양성정보기구)
-- appearance: 국가생물다양성정보공유체계(KBR) / 국립생물자원관
-- habitat: 환경부 국립생태원(NIE) 전국자연환경조사
-- dietAndBehavior: 국립수산과학원(NIFS) 담수생태계 DB 또는 국립생태원
-- etymology: 국립국어원 표준국어대사전 어원 자료 및 한국어류학회 정본
-- conservation: 환경부 멸종위기 야생생물 목록 및 IUCN Red List
-
-반환할 JSON 구조:
-{
-  "koreanName": string,
-  "scientificName": string,
-  "englishName": string,
-  "category": string,
-  "categoryLabel": string,
-  "family": string,
-  "order": string,
-  "size": string,
-  "status": string,
-  "categoryFocus": string,
-  "keyIdentification": string, // 해당 분류군(taxon)의 학술적이고 고유한 '형태 형질(morphological traits: 잎차례, 주름살/턱받이, 날개맥, 극조/연조수, 인판 등)' 위주의 정밀 동정 형질
-  "callOrSound": string,
-  "dietAndBehavior": string,
-  "habitat": string,
-  "etymology": string,
-  "specialNotes": string,
-  "bestObservationTip": string,
-  "photoGearTip": string,
-  "fieldEtiquette": string,
-  "seasonality": string,
-  "tags": string[],
-  "sources": {
-    "taxonomy": string,
-    "appearance": string,
-    "habitat": string,
-    "dietAndBehavior": string,
-    "etymology": string,
-    "conservation": string,
-    "general": string
-  }
-}`;
-
-    const promptText = `생물종 [${koreanName}] (학명: ${scientificName}, 분류군: ${category}, 과: ${family})의 실전 탐사 백과 데이터를 NIBR 기준에 맞춰 세밀하게 JSON으로 도출해주세요. 특히 'keyIdentification' 필드는 모호한 주관적 인상이나 단순 목격담을 배제하고, [${category}] 분류군의 학술적이고 고유한 '형태 형질(Morphological Traits)'을 전문 생물학 용어(잎차례, 주름살/턱받이/대주머니, 날개맥, 극조수/측선린수, 인판 배열 등) 위주로 명확히 서술하세요. 어류인 경우 한국어류학회 및 NIBR 정본에 부합하는 정확한 학명 어원과 특징을 서술하고 sources 필드를 반드시 포함하세요.`;
+    const promptText = `생물종 [${koreanName}] (학명: ${scientificName}, 분류군: ${category}, 과: ${family}, TaxonID: ${effectiveTaxonId})의 실전 탐사 백과 데이터를 NIBR 기준에 맞춰 세밀하게 JSON으로 도출해주세요. 특히 'keyIdentification' 필드는 모호한 주관적 인상이나 단순 목격담을 배제하고, [${category}] 분류군의 학술적이고 고유한 '형태 형질(Morphological Traits)'을 전문 생물학 용어위주로 명확히 서술하세요. 'taxonId' 필드에는 "${effectiveTaxonId}", 'scientificName' 필드에는 "${scientificName}"을 정확하게 포함해야 합니다.`;
 
     // Use Promise.race with a 7-second timeout to prevent 504 / HeadersTimeoutError during peak demand
     const timeoutPromise = new Promise((_, reject) =>
@@ -675,6 +563,7 @@ app.post("/api/ecology-details", async (req, res) => {
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              taxonId: { type: Type.STRING },
               koreanName: { type: Type.STRING },
               scientificName: { type: Type.STRING },
               englishName: { type: Type.STRING },
@@ -730,6 +619,10 @@ app.post("/api/ecology-details", async (req, res) => {
 
     const response = (await Promise.race([apiCallPromise, timeoutPromise])) as any;
     const parsed = JSON.parse(response.text || "{}");
+    parsed.taxonId = parsed.taxonId || effectiveTaxonId;
+    if (scientificName && (!parsed.scientificName || parsed.scientificName.trim() === "")) {
+      parsed.scientificName = scientificName;
+    }
     ecologyDetailsCache.set(cacheKey, parsed);
     res.json({
       success: true,
@@ -742,12 +635,16 @@ app.post("/api/ecology-details", async (req, res) => {
     } else {
       console.warn(`[Ecology Details] Fallback applied for ${koreanName}:`, error?.message || error);
     }
-    const fallback = getFallbackEcologyDetail(
-      koreanName,
-      category,
-      scientificName,
-      family
-    );
+    const fallback = {
+      ...getFallbackEcologyDetail(
+        koreanName,
+        category,
+        scientificName,
+        family
+      ),
+      taxonId: effectiveTaxonId,
+      scientificName: scientificName || "",
+    };
     ecologyDetailsCache.set(cacheKey, fallback);
     res.json({
       success: true,
@@ -916,40 +813,44 @@ function getFallbackEcologyDetail(
       };
     }
 
-    return {
-      koreanName: koreanName || "광대버섯",
-      scientificName: scientificName || "Amanita muscaria",
-      englishName: "Fly Agaric",
-      category: "fungi",
-      categoryLabel: "균류 (Fungi)",
-      family: family || "광대버섯과 (Amanitaceae)",
-      order: "주름버섯목 (Agaricales)",
-      size: "갓 지름 8~20cm, 자루 길이 10~25cm",
-      status: "",
-      categoryFocus: "생태 지위: 자작나무·소나무 수목 균근 공생 및 포자 번식",
-      keyIdentification: "선명한 붉은색 갓 표면에 하얀 턱받이 파편이 점점이 붙어 있으며, 대 밑동에 구근상의 대주머니가 뚜렷합니다.",
-      callOrSound: "무음 (습도에 따른 포자 비산 및 은은한 버섯향)",
-      dietAndBehavior: "침엽수 및 활엽수 뿌리와 공생하는 균근균으로 수목에 무기양분을 공급하고 유기물을 분해합니다.",
-      habitat: "침엽수림, 자작나무 숲 바닥 부식토",
-      etymology: "광대 옷처럼 화려하고 알록달록한 붉은 갓 형태에서 유래된 순우리말 이름입니다.",
-      specialNotes: "",
-      bestObservationTip: "갓의 윗면 반점과 자루의 턱받이, 대주머니 전체가 프레임에 다 담기도록 지면 로우앵글에서 촬영하세요.",
-      photoGearTip: "로우앵글 미니 삼각대, 휴대용 링라이트, 1:1 매크로 렌즈",
-      fieldEtiquette: "야생 버섯은 임의 섭취하지 마시고, 포자 주머니를 훼손하지 않으며 자연 상태로 관찰합니다.",
-      seasonality: "늦여름~가을 (8월~10월 강우 직후)",
-      tags: ["균근균", "붉은갓", "자실체", "포자산포", "산림생태"],
-      sources: {
-        taxonomy: "국립생물자원관(NIBR) 국가생물종목록 • Mycobank",
-        appearance: "국립수목원 국가생물종지식정보시스템 (KNA)",
-        habitat: "산림청 산림생태조사 보고서",
-        dietAndBehavior: "국립산림과학원 독버섯 안전 가이드",
-        etymology: "국립국어원 표준국어대사전 & 한국야생버섯도감",
-        conservation: "환경부 야생생물 보호 종합 DB"
-      }
-    };
+    const isAmanita = (koreanName || "").includes("광대버섯") || (scientificName || "").toLowerCase().includes("muscaria");
+    if (isAmanita) {
+      return {
+        koreanName: koreanName || "광대버섯",
+        scientificName: scientificName || "Amanita muscaria",
+        englishName: "Fly Agaric",
+        category: "fungi",
+        categoryLabel: "균류 (Fungi)",
+        family: family || "광대버섯과 (Amanitaceae)",
+        order: "주름버섯목 (Agaricales)",
+        size: "갓 지름 8~20cm, 자루 길이 10~25cm",
+        status: "",
+        categoryFocus: "생태 지위: 자작나무·소나무 수목 균근 공생 및 포자 번식",
+        keyIdentification: "선명한 붉은색 갓 표면에 하얀 턱받이 파편이 점점이 붙어 있으며, 대 밑동에 구근상의 대주머니가 뚜렷합니다.",
+        callOrSound: "무음 (습도에 따른 포자 비산 및 은은한 버섯향)",
+        dietAndBehavior: "침엽수 및 활엽수 뿌리와 공생하는 균근균으로 수목에 무기양분을 공급하고 유기물을 분해합니다.",
+        habitat: "침엽수림, 자작나무 숲 바닥 부식토",
+        etymology: "광대 옷처럼 화려하고 알록달록한 붉은 갓 형태에서 유래된 순우리말 이름입니다.",
+        specialNotes: "",
+        bestObservationTip: "갓의 윗면 반점과 자루의 턱받이, 대주머니 전체가 프레임에 다 담기도록 지면 로우앵글에서 촬영하세요.",
+        photoGearTip: "로우앵글 미니 삼각대, 휴대용 링라이트, 1:1 매크로 렌즈",
+        fieldEtiquette: "야생 버섯은 임의 섭취하지 마시고, 포자 주머니를 훼손하지 않으며 자연 상태로 관찰합니다.",
+        seasonality: "늦여름~가을 (8월~10월 강우 직후)",
+        tags: ["균근균", "붉은갓", "자실체", "포자산포", "산림생태"],
+        sources: {
+          taxonomy: "국립생물자원관(NIBR) 국가생물종목록 • Mycobank",
+          appearance: "국립수목원 국가생물종지식정보시스템 (KNA)",
+          habitat: "산림청 산림생태조사 보고서",
+          dietAndBehavior: "국립산림과학원 독버섯 안전 가이드",
+          etymology: "국립국어원 표준국어대사전 & 한국야생버섯도감",
+          conservation: "환경부 야생생물 보호 종합 DB"
+        }
+      };
+    }
   }
 
-  if (isInsect) {
+  const isSwallowtail = koreanName.includes("호랑나비") || scientificName.toLowerCase().includes("papilio xuthus");
+  if (isInsect && isSwallowtail) {
     return {
       koreanName: koreanName || "호랑나비",
       scientificName: scientificName || "Papilio xuthus",
@@ -983,7 +884,8 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (isBird) {
+  const isBulbul = koreanName.includes("직박구리") || scientificName.toLowerCase().includes("amaurotis");
+  if (isBird && isBulbul) {
     return {
       koreanName: koreanName || "직박구리",
       scientificName: scientificName || "Hypsipetes amaurotis",
@@ -1017,8 +919,7 @@ function getFallbackEcologyDetail(
     };
   }
 
-  const isSquirrel = koreanName.includes("다람쥐") || koreanName.includes("청설모");
-
+  const isSquirrel = koreanName.includes("다람쥐") || koreanName.includes("청설모") || scientificName.toLowerCase().includes("tamias");
   if (isMammal && isSquirrel) {
     return {
       koreanName: koreanName || "다람쥐",
@@ -1053,37 +954,43 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (isMammal) {
+  const isMarineIguana = koreanName.includes("바다이구아나") || koreanName.includes("갈라파고스 바다이구아나") || scientificName.toLowerCase().includes("amblyrhynchus");
+  if (isMarineIguana) {
     return {
-      koreanName: koreanName || "포유류",
-      scientificName: scientificName || "Mammalia",
-      englishName: "Mammal",
-      category: "mammals",
-      categoryLabel: "포유강 (Mammalia)",
-      family: family || "",
-      order: "",
-      size: "",
-      status: "",
-      categoryFocus: "",
-      keyIdentification: "",
-      callOrSound: "",
-      dietAndBehavior: "",
-      habitat: "",
-      etymology: "",
-      specialNotes: "",
-      bestObservationTip: "",
-      photoGearTip: "",
-      fieldEtiquette: "",
-      seasonality: "",
-      tags: ["포유류"],
+      koreanName: koreanName || "갈라파고스 바다이구아나",
+      scientificName: scientificName || "Amblyrhynchus cristatus",
+      englishName: "Galapagos Marine Iguana",
+      category: "reptiles",
+      categoryLabel: "파충강 (Reptilia)",
+      family: family || "이구아나과 (Iguanidae)",
+      order: "뱀목 (Squamata)",
+      size: "몸길이 약 60~130cm",
+      status: "취약종(VU) • IUCN 적색목록",
+      categoryFocus: "해양 잠수 및 해조류 섭식 파충류",
+      keyIdentification: "검은빛이나 암갈색의 단단한 비늘을 지녔으며, 코선(비강)을 통해 체내 과도한 염분을 뿜어내는 염분 분비샘이 발달했습니다. 독니나 독샘은 없습니다.",
+      callOrSound: "코로 염분을 분사할 때 내는 '쉭-' 하는 호흡음",
+      dietAndBehavior: "초식성/해조류 섭식자로 바닷속으로 잠수하여 해저 바위에 붙은 붉은해조류와 녹조류를 섭식합니다.",
+      habitat: "갈라파고스 제도의 용암 바위 해안선 및 해저",
+      etymology: "바다(Marine)에서 헤엄치며 해조류를 먹는 이구아나라는 생태적 특징에서 유래되었습니다.",
+      specialNotes: "지구상에서 유일하게 바닷속에서 먹이를 구하는 해양 파충류입니다.",
+      bestObservationTip: "해안가 검은 용암 바위 위에서 체온을 올리기 위해 무리 지어 일광욕을 할 때 멀리서 관찰하세요.",
+      photoGearTip: "70-200mm 망원 렌즈, CPL 편광 필터",
+      fieldEtiquette: "갈라파고스 국립공원 보호종으로 최소 2m 이상 거리를 유지하고 일광욕을 방해하지 않습니다.",
+      seasonality: "연중 관찰 가능",
+      tags: ["해양파충류", "해조류섭식", "염분분비선", "갈라파고스고유종", "일광욕"],
       sources: {
-        taxonomy: "GBIF",
-        conservation: "IUCN Red List"
+        taxonomy: "GBIF • IUCN Red List",
+        appearance: "Charles Darwin Foundation",
+        habitat: "Galapagos National Park Administration",
+        dietAndBehavior: "Marine Ecology Progress Series",
+        etymology: "국립생물자원관 및 IUCN",
+        conservation: "IUCN Red List (Vulnerable)"
       }
     };
   }
 
-  if (category === "reptiles" || koreanName.includes("뱀") || koreanName.includes("살모사") || koreanName.includes("유혈목이")) {
+  const isTigerKeelbackSnake = koreanName.includes("유혈목이") || koreanName.includes("살모사") || koreanName.includes("꽃뱀") || scientificName.toLowerCase().includes("rhabdophis");
+  if (isTigerKeelbackSnake) {
     return {
       koreanName: koreanName || "유혈목이 (꽃뱀)",
       scientificName: scientificName || "Rhabdophis tigrinus",
@@ -1117,7 +1024,8 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (koreanName.includes("붉은눈나무개구리") || scientificName.toLowerCase().includes("callidryas")) {
+  const isRedEyedTreeFrog = koreanName.includes("붉은눈나무개구리") || scientificName.toLowerCase().includes("callidryas");
+  if (isRedEyedTreeFrog) {
     return {
       koreanName: "붉은눈나무개구리",
       scientificName: "Agalychnis callidryas",
@@ -1151,7 +1059,8 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (category === "amphibians" || koreanName.includes("개구리") || koreanName.includes("두꺼비") || koreanName.includes("도롱뇽")) {
+  const isJapaneseTreeFrog = koreanName.includes("청개구리") || scientificName.toLowerCase().includes("dryophytes") || scientificName.toLowerCase().includes("hyla");
+  if (isJapaneseTreeFrog) {
     return {
       koreanName: koreanName || "청개구리",
       scientificName: scientificName || "Dryophytes japonicus",
@@ -1526,41 +1435,44 @@ function getFallbackEcologyDetail(
       };
     }
 
-    // Default Fish: 피라미
-    return {
-      koreanName: koreanName || "피라미",
-      scientificName: scientificName || "Zacco platypus",
-      englishName: "Pale Chub",
-      category: "fishes",
-      categoryLabel: "조기어강 (Actinopterygii)",
-      family: family || "잉어과 (Cyprinidae)",
-      order: "잉어목 (Cypriniformes)",
-      size: "전장 약 10~15cm",
-      status: "관심대상(LC) • 한국 담수 2급수 지표종",
-      categoryFocus: "여울 유영성 및 번식기 수컷 혼인색(Nuptial coloration)",
-      keyIdentification: "몸은 날씬한 유선형이며 옆면에 10여 개의 청록색 가로줄무늬가 있습니다. 번식기 수컷은 머리와 지느러미에 화려한 에메랄드와 주홍빛 혼인색이 나타납니다.",
-      callOrSound: "수면 위로 뛰어오르며 파문을 일으키는 물 튀김 소리",
-      dietAndBehavior: "잡식성으로 여울의 부착조류(이끼)를 긁어먹거나 수면으로 떨어지는 소형 곤충, 동물성 플랑크톤을 섭식합니다.",
-      habitat: "하천 상류~중류의 여울과 유속이 완만한 소(Pool)",
-      etymology: "붉고 푸른 비단 줄무늬가 있는 작고 날렵한 민물고기를 뜻하는 순우리말 '피라미'에서 유래되었습니다. 종소명 platypus는 '넓은 지느러미'를 뜻하며 수컷의 크고 화려한 지느러미를 가리킵니다.",
-      specialNotes: "우리나라 하천 생태계의 2급수 수질을 대표하며 수서 생태계 먹이사슬의 중심 허브 어종입니다.",
-      bestObservationTip: "햇살이 비치는 맑은 날 편광(CPL) 필터로 수면 난반사를 없애고 여울 바닥을 가로지르는 무리를 촬영하세요.",
-      photoGearTip: "CPL 편광 필터, 고속 셔터스피드 카메라, 방수 액션캠 하우징",
-      fieldEtiquette: "자갈 밑 알자리를 훼손하지 않도록 여울 바닥을 밟지 않고 수변에서 관찰합니다.",
-      seasonality: "사계절 (5월~7월 번식기)",
-      tags: ["담수어", "수컷혼인색", "여울유영", "잡식성", "수질지표종"],
-      sources: {
-        taxonomy: "국립생물자원관(NIBR) 국가생물종목록",
-        appearance: "한국어류학회 원색도감",
-        habitat: "환경부 국가수생태계건강성조사",
-        dietAndBehavior: "국립수산과학원 담수어류식성 DB",
-        etymology: "국립국어원 표준국어대사전",
-        conservation: "국가생물다양성정보공유체계 (LC)"
-      }
-    };
+    const isPaleChub = koreanName.includes("피라미") || scientificName.toLowerCase().includes("platypus");
+    if (isPaleChub) {
+      return {
+        koreanName: koreanName || "피라미",
+        scientificName: scientificName || "Zacco platypus",
+        englishName: "Pale Chub",
+        category: "fishes",
+        categoryLabel: "조기어강 (Actinopterygii)",
+        family: family || "잉어과 (Cyprinidae)",
+        order: "잉어목 (Cypriniformes)",
+        size: "전장 약 10~15cm",
+        status: "관심대상(LC) • 한국 담수 2급수 지표종",
+        categoryFocus: "여울 유영성 및 번식기 수컷 혼인색(Nuptial coloration)",
+        keyIdentification: "몸은 날씬한 유선형이며 옆면에 10여 개의 청록색 가로줄무늬가 있습니다. 번식기 수컷은 머리와 지느러미에 화려한 에메랄드와 주홍빛 혼인색이 나타납니다.",
+        callOrSound: "수면 위로 뛰어오르며 파문을 일으키는 물 튀김 소리",
+        dietAndBehavior: "잡식성으로 여울의 부착조류(이끼)를 긁어먹거나 수면으로 떨어지는 소형 곤충, 동물성 플랑크톤을 섭식합니다.",
+        habitat: "하천 상류~중류의 여울과 유속이 완만한 소(Pool)",
+        etymology: "붉고 푸른 비단 줄무늬가 있는 작고 날렵한 민물고기를 뜻하는 순우리말 '피라미'에서 유래되었습니다. 종소명 platypus는 '넓은 지느러미'를 뜻하며 수컷의 크고 화려한 지느러미를 가리킵니다.",
+        specialNotes: "우리나라 하천 생태계의 2급수 수질을 대표하며 수서 생태계 먹이사슬의 중심 허브 어종입니다.",
+        bestObservationTip: "햇살이 비치는 맑은 날 편광(CPL) 필터로 수면 난반사를 없애고 여울 바닥을 가로지르는 무리를 촬영하세요.",
+        photoGearTip: "CPL 편광 필터, 고속 셔터스피드 카메라, 방수 액션캠 하우징",
+        fieldEtiquette: "자갈 밑 알자리를 훼손하지 않도록 여울 바닥을 밟지 않고 수변에서 관찰합니다.",
+        seasonality: "사계절 (5월~7월 번식기)",
+        tags: ["담수어", "수컷혼인색", "여울유영", "잡식성", "수질지표종"],
+        sources: {
+          taxonomy: "국립생물자원관(NIBR) 국가생물종목록",
+          appearance: "한국어류학회 원색도감",
+          habitat: "환경부 국가수생태계건강성조사",
+          dietAndBehavior: "국립수산과학원 담수어류식성 DB",
+          etymology: "국립국어원 표준국어대사전",
+          conservation: "국가생물다양성정보공유체계 (LC)"
+        }
+      };
+    }
   }
 
-  if (category === "arachnids" || koreanName.includes("거미") || koreanName.includes("전갈")) {
+  const isJoroSpider = koreanName.includes("무당거미") || scientificName.toLowerCase().includes("clavata");
+  if (isJoroSpider) {
     return {
       koreanName: koreanName || "무당거미",
       scientificName: scientificName || "Trichonephila clavata",
@@ -1594,7 +1506,8 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (category === "mollusks" || koreanName.includes("달팽이") || koreanName.includes("조개") || koreanName.includes("문어")) {
+  const isLandSnail = koreanName.includes("명주달팽이") || scientificName.toLowerCase().includes("acusta");
+  if (isLandSnail) {
     return {
       koreanName: koreanName || "명주달팽이",
       scientificName: scientificName || "Acusta despecta",
@@ -1629,7 +1542,7 @@ function getFallbackEcologyDetail(
   }
 
   if (category === "crustaceans" || koreanName.includes("가재") || koreanName.includes("게") || koreanName.includes("새우") || koreanName.includes("집게")) {
-    const isKoreanCrayfish = koreanName.includes("참가재") || scientificName.includes("similis") || koreanName === "가재";
+    const isKoreanCrayfish = koreanName.includes("참가재") || scientificName.toLowerCase().includes("similis") || koreanName === "가재";
 
     if (isKoreanCrayfish) {
       return {
@@ -1641,7 +1554,7 @@ function getFallbackEcologyDetail(
         family: family || "가재과 (Cambaridae)",
         order: "십각목 (Decapoda)",
         size: "체장 약 5~8cm",
-        status: "", // 빈값: 보전 정보가 없으면 UI에서 4번째 슬롯을 완전 은폐하여 3개 카드로 축소
+        status: "",
         categoryFocus: "산간 계곡 1급수 청정 수생태계 지표 및 갑각 탈피 생태",
         keyIdentification: "적갈색 또는 흑갈색의 단단하고 매끄러운 두흉갑과 한 쌍의 강력한 집게발, 부채꼴 꼬리마디(Telson)를 지니며, 외래종 미국가재와 달리 집게발에 붉은 가시 돌기가 없습니다.",
         callOrSound: "무음 (돌 밑 이동 시 미세 자갈 마찰음)",
@@ -1664,43 +1577,10 @@ function getFallbackEcologyDetail(
         }
       };
     }
-
-    // General Crustacean fallback
-    return {
-      koreanName: koreanName || "참가재",
-      scientificName: scientificName || "Cambaroides similis",
-      englishName: "Freshwater Crustacean",
-      category: "crustaceans",
-      categoryLabel: "갑각아문 십각목 (Decapoda)",
-      family: family || "가재과 (Cambaridae)",
-      order: "십각목 (Decapoda)",
-      size: "체장 약 4~10cm",
-      status: "",
-      categoryFocus: "키틴질 외골격 탈피 및 수중 삼투압 적응",
-      keyIdentification: "단단한 키틴질 두흉갑과 5쌍의 가슴다리(제1각은 강력한 집게발)를 가지며, 부채꼴 미선으로 급속 후진합니다.",
-      callOrSound: "무음 (수중 자갈 마찰음)",
-      dietAndBehavior: "잡식성 및 부식성으로 수서생물 유기물 파편과 소형 무척추동물을 섭식합니다.",
-      habitat: "맑은 하천, 계곡 또는 연안 갯벌",
-      etymology: "단단한 껍질(갑각)을 가진 절지동물 무리에서 명명되었습니다.",
-      specialNotes: "수생태계 유기물 환원 및 먹이사슬 중위 소비자로서 중요한 역할을 담당합니다.",
-      bestObservationTip: "돌 틈이나 바위 그늘 밑을 조용히 관찰하세요.",
-      photoGearTip: "CPL 편광 필터, 접사 매크로 렌즈",
-      fieldEtiquette: "서식처 자갈과 은신처를 파괴하지 않고 자연 그대로 관찰합니다.",
-      seasonality: "봄~가을",
-      tags: ["갑각류", "십각목", "수질지표", "키틴질외골격"],
-      sources: {
-        taxonomy: "국립생물자원관(NIBR) 국가생물종목록 • WoRMS",
-        appearance: "한국동물분류학회 갑각류 총람",
-        habitat: "국립생태원 수생태계 조사",
-        dietAndBehavior: "담수무척추동물 생태학",
-        etymology: "표준국어대사전",
-        conservation: "국가생물다양성정보공유체계"
-      }
-    };
   }
 
   // Plants Section
-  if (koreanName.includes("왕벚나무") || scientificName.includes("yedoensis")) {
+  if (koreanName.includes("왕벚나무") || scientificName.toLowerCase().includes("yedoensis")) {
     return {
       koreanName: "왕벚나무",
       scientificName: "Prunus yedoensis",
@@ -1734,7 +1614,7 @@ function getFallbackEcologyDetail(
     };
   }
 
-  if (koreanName.includes("소나무") || scientificName.includes("densiflora")) {
+  if (koreanName.includes("소나무") || scientificName.toLowerCase().includes("densiflora")) {
     return {
       koreanName: "소나무",
       scientificName: "Pinus densiflora",
@@ -1750,7 +1630,7 @@ function getFallbackEcologyDetail(
       callOrSound: "솔바람 소리 (침엽 사이를 스치는 바람 소리)",
       dietAndBehavior: "광합성을 통해 양분을 합성하고, 뿌리에 모래알과 균근(송이버섯 등)을 형성하여 토양 양분을 교환하는 대표적 공생 상록수목입니다.",
       habitat: "전국의 산지 능선, 양지바른 암반 지대 및 건조 사면",
-      etymology: "'솔나무'에서 'ㄹ'이 탈락하여 소나무가 되었으며, '솔'은 으뜸(수리) 또는 상록의 푸르름을 뜻합니다. 붉은 줄기 때문에 적송(赤松)이라고도 부릅니다.",
+      etymology: "'솔나무'에서 'ㄹ'이 탈락하여 소나무가 되었으며, '솔'은 으뜸(수리) 또는 상록의 푸르름을 뜻합니다. 붉은 줄기 때문에 적송(赤송)이라고도 부릅니다.",
       specialNotes: "피톤치드를 다량 분비하여 산림욕 효과를 주며 소나무재선충병 방제 모니터링이 국가적으로 이루어집니다.",
       bestObservationTip: "안개 낀 아침 산 능선에서 붉은 수피의 곡선미와 솔잎에 맺힌 아침 이슬을 광각으로 포착하세요.",
       photoGearTip: "광각 렌즈, CPL 편광 필터, 삼각대",
@@ -1768,43 +1648,110 @@ function getFallbackEcologyDetail(
     };
   }
 
-  // Default: Plants
+  const isDandelion = koreanName.includes("민들레") || scientificName.toLowerCase().includes("officinale") || scientificName.toLowerCase().includes("taraxacum");
+  if (isDandelion) {
+    return {
+      koreanName: koreanName || "서양민들레",
+      scientificName: scientificName || "Taraxacum officinale",
+      englishName: "Common Dandelion",
+      category: "plants",
+      categoryLabel: "식물계 (Plantae)",
+      family: family || "국화과 (Asteraceae)",
+      order: "국화목 (Asterales)",
+      size: "초장 약 15~35cm",
+      status: "관심대상(LC) • 귀화 다년생 초본",
+      categoryFocus: "개화·결실 주기 및 잎차례/수분 매개",
+      keyIdentification: "노란 두상화 아래 총포 조각이 뒤로 완전히 젖혀져 있어 토종 민들레와 확실하게 구별됩니다.",
+      callOrSound: "무음 (은은한 풀꽃 향)",
+      dietAndBehavior: "뿌리로 수분과 무기양분을 흡수하며, 개화 후 솜털 같은 갓털(관모)을 둥글게 맺어 바람에 종자를 날립니다.",
+      habitat: "길가, 공원 잔디밭, 양지바른 초지",
+      etymology: "문 둘레(사립문 둘레)에 돋아나던 풀이라는 민간 어원에서 유래되었습니다.",
+      specialNotes: "강인한 생명력과 바람을 이용한 풍수산포 메커니즘을 지닙니다.",
+      bestObservationTip: "바람이 잦아드는 오전 시간대 지면 눈높이에서 꽃받침(총포)이 젖혀진 형태를 역광으로 담으세요.",
+      photoGearTip: "접사 렌즈, 바람 가림용 소형 반사판, 로우앵글 뷰파인더",
+      fieldEtiquette: "야생초 군락을 밟지 않도록 주의하며, 종자가 흩어지는 생태 주기를 훼손하지 않습니다.",
+      seasonality: "봄~가을 (3월~11월 개화)",
+      tags: ["다년생초본", "총포뒤젖힘", "두상화", "풍수산포", "도시초지"],
+      sources: {
+        taxonomy: "국립생물자원관(NIBR) 국가생물종목록 • Plants of the World Online (POWO)",
+        appearance: "국립수목원 국가생물종지식정보시스템 (KNA 식물도감)",
+        habitat: "환경부 전국자연환경조사 관속식물상",
+        dietAndBehavior: "한국식물분류학회 한국식물도해도감",
+        etymology: "한국식물생태보감 & 국립국어원 표준국어대사전",
+        conservation: "국가생물다양성정보공유체계 (LC)"
+      }
+    };
+  }
+
+  // Absolute fallback: Return clean object with empty narrative fields so UI guards hide unverified accordions completely
   return {
-    koreanName: koreanName || "서양민들레",
-    scientificName: scientificName || "Taraxacum officinale",
-    englishName: "Common Dandelion",
-    category: "plants",
-    categoryLabel: "식물계 (Plantae)",
-    family: family || "국화과 (Asteraceae)",
-    order: "국화목 (Asterales)",
-    size: "초장 약 15~35cm",
-    status: "관심대상(LC) • 귀화 다년생 초본",
-    categoryFocus: "개화·결실 주기 및 잎차례/수분 매개",
-    keyIdentification: "노란 두상화 아래 총포 조각이 뒤로 완전히 젖혀져 있어 토종 민들레와 확실하게 구별됩니다.",
-    callOrSound: "무음 (은은한 풀꽃 향)",
-    dietAndBehavior: "뿌리로 수분과 무기양분을 흡수하며, 개화 후 솜털 같은 갓털(관모)을 둥글게 맺어 바람에 종자를 날립니다.",
-    habitat: "길가, 공원 잔디밭, 양지바른 초지",
-    etymology: "문 둘레(사립문 둘레)에 돋아나던 풀이라는 민간 어원에서 유래되었습니다.",
-    specialNotes: "강인한 생명력과 바람을 이용한 풍수산포 메커니즘을 지닙니다.",
-    bestObservationTip: "바람이 잦아드는 오전 시간대 지면 눈높이에서 꽃받침(총포)이 젖혀진 형태를 역광으로 담으세요.",
-    photoGearTip: "접사 렌즈, 바람 가림용 소형 반사판, 로우앵글 뷰파인더",
-    fieldEtiquette: "야생초 군락을 밟지 않도록 주의하며, 종자가 흩어지는 생태 주기를 훼손하지 않습니다.",
-    seasonality: "봄~가을 (3월~11월 개화)",
-    tags: ["다년생초본", "총포뒤젖힘", "두상화", "풍수산포", "도시초지"],
+    koreanName: koreanName || "미검증 생물",
+    scientificName: scientificName || "",
+    englishName: "",
+    category: category || "",
+    categoryLabel: "",
+    family: family || "",
+    order: "",
+    size: "",
+    status: "",
+    categoryFocus: "",
+    keyIdentification: "",
+    callOrSound: "",
+    dietAndBehavior: "",
+    habitat: "",
+    etymology: "",
+    specialNotes: "",
+    bestObservationTip: "",
+    photoGearTip: "",
+    fieldEtiquette: "",
+    seasonality: "",
+    tags: [],
     sources: {
-      taxonomy: "국립생물자원관(NIBR) 국가생물종목록 • Plants of the World Online (POWO)",
-      appearance: "국립수목원 국가생물종지식정보시스템 (KNA 식물도감)",
-      habitat: "환경부 전국자연환경조사 관속식물상",
-      dietAndBehavior: "한국식물분류학회 한국식물도해도감",
-      etymology: "한국식물생태보감 & 국립국어원 표준국어대사전",
-      conservation: "국가생물다양성정보공유체계 (LC)"
+      taxonomy: "GBIF / iNaturalist",
+      conservation: "IUCN Red List"
     }
   };
 }
 
-function getFallbackIdentification(hint: string) {
-  const query = (hint || "").toLowerCase();
+function inferCategoryFromHint(hint: string): { category: string; categoryLabel: string; habitatType: string } {
+  const q = hint.toLowerCase();
+  if (q.includes("버섯") || q.includes("곰팡이") || q.includes("fungi") || q.includes("mushroom")) {
+    return { category: "fungi", categoryLabel: "균류 (Fungi)", habitatType: "산림/숲" };
+  }
+  if (q.includes("새") || q.includes("수리") || q.includes("오리") || q.includes("까치") || q.includes("bird") || q.includes("eagle")) {
+    return { category: "birds", categoryLabel: "조류 (Aves)", habitatType: "도시/공원" };
+  }
+  if (q.includes("나비") || q.includes("벌") || q.includes("곤충") || q.includes("잠자리") || q.includes("매미") || q.includes("insect")) {
+    return { category: "insects", categoryLabel: "곤충류 (Insecta)", habitatType: "초지/들판" };
+  }
+  if (q.includes("거미") || q.includes("spider") || q.includes("전갈")) {
+    return { category: "arachnids", categoryLabel: "거미강 (Arachnida)", habitatType: "산림/숲" };
+  }
+  if (q.includes("개구리") || q.includes("두꺼비") || q.includes("도롱뇽") || q.includes("frog") || q.includes("toad")) {
+    return { category: "amphibians", categoryLabel: "양서강 (Amphibia)", habitatType: "습지/하천" };
+  }
+  if (q.includes("뱀") || q.includes("이구아나") || q.includes("도마뱀") || q.includes("거북") || q.includes("snake") || q.includes("iguana") || q.includes("reptile")) {
+    return { category: "reptiles", categoryLabel: "파충강 (Reptilia)", habitatType: "습지/하천" };
+  }
+  if (q.includes("어") || q.includes("붕어") || q.includes("잉어") || q.includes("물고기") || q.includes("상어") || q.includes("fish")) {
+    return { category: "fishes", categoryLabel: "조기어강 (Actinopterygii)", habitatType: "습지/하천" };
+  }
+  if (q.includes("달팽이") || q.includes("조개") || q.includes("snail")) {
+    return { category: "mollusks", categoryLabel: "복족강 (Gastropoda)", habitatType: "산림/숲" };
+  }
+  if (q.includes("가재") || q.includes("게") || q.includes("새우") || q.includes("crab") || q.includes("shrimp")) {
+    return { category: "crustaceans", categoryLabel: "갑각아문 (Crustacea)", habitatType: "습지/하천" };
+  }
+  if (q.includes("사자") || q.includes("호랑이") || q.includes("곰") || q.includes("여우") || q.includes("사슴") || q.includes("고양이") || q.includes("강아지") || q.includes("다람쥐") || q.includes("mammal") || q.includes("lion") || q.includes("bear")) {
+    return { category: "mammals", categoryLabel: "포유강 (Mammalia)", habitatType: "산림/숲" };
+  }
+  return { category: "plants", categoryLabel: "식물계 (Plantae)", habitatType: "도시/공원" };
+}
 
+function getFallbackIdentification(hint: string) {
+  const query = (hint || "").trim().toLowerCase();
+
+  // Curated exact matches
   if (query.includes("흰머리수리") || query.includes("bald eagle") || query.includes("leucocephalus")) {
     return {
       koreanName: "흰머리수리",
@@ -1856,7 +1803,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("버섯") || query.includes("곰팡이") || query.includes("fungi") || query.includes("mushroom")) {
+  if (query.includes("광대버섯") || query.includes("muscaria")) {
     return {
       koreanName: "광대버섯",
       scientificName: "Amanita muscaria",
@@ -1873,7 +1820,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("거미") || query.includes("spider") || query.includes("전갈")) {
+  if (query.includes("무당거미") || query.includes("clavata")) {
     return {
       koreanName: "무당거미",
       scientificName: "Trichonephila clavata",
@@ -1890,7 +1837,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("개구리") || query.includes("frog") || query.includes("두꺼비")) {
+  if (query.includes("청개구리") || query.includes("japonicus")) {
     return {
       koreanName: "청개구리",
       scientificName: "Dryophytes japonicus",
@@ -1907,7 +1854,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("붕어") || query.includes("잉어") || query.includes("물고기") || query.includes("fish") || query.includes("흰동가리") || query.includes("clownfish")) {
+  if (query.includes("피라미") || query.includes("platypus")) {
     return {
       koreanName: "피라미",
       scientificName: "Zacco platypus",
@@ -1923,7 +1870,8 @@ function getFallbackIdentification(hint: string) {
       seasonalTip: "여름철 여울과 맑은 하천에서 무리 지어 물 위로 뛰어오르며 먹이 활동을 합니다.",
     };
   }
-  if (query.includes("직박구리") || query.includes("bird") || query.includes("새") || query.includes("수리") || query.includes("eagle")) {
+
+  if (query.includes("직박구리") || query.includes("amaurotis")) {
     return {
       koreanName: "직박구리",
       scientificName: "Hypsipetes amaurotis",
@@ -1940,7 +1888,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("호랑나비") || query.includes("나비") || query.includes("butterfly") || query.includes("insect")) {
+  if (query.includes("호랑나비") || query.includes("xuthus")) {
     return {
       koreanName: "호랑나비",
       scientificName: "Papilio xuthus",
@@ -1957,7 +1905,7 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  if (query.includes("다람쥐") || query.includes("squirrel") || query.includes("mammal")) {
+  if (query.includes("다람쥐") || query.includes("sibiricus")) {
     return {
       koreanName: "다람쥐",
       scientificName: "Tamias sibiricus",
@@ -1974,20 +1922,57 @@ function getFallbackIdentification(hint: string) {
     };
   }
 
-  // Default: 서양민들레
+  if (query.includes("민들레") || query.includes("officinale") || query.includes("taraxacum")) {
+    return {
+      koreanName: "서양민들레",
+      scientificName: "Taraxacum officinale",
+      category: "plants",
+      confidence: 99,
+      family: "국화과 (Asteraceae)",
+      genus: "민들레속 (Taraxacum)",
+      taxonomyPath: ["식물계", "속씨식물문", "쌍떡잎식물강", "국화목", "국화과", "민들레속", "서양민들레"],
+      traitChips: ["쌍떡잎식물", "다년생초본", "노란 두상화", "총포편 뒤로 젖혀짐", "도시/초지 서식"],
+      habitatType: "도시/공원",
+      wikiSummary: "서양민들레는 국화과 민들레속에 속하는 여러해살이풀입니다. 토종 민들레와 달리 꽃받침(총포 조각)이 아래로 완전히 젖혀져 있는 것이 특징입니다. 꽃이 진 후 하얀 솜털 같은 갓털(관모)을 둥글게 피워 바람에 씨앗을 퍼뜨립니다.",
+      wikiUrl: "https://ko.wikipedia.org/wiki/%EC%84%9C%EC%96%91%EB%AF%BC%EB%93%A4%EB%A0%88",
+      seasonalTip: "봄부터 늦가을까지 길가, 공원 잔디밭 등 양지바른 곳 어디에서나 번식력이 강하게 자랍니다.",
+    };
+  }
+
+  if (query.includes("이구아나") || query.includes("amblyrhynchus")) {
+    return {
+      koreanName: "갈라파고스 바다이구아나",
+      scientificName: "Amblyrhynchus cristatus",
+      category: "reptiles",
+      confidence: 98,
+      family: "이구아나과 (Iguanidae)",
+      genus: "바다이구아나속 (Amblyrhynchus)",
+      taxonomyPath: ["동물계", "척삭동물문", "파충강", "뱀목", "이구아나과", "바다이구아나속", "갈라파고스 바다이구아나"],
+      traitChips: ["파충류", "해양 잠수", "해조류 섭식", "염분 분비샘", "갈라파고스 고유종"],
+      habitatType: "습지/하천",
+      wikiSummary: "갈라파고스 바다이구아나는 갈라파고스 제도의 용암 해안에 서식하며 바닷속으로 잠수하여 해조류를 섭식하는 세계 유일의 해양 파충류입니다.",
+      wikiUrl: "https://ko.wikipedia.org/wiki/%EB%B0%94%EB%8B%A4%EC%9D%B4%EA%B5%AC%EC%95%84%EB%82%98",
+      seasonalTip: "해안가 검은 용암 바위 위에서 무리 지어 체온을 올리는 일광욕 모습을 관찰할 수 있습니다.",
+    };
+  }
+
+  // Dynamic fallback for any other species name (e.g., Lion, Enoki Mushroom, Rose, Salmon, Sparrow)
+  const targetName = hint ? hint.trim() : "미검증 생물";
+  const { category, categoryLabel, habitatType } = inferCategoryFromHint(targetName);
+
   return {
-    koreanName: "서양민들레",
-    scientificName: "Taraxacum officinale",
-    category: "plants",
-    confidence: 99,
-    family: "국화과 (Asteraceae)",
-    genus: "민들레속 (Taraxacum)",
-    taxonomyPath: ["식물계", "속씨식물문", "쌍떡잎식물강", "국화목", "국화과", "민들레속", "서양민들레"],
-    traitChips: ["쌍떡잎식물", "다년생초본", "노란 두상화", "총포편 뒤로 젖혀짐", "도시/초지 서식"],
-    habitatType: "도시/공원",
-    wikiSummary: "서양민들레는 국화과 민들레속에 속하는 여러해살이풀입니다. 토종 민들레와 달리 꽃받침(총포 조각)이 아래로 완전히 젖혀져 있는 것이 특징입니다. 꽃이 진 후 하얀 솜털 같은 갓털(관모)을 둥글게 피워 바람에 씨앗을 퍼뜨립니다.",
-    wikiUrl: "https://ko.wikipedia.org/wiki/%EC%84%9C%EC%96%91%EB%AF%BC%EB%93%A4%EB%A0%88",
-    seasonalTip: "봄부터 늦가을까지 길가, 공원 잔디밭 등 양지바른 곳 어디에서나 번식력이 강하게 자랍니다.",
+    koreanName: targetName,
+    scientificName: "",
+    category: category,
+    confidence: 85,
+    family: "",
+    genus: "",
+    taxonomyPath: [targetName],
+    traitChips: [targetName, categoryLabel, "현장 관찰"],
+    habitatType: habitatType,
+    wikiSummary: `${targetName}에 대한 생태 관찰 데이터입니다. 현장에서 촬영한 생물의 생태적 특성과 환경을 기록하고 분석합니다.`,
+    wikiUrl: `https://ko.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(targetName)}`,
+    seasonalTip: "현장 탐사 시 피사체와의 적정 거리를 유지하고 서식지 환경을 보호하세요.",
   };
 }
 

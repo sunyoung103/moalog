@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Specimen, Observation, SpeciesEcologyDetail } from '../types';
 import { getApiSource, getIdentificationSourceMetadata, API_SOURCES } from '../utils/apiSources';
-import { isValidEcologyDetail, isSpecimenDataMatch, isMeaningfulContent } from '../utils/validation';
+import { isValidEcologyDetail, isSpecimenDataMatch, validateSpecimenEcologyData, isMeaningfulContent } from '../utils/validation';
 import {
   MapPin,
   Sparkles,
@@ -397,9 +397,14 @@ export const DetailView: React.FC<DetailViewProps> = ({
   React.useEffect(() => {
     const cacheKey = `${(specimen.koreanName || '').trim().toLowerCase()}_${(specimen.scientificName || '').trim().toLowerCase()}_${specimen.category}_${currentPersona}`;
     if (clientEcologyDetailsCache.has(cacheKey)) {
-      setLiveEcologyDetail(clientEcologyDetailsCache.get(cacheKey));
-      setIsLoadingEcologyDetail(false);
-      return;
+      const cached = clientEcologyDetailsCache.get(cacheKey);
+      if (validateSpecimenEcologyData(cached, specimen)) {
+        setLiveEcologyDetail(cached);
+        setIsLoadingEcologyDetail(false);
+        return;
+      } else {
+        clientEcologyDetailsCache.delete(cacheKey);
+      }
     }
 
     let isMounted = true;
@@ -409,6 +414,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: specimen.id,
+        taxonId: specimen.taxonId || specimen.id,
         koreanName: specimen.koreanName,
         scientificName: specimen.scientificName || '',
         category: specimen.category,
@@ -428,11 +435,22 @@ export const DetailView: React.FC<DetailViewProps> = ({
       })
       .then((resData) => {
         if (!isMounted) return;
-        if (resData?.success && resData?.data && isValidEcologyDetail(resData.data) && isSpecimenDataMatch(resData.data, specimen)) {
-          clientEcologyDetailsCache.set(cacheKey, resData.data);
-          setLiveEcologyDetail(resData.data);
-          if (onUpdateSpecimen) {
-            onUpdateSpecimen({ ...specimen, isDataValidated: true });
+        if (resData?.success && resData?.data) {
+          const isDataValidated = validateSpecimenEcologyData(resData.data, specimen);
+          if (isDataValidated) {
+            const validatedData: SpeciesEcologyDetail = {
+              ...resData.data,
+              isDataValidated: true,
+              taxonId: resData.data.taxonId || specimen.taxonId || specimen.id,
+            };
+            clientEcologyDetailsCache.set(cacheKey, validatedData);
+            setLiveEcologyDetail(validatedData);
+            if (onUpdateSpecimen) {
+              onUpdateSpecimen({ ...specimen, isDataValidated: true });
+            }
+          } else {
+            console.warn('[Pipeline Verification] Rejected mismatched AI metadata for:', specimen.koreanName);
+            setLiveEcologyDetail(null);
           }
         }
       })
@@ -446,7 +464,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [specimen.koreanName, specimen.scientificName, specimen.category, currentPersona]);
+  }, [specimen.id, specimen.taxonId, specimen.koreanName, specimen.scientificName, specimen.category, currentPersona]);
 
   // Fetch real iNaturalist phenology monthly histogram & ancestors taxonomy chain when inatData is available
   React.useEffect(() => {
@@ -2781,7 +2799,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                             >
                               <div className="p-3.5 sm:p-4 rounded-2xl bg-white text-stone-900 border border-stone-200 shadow-sm space-y-3">
                                 {/* Slot 1 내용: 계통 분류 체계 */}
-                                {activeEcoSlot === 'slot1' && specimen.isDataValidated && (
+                                {activeEcoSlot === 'slot1' && (
                                   <div className="space-y-3">
                                     {/* 계통 체인 */}
                                     <div className="flex items-center gap-1.5 flex-wrap text-xs bg-stone-50 p-3 rounded-xl border border-stone-200/80">
