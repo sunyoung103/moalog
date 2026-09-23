@@ -1590,7 +1590,7 @@ function getFallbackEcologyDetail(
       family: "장미과 (Rosaceae)",
       order: "장미목 (Rosales)",
       size: "수고 약 10~15m, 흉고직경 50~90cm",
-      status: "정보부족(DD) • 자생지 보전 연구목",
+      status: "자생지 보전 연구목",
       categoryFocus: "이른 봄 잎보다 먼저 피는 선개화(Pre-foliation) 및 산형화서",
       keyIdentification: "이른 봄 잎이 돋기 전에 연분홍색 또는 흰색의 5판화가 3~6송이씩 모여 산형(또는 산방) 꽃차례를 이룹니다. 꽃자루, 암술대, 작은꽃자루 및 꽃받침통에 부드러운 털이 밀생하는 것이 다른 벚나무류와 명확히 구별되는 결정적 형태 형질입니다.",
       callOrSound: "무음 (봄바람에 흔들리는 꽃잎과 방화 곤충들의 날갯짓 소리)",
@@ -1725,27 +1725,27 @@ function inferCategoryFromHint(hint: string): { category: string; categoryLabel:
     return { category: "insects", categoryLabel: "곤충류 (Insecta)", habitatType: "초지/들판" };
   }
   if (q.includes("거미") || q.includes("spider") || q.includes("전갈")) {
-    return { category: "arachnids", categoryLabel: "거미강 (Arachnida)", habitatType: "산림/숲" };
+    return { category: "arachnids", categoryLabel: "거미류 (Arachnida)", habitatType: "산림/숲" };
   }
   if (q.includes("개구리") || q.includes("두꺼비") || q.includes("도롱뇽") || q.includes("frog") || q.includes("toad")) {
-    return { category: "amphibians", categoryLabel: "양서강 (Amphibia)", habitatType: "습지/하천" };
+    return { category: "amphibians", categoryLabel: "양서류 (Amphibia)", habitatType: "습지/하천" };
   }
   if (q.includes("뱀") || q.includes("이구아나") || q.includes("도마뱀") || q.includes("거북") || q.includes("snake") || q.includes("iguana") || q.includes("reptile")) {
-    return { category: "reptiles", categoryLabel: "파충강 (Reptilia)", habitatType: "습지/하천" };
+    return { category: "reptiles", categoryLabel: "파충류 (Reptilia)", habitatType: "습지/하천" };
   }
   if (q.includes("어") || q.includes("붕어") || q.includes("잉어") || q.includes("물고기") || q.includes("상어") || q.includes("fish")) {
-    return { category: "fishes", categoryLabel: "조기어강 (Actinopterygii)", habitatType: "습지/하천" };
+    return { category: "fishes", categoryLabel: "어류 (Actinopterygii)", habitatType: "습지/하천" };
   }
   if (q.includes("달팽이") || q.includes("조개") || q.includes("snail")) {
-    return { category: "mollusks", categoryLabel: "복족강 (Gastropoda)", habitatType: "산림/숲" };
+    return { category: "mollusks", categoryLabel: "연체동물 (Gastropoda)", habitatType: "산림/숲" };
   }
   if (q.includes("가재") || q.includes("게") || q.includes("새우") || q.includes("crab") || q.includes("shrimp")) {
-    return { category: "crustaceans", categoryLabel: "갑각아문 (Crustacea)", habitatType: "습지/하천" };
+    return { category: "crustaceans", categoryLabel: "갑각류 (Crustacea)", habitatType: "습지/하천" };
   }
   if (q.includes("사자") || q.includes("호랑이") || q.includes("곰") || q.includes("여우") || q.includes("사슴") || q.includes("고양이") || q.includes("강아지") || q.includes("다람쥐") || q.includes("mammal") || q.includes("lion") || q.includes("bear")) {
-    return { category: "mammals", categoryLabel: "포유강 (Mammalia)", habitatType: "산림/숲" };
+    return { category: "mammals", categoryLabel: "포유류 (Mammalia)", habitatType: "산림/숲" };
   }
-  return { category: "plants", categoryLabel: "식물계 (Plantae)", habitatType: "도시/공원" };
+  return { category: "plants", categoryLabel: "식물 (Plantae)", habitatType: "도시/공원" };
 }
 
 function getFallbackIdentification(hint: string) {

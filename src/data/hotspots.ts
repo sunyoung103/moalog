@@ -167,7 +167,7 @@ export const SPECIES_ECOLOGY_ENCYCLOPEDIA: SpeciesEcologyDetail[] = [
     family: '장미과 (Rosaceae)',
     order: '장미목 (Rosales)',
     size: '수고 약 10~15m, 흉고직경 50~90cm',
-    status: '정보부족(DD) • 자생지 보전 연구목',
+    status: '자생지 보전 연구목',
     categoryFocus: '이른 봄 잎보다 먼저 피는 선개화(Pre-foliation) 및 산형화서',
     keyIdentification: '이른 봄 잎이 돋기 전에 연분홍색 또는 흰색의 5판화가 3~6송이씩 모여 산형(산방) 꽃차례를 이룹니다. 꽃자루, 암술대, 작은꽃자루 및 꽃받침통에 부드러운 털이 밀생하는 것이 다른 벚나무류와 명확히 구별되는 결정적 형태 형질입니다.',
     callOrSound: '무음 (봄바람에 흔들리는 꽃잎과 방화 곤충들의 날갯짓 소리)',

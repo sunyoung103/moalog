@@ -30,7 +30,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   CR: {
     code: 'CR',
     nameKo: '위급',
-    shortBadge: '🟣 위급 · 등급 5 (CR)',
+    shortBadge: '위급 · 등급 5 (CR)',
     letterGrade: '등급 5 (CR)',
     badgeBg: 'bg-rose-50',
     badgeText: 'text-rose-900',
@@ -41,7 +41,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   EN: {
     code: 'EN',
     nameKo: '위기',
-    shortBadge: '🔴 위기 · 등급 4 (EN)',
+    shortBadge: '위기 · 등급 4 (EN)',
     letterGrade: '등급 4 (EN)',
     badgeBg: 'bg-orange-50',
     badgeText: 'text-orange-900',
@@ -52,7 +52,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   VU: {
     code: 'VU',
     nameKo: '취약',
-    shortBadge: '🟠 취약 · 등급 3 (VU)',
+    shortBadge: '취약 · 등급 3 (VU)',
     letterGrade: '등급 3 (VU)',
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-900',
@@ -63,7 +63,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   NT: {
     code: 'NT',
     nameKo: '준위협',
-    shortBadge: '🟡 준위협 · 등급 2 (NT)',
+    shortBadge: '준위협 · 등급 2 (NT)',
     letterGrade: '등급 2 (NT)',
     badgeBg: 'bg-lime-50',
     badgeText: 'text-lime-900',
@@ -74,7 +74,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   LC: {
     code: 'LC',
     nameKo: '안전',
-    shortBadge: '🟢 안전 · 등급 1 (LC)',
+    shortBadge: '안전 · 등급 1 (LC)',
     letterGrade: '등급 1 (LC)',
     badgeBg: 'bg-emerald-50',
     badgeText: 'text-emerald-900',
@@ -85,7 +85,7 @@ export const IUCN_TIERS: Record<string, IucnTierMeta> = {
   DD: {
     code: 'DD',
     nameKo: '정보부족',
-    shortBadge: '⚪ 정보부족 · DD',
+    shortBadge: '정보부족 · DD',
     letterGrade: '등급 ? (DD)',
     badgeBg: 'bg-slate-50',
     badgeText: 'text-slate-800',
@@ -121,6 +121,7 @@ export interface GlobalEcoStatusProfile {
   slot4Val: string;
   slot4Theme: 'normal' | 'warning' | 'endemic' | 'disturber' | 'naturalized';
   slot4BadgeText: string;
+  slot4Icon: string;
   slot4DetailTitle: string;
   slot4DetailedNarrative: string;
   slot4DataSource: string;
@@ -138,6 +139,7 @@ interface SpecimenGlobalOverride {
   slot4Val: string;
   slot4Theme: 'normal' | 'warning' | 'endemic' | 'disturber' | 'naturalized';
   slot4BadgeText: string;
+  slot4Icon?: string;
   slot4DetailTitle: string;
   slot4DetailedNarrative: string;
   slot4DataSource: string;
@@ -154,7 +156,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '맹금·비행',
     slot4Val: '급강하 맹금 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦅 시속 160km 급강하 수면 사냥',
+    slot4BadgeText: '시속 160km 급강하 수면 사냥',
     slot4DetailTitle: '북미 최상위 맹금류의 공기역학적 수면 사냥 & 교목 영소 생태',
     slot4DetailedNarrative: '흰머리수리(Haliaeetus leucocephalus)는 신북구(북미 대륙) 전역의 하천·호수·해안가 침엽수림에 서식하는 대형 맹금류입니다. 익폭 최대 2.3m의 거대한 날개로 상승 기류를 타고 활공하다가 시속 160km로 급강하하여 수면의 연어 등 대형 어류를 날카로운 발톱으로 낚아챕니다. 지름 최대 3m, 무게 1톤에 달하는 거대한 둥지(Aerie)를 거목 꼭대기에 지어 해마다 보수하며 번식합니다.',
     slot4DataSource: 'US Fish & Wildlife Service & IUCN Red List (Birds of North America)',
@@ -169,7 +171,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '체온·섭식',
     slot4Val: '열교환 부리 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦜 열 방출 라디에이터 부리',
+    slot4BadgeText: '열 방출 라디에이터 부리',
     slot4DetailTitle: '케라틴 거대 부리의 열교환(Thermal Radiator) 및 종자 분산 생태',
     slot4DetailedNarrative: '체장의 3분의 1을 차지하는 20cm의 거대한 부리는 케라틴과 뼈의 격자망 스펀지 구조로 놀랍도록 가볍습니다. 부리 내부 혈관망의 혈류를 조절하여 체온을 방출하는 천연 라디에이터 역할을 수행하며, 열대림 수관부의 과일을 채식하고 씨앗을 멀리 배설하는 핵심적인 산림 종자 확산자(Seed Disperser)입니다.',
     slot4DataSource: 'BirdLife International & Neotropical Birds Online',
@@ -184,7 +186,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '극지·잠수',
     slot4Val: '심해 잠수 · NT',
     slot4Theme: 'warning',
-    slot4BadgeText: '❄️ 수심 535m 심해 잠수 & 허들링',
+    slot4BadgeText: '수심 535m 심해 잠수 & 허들링',
     slot4DetailTitle: '남극 극한 영하 60℃ 번식 생리 및 심해 잠수 적응',
     slot4DetailedNarrative: '지구상 모든 펭귄 중 가장 거대하며, 남극의 혹한기(영하 60℃, 풍속 200km/h)에 번식을 시작합니다. 수컷들이 서로 몸을 밀착하여 체온을 나누는 허들링(Huddling) 행동으로 알을 발등 위에 품고 2달 이상 절식하며 지켜냅니다. 최대 수심 535m까지 20분 이상 잠수하여 크릴과 남극빙어를 사냥합니다.',
     slot4DataSource: 'SCAR Antarctic Biodiversity Portal & IUCN SSC',
@@ -199,7 +201,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '여과·색소',
     slot4Val: '여과 섭식 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦩 카로티노이드 깃털 & 여과 부리',
+    slot4BadgeText: '카로티노이드 깃털 & 여과 부리',
     slot4DetailTitle: '고염분 라군 여과섭식 및 카로티노이드 색소 대사',
     slot4DetailedNarrative: '부리를 거꾸로 물속에 담그고 혀의 펌프 작용과 부리 가장자리의 미세 판판(Lamellae) 구조를 통해 물과 진흙에서 미세 조류(Algae)와 알테미아(Artemia) 갑각류를 걸러 먹습니다. 먹이에 포함된 카로티노이드(Carotenoid) 색소를 체내에서 대사하여 화려한 진홍색 깃털을 유지합니다.',
     slot4DataSource: 'IUCN Flamingo Specialist Group & Caribbean Birds Hub',
@@ -214,7 +216,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '비행·대사',
     slot4Val: '초정밀 호버링 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '⚡ 초당 53회 날갯짓 & 멕시코만 무착륙 비행',
+    slot4BadgeText: '초당 53회 날갯짓 & 멕시코만 무착륙 비행',
     slot4DetailTitle: '무한대(∞) 궤적 호버링 비행 및 멕시코만 800km 무착륙 횡단',
     slot4DetailedNarrative: '체중 단 3g에 불과하지만 8자 모양으로 날개를 회전시켜 전후좌우 및 제자리 정지 비행(Hovering)이 가능한 고도의 비행 생리학을 갖추었습니다. 분당 심박수가 1,200회에 달하며, 가을철 멕시코만 800km 해상을 무착륙으로 단숨에 횡단하여 중미로 이동하는 경이로운 장거리 이동 생태를 보입니다.',
     slot4DataSource: 'Audubon Field Guide & Hummingbird Society International',
@@ -229,7 +231,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '식이·해부',
     slot4Val: '가짜 엄지 · VU',
     slot4Theme: 'warning',
-    slot4BadgeText: '🐼 요골 종자골(가짜 엄지) 진화',
+    slot4BadgeText: '요골 종자골(가짜 엄지) 진화',
     slot4DetailTitle: '식육목 소화계의 대나무 전용 적응 및 요골 가짜 엄지 골격',
     slot4DetailedNarrative: '분류학적으로 식육목(Carnivora) 곰과에 속하지만 먹이의 99%가 대나무로 분화했습니다. 짧은 장관과 소화 효소의 한계를 극복하기 위해 하루 12~38kg의 대나무를 섭취하며, 앞발의 요골 종자골(Radial Sesamoid)이 엄지손가락처럼 비대해져 대나무 줄기를 능숙하게 움켜쥘 수 있도록 진화했습니다.',
     slot4DataSource: 'China Giant Panda Conservation Authority & IUCN SSC Bear Specialist',
@@ -244,7 +246,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '사회·수렵',
     slot4Val: '프라이드 군집 · VU',
     slot4Theme: 'warning',
-    slot4BadgeText: '🦁 유일한 고양이과 무리(Pride) 협동 수렵',
+    slot4BadgeText: '유일한 고양이과 무리(Pride) 협동 수렵',
     slot4DetailTitle: '사바나 최상위 포식자의 프라이드(Pride) 사회 구조 및 매복 전술',
     slot4DetailedNarrative: '고양이과 동물 중 유일하게 무리(Pride)를 형성하여 복합적인 사회 구조를 유지합니다. 암사자들이 부채꼴 대형으로 초식동물을 포위하는 고도의 협동 수렵을 펼쳐 사바나의 얼룩말, 누우, 버팔로 등 대형 유제류를 포식함으로써 초원 생태계의 영양 피라미드 균형을 조절합니다.',
     slot4DataSource: 'IUCN SSC Cat Specialist Group & African Lion Working Group',
@@ -259,7 +261,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '운동·육아',
     slot4Val: '탄성 도약 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦘 아킬레스건 탄성 저장 & 육아낭(Marsupium)',
+    slot4BadgeText: '아킬레스건 탄성 저장 & 육아낭(Marsupium)',
     slot4DetailTitle: '건조 아웃백의 탄성 에너지 도약(Hopping) 및 유대류 번식',
     slot4DetailedNarrative: '현존하는 유대류 중 가장 거대하며, 굵고 긴 뒷다리의 아킬레스건이 용수철처럼 탄성 에너지를 흡수·방출하여 시속 60km로 도약할 때 놀라울 정도로 산소 소비를 절약합니다. 극심한 가뭄 시 착상 지연(Embryonic Diapause)을 통해 새끼의 출산 시기를 조절하는 건조 기후 적응 번식을 합니다.',
     slot4DataSource: 'Australian Department of Climate Change & IUCN Australasia',
@@ -274,7 +276,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '일광·사회',
     slot4Val: '모계 군집 · EN',
     slot4Theme: 'warning',
-    slot4BadgeText: '🐒 가부장제 없는 모계 중심 & 요가 일광욕',
+    slot4BadgeText: '가부장제 없는 모계 중심 & 요가 일광욕',
     slot4DetailTitle: '마다가스카르 고유 원시 곡비원류(Strepsirrhini)와 모계 서열',
     slot4DetailedNarrative: '마다가스카르 섬에만 자생하는 원시 영장류로, 흑백 띠가 번갈아 나타나는 긴 꼬리로 시각적 군집 신호를 보냅니다. 아침마다 양팔을 벌려 가슴의 털에 햇볕을 쬐는 독특한 요가 일광욕으로 체온을 올리며, 암컷이 수컷보다 높은 사회적 지위를 갖는 완전한 모계 사회를 형성합니다.',
     slot4DataSource: 'IUCN SSC Primate Specialist Group & Lemur Conservation Network',
@@ -289,7 +291,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '등반·고산',
     slot4Val: '암벽 등반 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🏔️ 80도 수직 댐벽 등반 발굽',
+    slot4BadgeText: '80도 수직 댐벽 등반 발굽',
     slot4DetailTitle: '알프스 고산 암벽의 고무 탄성 분할 발굽 & 미네랄 섭식',
     slot4DetailedNarrative: '발굽 가장자리는 단단하고 내부는 부드러운 고무 패드 구조로 되어 있어 수직에 가까운 80도 경사의 알프스 댐 벽이나 바위 절벽을 자유자재로 오릅니다. 절벽 표면에 스며 나온 소금과 미네랄을 핥아 영양을 보충하며 천적인 늑대와 곰의 접근을 완벽히 차단합니다.',
     slot4DataSource: 'IUCN Caprinae Specialist Group & Alpine Convention Forum',
@@ -304,7 +306,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '광학·탄도',
     slot4Val: '나노 변색 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦎 구아닌 나노 결정 격자 광학 간섭 & 탄도 혀',
+    slot4BadgeText: '구아닌 나노 결정 격자 광학 간섭 & 탄도 혀',
     slot4DetailTitle: '광학 간섭 나노 결정 구조 변색 및 0.007초 탄도 혀 사냥',
     slot4DetailedNarrative: '피부 진피층에 존재하는 구아닌(Guanine) 나노 결정의 격자 간격을 미세하게 조절하여 빛의 파장을 반사하는 물리적 구조색 광학 변색을 구사합니다. 체장의 2배에 달하는 흡착판 혀를 0.007초 만에 탄도체처럼 발사하여 먹이를 정밀 포획합니다.',
     slot4DataSource: 'CITES Trade Database & Reptile Database Global',
@@ -319,7 +321,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '해양·생리',
     slot4Val: '염분 분사 · VU',
     slot4Theme: 'warning',
-    slot4BadgeText: '🌊 지구 유일 해양 파충류 & 콧구멍 염분 분사',
+    slot4BadgeText: '지구 유일 해양 파충류 & 콧구멍 염분 분사',
     slot4DetailTitle: '세계 유일의 해양 이구아나 잠수 생태와 비강 염분 배출선',
     slot4DetailedNarrative: '세계에서 유일하게 바닷속으로 잠수하여 해저 암초의 해조류를 뜯어먹는 파충류입니다. 차가운 바닷물에서 잃은 체온을 검은 현무암 위에서 일광욕으로 회복하며, 섭취한 과도한 염분을 콧구멍 상단의 특화된 비강 염분 배출선을 통해 기침하듯 주기적으로 뿜어냅니다.',
     slot4DataSource: 'Charles Darwin Foundation & IUCN Galapagos Specialist',
@@ -334,7 +336,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '위장·경계',
     slot4Val: '섬광 위장 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🐸 깜짝 섬광색(Startle Coloration) 방어',
+    slot4BadgeText: '깜짝 섬광색(Startle Coloration) 방어',
     slot4DetailTitle: '열대우림 수관부의 흡반 도약 및 천적 교란 섬광 착시',
     slot4DetailedNarrative: '낮에는 선명한 초록색 등판으로 잎사귀 뒤에 몸을 밀착하여 숨다가, 천적이 다가오면 거대하고 붉은 눈과 주황색 발가락, 청색 옆구리를 순식간에 드러내어 포식자를 순간적으로 깜짝 놀라게(Startle Effect) 한 뒤 도망치는 시각 방어 전략을 펼칩니다.',
     slot4DataSource: 'AmphibiaWeb & IUCN SSC Amphibian Specialist Group',
@@ -349,7 +351,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '피부·적응',
     slot4Val: '경계색 방어 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🐸 아포세마티즘(경계색) 피부 방어',
+    slot4BadgeText: '아포세마티즘(경계색) 피부 방어',
     slot4DetailTitle: '열대 고산림의 알칼로이드 피층 방어 기전 및 경계색(Aposematism)',
     slot4DetailedNarrative: '선명한 코발트 블루 체색은 포식자에게 접근을 경고하는 대표적인 경계색(Aposematism)입니다. 야생에서 섭식하는 미소 곤충들로부터 화합물을 체내에 축적하여 피층 분비선에 저장함으로써 포식자로부터 자신을 보호하는 독특한 화학 생태 방어 기전을 가집니다.',
     slot4DataSource: 'AmphibiaWeb & IUCN SSC Amphibian Specialist Group',
@@ -364,7 +366,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '공생·점액',
     slot4Val: '상리 공생 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🐠 말미잘 자포(Nematocyst) 면역 당단백질 점액',
+    slot4BadgeText: '말미잘 자포(Nematocyst) 면역 당단백질 점액',
     slot4DetailTitle: '해양 말미잘과의 절대적 상리공생(Mutualism) 및 성전환 생태',
     slot4DetailedNarrative: '몸 표면에 당단백질로 이루어진 두터운 점액층을 분비하여 말미잘의 맹독성 자포(Nematocyst) 발사를 화학적으로 억제합니다. 말미잘 촉수 사이에 숨어 안전을 보장받는 대신 말미잘 주변의 찌꺼기를 청소하고 산소를 공급하며, 무리의 우두머리 암컷이 사망하면 서열 1위 수컷이 암컷으로 성전환(Protandry)합니다.',
     slot4DataSource: 'FishBase Global Aquatic DB & Great Barrier Reef Marine Park',
@@ -379,7 +381,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '원양·여과',
     slot4Val: '여과 섭식 · EN',
     slot4Theme: 'warning',
-    slot4BadgeText: '🦈 최대 18m 지구상 최대 어류 & 플랑크톤 여과',
+    slot4BadgeText: '최대 18m 지구상 최대 어류 & 플랑크톤 여과',
     slot4DetailTitle: '지구 최대 연골어류의 아가미궁 여과 섭식 및 외양 회유',
     slot4DetailedNarrative: '현존하는 어류 중 가장 거대하여 최대 18m, 무게 20톤까지 성장합니다. 거대한 체구에도 불구하고 온순하며, 1.5m 너비의 거대한 입으로 바닷물을 들이마신 뒤 빗살 모양의 아가미궁(Gill Rakers)으로 크릴, 플랑크톤, 소형 어류만을 걸러 먹습니다. 수천 킬로미터의 열대 대양을 횡단하는 장거리 회유를 합니다.',
     slot4DataSource: 'IUCN Shark Specialist Group & Wildbook for Whale Sharks',
@@ -394,7 +396,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '비행·두뇌',
     slot4Val: '수중 활공 · EN',
     slot4Theme: 'warning',
-    slot4BadgeText: '🌊 익폭 7m 수중 비행 & 어류 최대 뇌 용적',
+    slot4BadgeText: '익폭 7m 수중 비행 & 어류 최대 뇌 용적',
     slot4DetailTitle: '거대 가슴지느러미 수중 비행 및 산호초 클리닝 스테이션 생태',
     slot4DetailedNarrative: '날개 너비가 최대 7m, 체중이 2톤에 달하는 거대 가오리입니다. 어류 중 체중 대비 뇌의 크기가 가장 커 뛰어난 인지 능력과 호기심을 지니며, 머리 앞의 두부 지느러미(Cephalic Fins)로 플랑크톤 수류를 모읍니다. 산호초의 청소놀래기 서식처(Cleaning Station)를 정기적으로 방문하여 기생충을 제거받습니다.',
     slot4DataSource: 'Manta Trust & IUCN SSC Shark Specialist Group',
@@ -409,7 +411,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '광학·구조',
     slot4Val: '나노 구조색 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🦋 비늘 미세 크리스마스트리 격자 보강 간섭',
+    slot4BadgeText: '비늘 미세 크리스마스트리 격자 보강 간섭',
     slot4DetailTitle: '나노 다층 구조를 통한 빛의 보강 간섭(Structural Color) 메커니즘',
     slot4DetailedNarrative: '날개에 푸른색 색소가 전혀 없으며, 날개 비늘 표면의 미세한 크리스마스트리 모양 키틴질 나노 격자가 특정 파장(약 450nm의 푸른빛)만을 반사하고 증폭시키는 빛의 보강 간섭을 일으킵니다. 날개를 접으면 눈알 무늬의 갈색 보호색으로 위장하여 새들의 공격을 피합니다.',
     slot4DataSource: 'Catalogue of Life Lepidoptera & Smithsonian Tropical Research',
@@ -424,7 +426,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '갑충·생체',
     slot4Val: '최대 갑충 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🪲 체장 최대 18cm & 체중 850배 운반력',
+    slot4BadgeText: '체장 최대 18cm & 체중 850배 운반력',
     slot4DetailTitle: '세계 최대 갑충의 흉각 집게 지레 메커니즘 및 습도 반응 변색',
     slot4DetailedNarrative: '체장 최대 18cm로 세계에서 가장 긴 갑충입니다. 가슴에서 뻗은 거대한 흉각과 두각이 완벽한 집게를 이루어 영역 다툼 시 상대 수컷을 들어 올려 내던집니다. 딱지날개 내부의 미세 다공성 층이 주변 습도에 따라 빛 반사를 바꾸어 건조할 때는 황록색, 다습할 때는 칠흑색으로 변색합니다.',
     slot4DataSource: 'Scarab Beetles of the World & CoL Insecta DB',
@@ -439,7 +441,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '수분·생태',
     slot4Val: '수분 저류 · EN',
     slot4Theme: 'warning',
-    slot4BadgeText: '🌳 줄기 내 12만 리터 저수 & 여우원숭이 수분',
+    slot4BadgeText: '줄기 내 12만 리터 저수 & 여우원숭이 수분',
     slot4DetailTitle: '수령 1,000년 건조 저수 수간 및 야간 박쥐·여우원숭이 수분',
     slot4DetailedNarrative: '높이 30m, 직경 3m에 달하는 거대한 원통형 줄기는 해면상 스펀지 조직으로 채워져 있어 우기에 흡수한 수분을 최대 12만 리터까지 저장하여 수개월의 가뭄을 견딥니다. 밤에만 피어나는 커다란 흰 꽃은 꿀을 찾는 박쥐와 여우원숭이를 유인하여 꽃가루를 매개(Chiropterophily)합니다.',
     slot4DataSource: 'Madagascar Flora Project & IUCN SSC Global Tree Specialist',
@@ -454,7 +456,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '수목·내화',
     slot4Val: '내화성 수피 · EN',
     slot4Theme: 'warning',
-    slot4BadgeText: '🌲 부피 1,487㎥ 세계 최대 단일 유기체 & 산불 내성',
+    slot4BadgeText: '부피 1,487㎥ 세계 최대 단일 유기체 & 산불 내성',
     slot4DetailTitle: '수령 3,000년 탄닌 방화 수피 및 산불 열기 솔방울 개열 생태',
     slot4DetailedNarrative: '세계에서 부피가 가장 큰 단일 유기체(제너럴 셔먼 트리)로 수고 83m, 기저부 직경 11m에 달합니다. 60cm 두께의 섬유질 수피는 탄닌(Tannin) 성분이 풍부하여 산불과 곤충 침입을 막아내며, 솔방울은 산불의 뜨거운 열기를 받아야만 송진이 녹아 벌어지며 종자를 숲 바닥에 살포하는 산불 의존성 번식 생태를 지닙니다.',
     slot4DataSource: 'US National Park Service (Sequoia & Kings Canyon) & IUCN Red List',
@@ -469,7 +471,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '기생·수분',
     slot4Val: '사체취 수분 · CR',
     slot4Theme: 'warning',
-    slot4BadgeText: '🌸 직경 1m 잎·뿌리 없는 전기생 & 시체 부패향',
+    slot4BadgeText: '직경 1m 잎·뿌리 없는 전기생 & 시체 부패향',
     slot4DetailTitle: '포도과 덩굴 체내 완전 기생 및 금파리 유인 부패취 수분',
     slot4DetailedNarrative: '잎, 줄기, 뿌리가 전혀 없으며 엽록소도 없어 광합성을 하지 못하고 오직 야생 포도나무 덩굴(Tetrastigma) 체내에 균사처럼 침투하여 영양을 흡수하는 완전 기생식물입니다. 개화 시 직경 1m, 무게 11kg의 거대한 꽃을 피우며 고기 썩는 악취(Dimethyl disulfide)와 발열을 통해 쇠파리와 금파리를 유인해 교차 수분을 완성합니다.',
     slot4DataSource: 'Kew Royal Botanic Gardens & Indonesian Forestry Agency',
@@ -484,7 +486,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '식충·세포',
     slot4Val: '포획 덫 · VU',
     slot4Theme: 'warning',
-    slot4BadgeText: '🪤 0.1초 급속 세포 팽창 포획 덫 & 전기 신호 기억',
+    slot4BadgeText: '0.1초 급속 세포 팽창 포획 덫 & 전기 신호 기억',
     slot4DetailTitle: '질소 빈약 산성 습지의 활동전위(Action Potential) 식충 덫',
     slot4DetailedNarrative: '질소와 미네랄이 극도로 부족한 산성 이탄 습지에서 진화한 식충식물입니다. 잎 안쪽의 감각모(Trigger Hair)를 20초 이내에 2회 연속 건드리면 전기 활동전위가 발생하여 0.1초 만에 세포벽 수분을 이동시켜 잎을 닫습니다. 이후 5회 이상 자극되면 소화액을 분비하여 곤충 단백질로부터 질소와 인을 흡수합니다.',
     slot4DataSource: 'US Fish & Wildlife Service & BGCI Plant Conservation',
@@ -499,7 +501,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '갑각·적응',
     slot4Val: '육상 거대갑각 · VU',
     slot4Theme: 'warning',
-    slot4BadgeText: '🥥 악력 3,300N (사자 치악력 필적) & 폐새실 호흡',
+    slot4BadgeText: '악력 3,300N (사자 치악력 필적) & 폐새실 호흡',
     slot4DetailTitle: '세계 최대 육상 절지동물의 폐새실(Branchiostegal Lung) 호흡',
     slot4DetailedNarrative: '체중 최대 4kg, 다리 경간 1m에 달하는 세계 최대의 육상 절지동물입니다. 성체는 바다에 들어가지 못하고 익사하며, 아가미 대신 혈관이 밀집한 폐새실(Branchiostegal lung)을 통해 공기 호흡을 합니다. 강력한 집게발은 3,300N(약 330kg)의 가공할 악력으로 단단한 코코넛 열매를 쪼개어 영양을 섭취합니다.',
     slot4DataSource: 'IUCN Terrestrial Decapod Specialist & Pacific Island Ecology',
@@ -514,7 +516,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '원양·적응',
     slot4Val: '자포 농축 · LC',
     slot4Theme: 'normal',
-    slot4BadgeText: '🐉 자포 세포 농축(Kleptocnidy) 방어',
+    slot4BadgeText: '자포 세포 농축(Kleptocnidy) 방어',
     slot4DetailTitle: '외양 표층 거꾸로 부유 생태 및 자포 농축(Kleptocnidy) 방어',
     slot4DetailedNarrative: '위장 속에 공기 방울을 삼켜 표면장력을 이용해 물 표면에 배를 하늘로 향한 채 거꾸로 떠다니며 살아갑니다. 자포동물을 섭식한 후 소화되지 않은 자포 세포를 깃털 모양 세르타(Cerata) 끝으로 이동 배치하여 물리적 방어 기작으로 활용하는 놀라운 적응 생태를 보입니다.',
     slot4DataSource: 'World Register of Marine Species (WoRMS) & Marine Bio Global',
@@ -529,7 +531,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '식물 지위',
     slot4Val: '외래 귀화식물',
     slot4Theme: 'naturalized',
-    slot4BadgeText: '🌱 아포믹시스(무수정 결실) & 도심 밀원 식물',
+    slot4BadgeText: '아포믹시스(무수정 결실) & 도심 밀원 식물',
     slot4DetailTitle: '서양민들레의 총포편 반전 및 무수정 생식(Apomixis) 적응',
     slot4DetailedNarrative: '꽃받침 아래 총포편(Involucral bracts)이 뒤로 완전히 젖혀지는 형태학적 특징으로 토종 민들레와 명확히 구분됩니다. 수분 곤충 없이도 씨앗을 맺는 아포믹시스(Apomixis)와 연중 수회 개화하는 왕성한 생명력으로 전 세계 도심 아스팔트 틈새와 공원에 정착하여 봄철 이른 시기 꿀벌과 나비에게 중요한 꿀과 화분을 공급하는 귀화식물입니다.',
     slot4DataSource: '국립수목원 KNA 국가생물종지식정보시스템 & APG IV',
@@ -544,7 +546,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '생태 지위',
     slot4Val: '동아시아 자생초본',
     slot4Theme: 'normal',
-    slot4BadgeText: '🌼 총포편 곧게 직립 & 충매 타가수분',
+    slot4BadgeText: '총포편 곧게 직립 & 충매 타가수분',
     slot4DetailTitle: '토종 민들레의 충매 타가수분 및 봄철 한정 개화 생태',
     slot4DetailedNarrative: '외총포편이 뒤로 젖혀지지 않고 꽃을 감싸듯 곧게 서 있는 것이 토종 민들레(Taraxacum platycarpum)의 핵심 동정 포인트입니다. 서양민들레와 달리 반드시 방화 곤충을 통한 타가수분(Cross-pollination)을 거쳐야만 결실하며, 봄철(3~5월)에만 집중적으로 개화하는 온대성 다년생 자생초본입니다.',
     slot4DataSource: '국립수목원 KNA 표준식물목록 & 국가생물종DB',
@@ -559,7 +561,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '고유 특산',
     slot4Val: '세계 유일 1속 1종 고유종',
     slot4Theme: 'endemic',
-    slot4BadgeText: '🇰🇷 천연기념물 지정 한반도 특산식물',
+    slot4BadgeText: '천연기념물 지정 한반도 특산식물',
     slot4DetailTitle: '세계에서 오직 한반도에만 자생하는 1속 1종 미선나무속(Abeliophyllum)',
     slot4DetailedNarrative: '열매 모양이 부채(선, 扇)를 닮아 미선(美扇)나무라 불리며, 전 세계 식물 분류군 중 오직 한반도 중부 석회암 지대에만 자생하는 1속 1종(Monotypic genus)의 귀중한 고유종입니다. 이른 봄 잎보다 먼저 흰색 또는 연분홍색의 향기로운 꽃을 피우며 세계 식물학계의 주목을 받는 핵심 보전 자원입니다.',
     slot4DataSource: '국립수목원 천연기념물 식물 DB & IUCN SSC Plant Specialist',
@@ -574,7 +576,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '고유 수생',
     slot4Val: '한국 고유 담수어',
     slot4Theme: 'endemic',
-    slot4BadgeText: '🇰🇷 1급수 여울목 자갈 바닥 서식',
+    slot4BadgeText: '1급수 여울목 자갈 바닥 서식',
     slot4DetailTitle: '한국 하천 여울목(Riffle) 생태계 지표 어종 & 혼인색',
     slot4DetailedNarrative: '몸측면에 노란색, 주황색, 흑자색의 화려한 세로 띠를 지닌 한국 고유 담수어류입니다. 물 흐름이 빠르고 자갈이 깔린 용존산소량이 풍부한 1급수 맑은 여울에만 서식하며, 수서 곤충(하루살이, 날도래 유충)을 섭식하는 하천 상류 생태계의 대표적 수질 지표종입니다.',
     slot4DataSource: '국립생물자원관(NIBR) 한국 담수어류 도감',
@@ -589,7 +591,7 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     slot4Label: '고유 공생',
     slot4Val: '한국 고유 담수어',
     slot4Theme: 'endemic',
-    slot4BadgeText: '🐚 민물조개(말조개) 산란 공생',
+    slot4BadgeText: '민물조개(말조개) 산란 공생',
     slot4DetailTitle: '민물조개 아가미방 내 산란관 삽입 산란 특수 공생',
     slot4DetailedNarrative: '몸에 무지갯빛 광택이 흐르는 아름다운 한국 고유 소형 잉어과 담수어입니다. 산란기(4~6월)가 되면 암컷의 꼬리 부근에서 긴 산란관(Ovipositor)이 나와 살아있는 민물조개(말조개·작은말조개)의 출수공에 알을 낳고, 부화한 치어가 안전하게 자란 뒤 밖으로 나오는 정교한 상리공생(Mutualism)을 유지합니다.',
     slot4DataSource: '국립생물자원관(NIBR) & 환경부 담수생태계 DB',
@@ -599,12 +601,12 @@ const KNOWN_GLOBAL_SPECIMENS: Record<string, SpecimenGlobalOverride> = {
     realm: 'Palearctic',
     realmNameKo: '구북구 (Palearctic Realm)',
     nativeRange: '동아시아 온대 수목 및 제주도 한라산 해발 500~900m 자생지',
-    iucnCategory: 'DD',
-    iucnLabel: '정보부족 (Data Deficient, 자생 군락 연구)',
+    iucnCategory: null,
+    iucnLabel: '',
     slot4Label: '개화·화서',
-    slot4Val: '산형화서 · 봄개화',
+    slot4Val: '산형화서(봄꽃)',
     slot4Theme: 'normal',
-    slot4BadgeText: '🌸 잎보다 먼저 피는 5판화 산형화서',
+    slot4BadgeText: '잎보다 먼저 피는 5판화 산형화서',
     slot4DetailTitle: '장미과 벚나무속의 봄철 선개화(Pre-foliation) 및 화분 매개 생태',
     slot4DetailedNarrative: '왕벚나무(Prunus yedoensis)는 장미과의 대표적인 낙엽교목으로, 이른 봄 잎이 돋기 전에 연분홍빛 또는 백색의 5판화가 3~6송이씩 모여 산형(또는 산방) 꽃차례를 이룹니다. 꽃자루와 암술대에 부드러운 미세 털이 밀생하는 고유한 형태 형질을 지니며, 봄철 꿀벌과 나비, 직박구리에게 풍부한 꿀(Nectar)과 화분을 제공하는 핵심 화분매개 기여 수목입니다.',
     slot4DataSource: '국립수목원 국가생물종지식정보시스템 & Plants of the World Online (POWO)',
@@ -680,6 +682,7 @@ export function getGlobalEcoStatusProfile(params: {
       slot4Val: exactCurated.slot4Val,
       slot4Theme: exactCurated.slot4Theme,
       slot4BadgeText: exactCurated.slot4BadgeText,
+      slot4Icon: exactCurated.slot4Icon || (exactCurated.slot4Theme === 'endemic' ? 'award' : exactCurated.slot4Theme === 'disturber' ? 'shield-alert' : exactCurated.slot4Theme === 'naturalized' ? 'leaf' : 'shield'),
       slot4DetailTitle: exactCurated.slot4DetailTitle,
       slot4DetailedNarrative: exactCurated.slot4DetailedNarrative,
       slot4DataSource: exactCurated.slot4DataSource,
@@ -780,12 +783,13 @@ export function getGlobalEcoStatusProfile(params: {
     statusText.trim().length > 0 &&
     !statusText.includes('표준 상태') &&
     !statusText.includes('정보 없음') &&
-    /CR|EN|VU|NT|LC|DD|위급|위기|취약|준위협|관심대상|멸종위기|보호종|천연기념물|고유종|교란|귀화/i.test(statusText) &&
-    (!isFungi || /CR|EN|VU|NT|LC|DD|위급|위기|취약|준위협|멸종위기|보호종|천연기념물/i.test(statusText))
+    !/정보부족|자료부족|Data Deficient|DD/i.test(statusText) &&
+    /CR|EN|VU|NT|LC|위급|위기|취약|준위협|관심대상|멸종위기|보호종|천연기념물|고유종|교란|귀화/i.test(statusText) &&
+    (!isFungi || /CR|EN|VU|NT|LC|위급|위기|취약|준위협|멸종위기|보호종|천연기념물/i.test(statusText))
   );
 
   let iucnCategory: GlobalEcoStatusProfile['iucnCategory'] = null;
-  let iucnLabel = '보전 정보 미확인';
+  let iucnLabel = '';
 
   if (/위급|CR|Critically Endangered/i.test(statusText)) {
     iucnCategory = 'CR';
@@ -802,9 +806,6 @@ export function getGlobalEcoStatusProfile(params: {
   } else if (!isFungi && /관심대상|LC|Least Concern/i.test(statusText)) {
     iucnCategory = 'LC';
     iucnLabel = '안전 (Least Concern, LC)';
-  } else if (/정보부족|DD|Data Deficient/i.test(statusText)) {
-    iucnCategory = 'DD';
-    iucnLabel = '정보부족 (Data Deficient, DD)';
   }
 
   const tierMeta = getIucnTierMeta(iucnCategory);
@@ -817,6 +818,7 @@ export function getGlobalEcoStatusProfile(params: {
   let slot4Val = '';
   let slot4Theme: GlobalEcoStatusProfile['slot4Theme'] = 'normal';
   let slot4BadgeText = '';
+  let slot4Icon = 'shield';
   let slot4DetailTitle = '';
   let slot4DetailedNarrative = '';
   let slot4DataSource = '';
@@ -827,6 +829,7 @@ export function getGlobalEcoStatusProfile(params: {
     slot4Label = '생태계 교란';
     slot4Val = invasiveMatch.db === 'IUCN_GISD_100' ? 'IUCN 100대 교란종' : '생태계교란 생물';
     slot4Theme = 'disturber';
+    slot4Icon = 'shield-alert';
     slot4BadgeText = `⚠️ 원산: ${invasiveMatch.origin.split('(')[0]}`;
     slot4DetailTitle = `생태계교란 생물 지정 및 고유 생물다양성 관리`;
     slot4DetailedNarrative = `자생 원산지는 [${invasiveMatch.origin}]이며, [${invasiveMatch.introduced}]에 유입되었습니다. ${invasiveMatch.impact}. 환경부 생태계교란 생물 및 세계자연보전연맹(IUCN) 침입종전문가그룹(ISSG) 지침에 따라 고유 생태계 보전을 위한 확산 모니터링이 이루어지고 있습니다.`;
@@ -837,6 +840,7 @@ export function getGlobalEcoStatusProfile(params: {
     slot4Label = '식물 지위';
     slot4Val = '외래 귀화식물';
     slot4Theme = 'naturalized';
+    slot4Icon = 'leaf';
     slot4BadgeText = `🌱 원산: ${invasiveMatch.origin.split('(')[0]}`;
     slot4DetailTitle = `외래 귀화식물의 도심 생태계 적응 및 밀원 제공`;
     slot4DetailedNarrative = `원산지는 [${invasiveMatch.origin}]이며, 국내외 도시 및 초지에 정착한 대표적인 귀화식물입니다. ${invasiveMatch.impact}. 맹독이나 공격적인 교란종이 아니며, 도심 생태계에서 곤충들에게 꿀과 화분을 제공하는 식생 구성원으로 자리잡고 있습니다. (국립수목원 국가생물종지식정보시스템 귀화식물 등록)`;
@@ -847,21 +851,82 @@ export function getGlobalEcoStatusProfile(params: {
     slot4Label = '고유 특산';
     slot4Val = tierMeta ? `한반도 고유 · ${tierMeta.code}` : (iucnCategory ? `한반도 고유 · ${iucnCategory}` : '한반도 고유종');
     slot4Theme = 'endemic';
+    slot4Icon = 'award';
     slot4BadgeText = '🇰🇷 한반도 고유 생물자원';
     slot4DetailTitle = '대한민국 고유종(Endemic Species) 생물주권 보전 가치';
     slot4DetailedNarrative = `${koreanName}은(는) 전 세계에서 오직 한반도 및 인접 수계에만 자생하는 대한민국 고유 특산 생물입니다. 빙하기 이후 한반도 고유의 지형 및 수계 격리 과정을 거쳐 독자적으로 분화하였으며, 국가 생물주권 및 유전자원 보전 측면에서 최우선 보호 가치를 지닙니다.`;
     slot4DataSource = '국립생물자원관(NIBR) 국가생물종목록';
     slot4DbCode = 'NIBR-KOREA-ENDEMIC';
-  } else if (hasExplicitStatus) {
+  } else if (hasExplicitStatus || isPlant || isBird || isInsect || isFish || isMammal || isHerptile || isArachnid || isMolluskOrInvert || isCrustacean) {
     hasSlot4 = true;
-    slot4Label = '보전 등급';
-    slot4Val = tierMeta ? `${tierMeta.nameKo} (${tierMeta.code})` : (statusText.split('•')[0].trim());
+    
+    // Dynamic Category-Specific & Special Niche Slot 4 Detection
+    if (/세쿼이아|내화성|내화/i.test(full)) {
+      slot4Label = '수목·내화';
+      slot4Val = '내화성 수피 · EN';
+    } else if (/바오밥|수분 저류|저수/i.test(full)) {
+      slot4Label = '수분·생태';
+      slot4Val = '수분 저류 · EN';
+    } else if (/라플레시아|사체취|기생식물/i.test(full)) {
+      slot4Label = '기생·수분';
+      slot4Val = '사체취 수분 · CR';
+    } else if (/파리지옥|포충엽|식충/i.test(full)) {
+      slot4Label = '식충·세포';
+      slot4Val = '포충엽 동작 · VU';
+    } else if (/개화|화서|산형화서|벚나무|꽃차례/i.test(full) && isPlant) {
+      slot4Label = '개화·화서';
+      slot4Val = '산형화서 · 봄개화';
+    } else if (/맹금|급강하|수리|매/i.test(full) && isBird) {
+      slot4Label = '맹금·비행';
+      slot4Val = '상공 급강하 · LC';
+    } else if (/펭귄|극지|남극|심해 잠수/i.test(full)) {
+      slot4Label = '극지·잠수';
+      slot4Val = '심해 잠수 · NT';
+    } else if (/플라밍고|홍학|여과 섭식/i.test(full)) {
+      slot4Label = '여과·색소';
+      slot4Val = '여과 섭식 · LC';
+    } else if (/바다이구아나|해조류 잠수/i.test(full)) {
+      slot4Label = '해양·생리';
+      slot4Val = '해조류 잠수 · VU';
+    } else if (/경계색|독개구리/i.test(full)) {
+      slot4Label = '위장·경계';
+      slot4Val = '경계색 피부 · LC';
+    } else if (/장수풍뎅이|두각/i.test(full) && isInsect) {
+      slot4Label = '갑충·생체';
+      slot4Val = '두각 핀서 · LC';
+    } else if (isPlant) {
+      slot4Label = '식물 지위';
+      slot4Val = tierMeta ? `자생종 · ${tierMeta.code}` : '자생종 / 초본·목본';
+    } else if (isFish || isCrustacean) {
+      slot4Label = '고유 수생';
+      slot4Val = tierMeta ? `수생 적응 · ${tierMeta.code}` : '수생 생태 지위';
+    } else if (isBird) {
+      slot4Label = '도새·보전';
+      slot4Val = tierMeta ? `야생 조류 · ${tierMeta.code}` : '텃새/철새 생태';
+    } else if (isInsect) {
+      slot4Label = '출현·활동';
+      slot4Val = tierMeta ? `곤충 생태 · ${tierMeta.code}` : '주야행성 활동';
+    } else if (isMammal) {
+      slot4Label = '활동·보전';
+      slot4Val = tierMeta ? `포유 생태 · ${tierMeta.code}` : '야행성/군집';
+    } else if (isHerptile) {
+      slot4Label = '서식·보전';
+      slot4Val = tierMeta ? `양서파충 · ${tierMeta.code}` : '변온/습지 서식';
+    } else if (isArachnid || isMolluskOrInvert) {
+      slot4Label = '생태 특성';
+      slot4Val = tierMeta ? `무척추 · ${tierMeta.code}` : '특수 생태 적응';
+    } else {
+      slot4Label = '보전 등급';
+      slot4Val = tierMeta ? `${tierMeta.nameKo} (${tierMeta.code})` : (statusText.split('•')[0].trim() || '자연 보전 지표');
+    }
+
     slot4Theme = (iucnCategory && ['CR', 'EN', 'VU', 'NT'].includes(iucnCategory)) ? 'warning' : 'normal';
-    slot4BadgeText = tierMeta ? tierMeta.shortBadge : (iucnCategory ? `IUCN ${iucnCategory} 등급` : '자연 보전 지표');
-    slot4DetailTitle = `${koreanName} 글로벌 보전 지위 & 평가 프로파일`;
+    slot4Icon = slot4Theme === 'warning' ? 'alert-triangle' : 'shield';
+    slot4BadgeText = tierMeta ? tierMeta.shortBadge : (iucnCategory ? `IUCN ${iucnCategory} 등급` : '자연 생태 지표');
+    slot4DetailTitle = `${koreanName} 특화 생태 지위 & 보전 프로파일`;
     slot4DetailedNarrative = tierMeta
       ? `${tierMeta.description} (국제자연보전연맹 IUCN 적색목록 공식 등급)`
-      : `국제자연보전연맹(IUCN) 적색목록 및 서식지 모니터링 자료에 등재된 개체군 생존 상태입니다: ${statusText}`;
+      : `자생 환경 및 생태적 특성에 기초한 특화 지위 프로파일입니다: ${statusText || habitatText || keyIdentification || '글로벌 생태 데이터 연동'}`;
     slot4DataSource = 'IUCN Red List of Threatened Species & GBIF Ecosystem';
     slot4DbCode = 'IUCN-REDLIST-GLOB';
   } else {
@@ -886,6 +951,7 @@ export function getGlobalEcoStatusProfile(params: {
     slot4Val,
     slot4Theme,
     slot4BadgeText,
+    slot4Icon,
     slot4DetailTitle,
     slot4DetailedNarrative,
     slot4DataSource,

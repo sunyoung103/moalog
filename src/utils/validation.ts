@@ -36,7 +36,15 @@ export const isMeaningfulContent = (text?: string | null): boolean => {
     '전문가 검증 필요',
     '데이터 업데이트 중',
     '분류군 정보',
-    '형태 형질을 확인'
+    '형태 형질을 확인',
+    '정보부족',
+    '정보 부족',
+    '자료부족',
+    '자료 부족',
+    '정보 없음',
+    '정보미확인',
+    '미지정',
+    'Data Deficient'
   ];
 
   return !placeholders.some(p => trimmed.includes(p));
