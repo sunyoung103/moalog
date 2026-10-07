@@ -564,15 +564,15 @@ export const DetailView: React.FC<DetailViewProps> = ({
           },
         ];
 
-  // Strictly enforce max 5 photos
-  const displayObservations = rawObservations.slice(0, 5);
+  // Strictly enforce max 12 photos
+  const displayObservations = rawObservations.slice(0, 12);
 
-  // Add photo up to max 5 handler
+  // Add photo up to max 12 handler
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (displayObservations.length >= 5) {
-      alert('표본 사진은 최대 5장까지 등록할 수 있습니다.');
+    if (displayObservations.length >= 12) {
+      alert('표본 사진은 최대 12장까지 등록할 수 있습니다.');
       return;
     }
     const reader = new FileReader();
@@ -595,7 +595,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
         } else if (onUpdateSpecimen) {
           onUpdateSpecimen({
             ...specimen,
-            observations: [...displayObservations, newObs].slice(0, 5),
+            observations: [...displayObservations, newObs].slice(0, 12),
           });
         }
         setSelectedObservationIndex(displayObservations.length);
@@ -1117,8 +1117,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
   };
 
   const isRepresentativeCover =
-    selectedObservationIndex === 0 ||
-    activeObs.photoUrl === specimen.originalImage;
+    Boolean(specimen.originalImage && activeObs.photoUrl === specimen.originalImage);
 
   // Set active photo as representative cover (optional targetIdx)
   const handleSetAsRepresentativeCover = (targetIdx?: number) => {
@@ -1360,33 +1359,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
                 </button>
               </div>
 
-              {/* Top Right: Representative Photo Status/Button + Explicit Edit Button */}
+              {/* Top Right: Explicit Edit Button */}
               <div className="pointer-events-auto flex items-center gap-2">
-                {/* Clear Representative Photo Indicator / Button */}
-                {isRepresentativeCover ? (
-                  <div
-                    className="px-3 py-2 rounded-full bg-amber-400 text-stone-950 border border-amber-300 font-black text-xs shadow-lg flex items-center gap-1.5 backdrop-blur-md"
-                    title="현재 이 사진이 도감 대표 사진입니다"
-                  >
-                    <Crown className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
-                    <span>대표 사진</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSetAsRepresentativeCover();
-                    }}
-                    className="px-3.5 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-xl border border-amber-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                    title="현재 보고 있는 사진을 도감 대표 사진으로 지정"
-                  >
-                    <Crown className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
-                    <span>대표로 지정</span>
-                  </button>
-                )}
-
-                {/* Explicit Edit Button */}
                 {onUpdateSpecimen && (
                   <button
                     type="button"
@@ -1460,28 +1434,25 @@ export const DetailView: React.FC<DetailViewProps> = ({
               onTouchEnd={handleTouchEnd}
               className="relative w-full aspect-square bg-stone-950 flex items-center justify-center cursor-pointer overflow-hidden group"
             >
-              {/* Floating LIVE MOTION Toggle Button on Photo Frame */}
+              {/* Floating LIVE MOTION Badge on Photo Frame */}
               <div className="absolute top-3 left-3 z-30 pointer-events-auto">
                 <button
                   type="button"
                   onClick={handleToggleLivePhoto}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-black shadow-2xl backdrop-blur-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer border ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-black shadow-lg backdrop-blur-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border ${
                     isLivePlaying
-                      ? 'bg-rose-600 text-white border-rose-300 ring-4 ring-rose-500/40 shadow-rose-900/60 animate-pulse'
-                      : 'bg-stone-950/85 hover:bg-stone-900 text-stone-100 hover:text-amber-300 border-white/30 hover:border-amber-400/80'
+                      ? 'bg-rose-600 text-white border-rose-300 ring-2 ring-rose-500/40 animate-pulse'
+                      : 'bg-black/60 hover:bg-black/80 text-white border-white/20'
                   }`}
-                  title={isLivePlaying ? '생태 라이브 모션 일시정지' : '3.5초 생태 모션 라이브 재생'}
+                  title={isLivePlaying ? '생태 라이브 모션 일시정지' : '생태 라이브 모션 재생'}
                 >
                   <div className="relative flex items-center justify-center">
-                    <span className={`w-2.5 h-2.5 rounded-full ${isLivePlaying ? 'bg-white animate-ping' : 'bg-rose-500'}`} />
-                    <span className={`absolute w-2.5 h-2.5 rounded-full ${isLivePlaying ? 'bg-white' : 'bg-rose-500'}`} />
+                    <span className={`w-2 h-2 rounded-full ${isLivePlaying ? 'bg-white animate-ping' : 'bg-rose-500'}`} />
+                    <span className={`absolute w-2 h-2 rounded-full ${isLivePlaying ? 'bg-white' : 'bg-rose-500'}`} />
                   </div>
-                  <span className="font-mono tracking-wider font-extrabold">{isLivePlaying ? `LIVE ${liveSecondsLeft.toFixed(1)}s` : 'LIVE MOTION'}</span>
-                  {isLivePlaying ? (
-                    <Pause className="w-3.5 h-3.5 fill-white stroke-none" />
-                  ) : (
-                    <Play className="w-3.5 h-3.5 fill-amber-300 stroke-none text-amber-300" />
-                  )}
+                  <span className="font-mono tracking-wider font-extrabold text-[11px]">
+                    {isLivePlaying ? `LIVE ${liveSecondsLeft.toFixed(1)}s` : 'LIVE'}
+                  </span>
                 </button>
               </div>
 
@@ -1646,57 +1617,14 @@ export const DetailView: React.FC<DetailViewProps> = ({
                 )}
               </AnimatePresence>
 
-              {/* Left-Aligned Floating Sub Photo Thumbnails - ONLY in 포착점수모드 */}
-              {isPhotoReviewMode && displayObservations && displayObservations.length > 1 && (
+              {/* Unified Gallery-Style Photo Carousel & Representative Photo Control */}
+              {displayObservations && displayObservations.length > 1 && (
                 <div
-                  className="absolute bottom-3 left-4 z-30 pointer-events-auto flex items-center gap-2"
+                  className="absolute bottom-3 left-0 right-0 z-30 pointer-events-auto flex flex-col items-center gap-1.5 px-3"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/60 backdrop-blur-md border border-white/20 shadow-2xl">
-                    {displayObservations.map((obs, idx) => {
-                      const isSelected = selectedObservationIndex === idx;
-                      const isRepPhoto = obs.photoUrl === specimen.originalImage;
-                      return (
-                        <button
-                          key={obs.id || idx}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedObservationIndex(idx);
-                          }}
-                          className={`relative w-10 h-10 rounded-xl overflow-hidden shrink-0 transition-all cursor-pointer shadow-xl border ${
-                            isSelected
-                              ? 'ring-2 ring-emerald-400 border-white opacity-100 scale-105 shadow-2xl'
-                              : 'border-white/30 bg-stone-900/40 opacity-70 hover:opacity-100'
-                          }`}
-                          title={`포토 #${idx + 1}`}
-                        >
-                          <img
-                            src={obs.photoUrl || specimen.originalImage || ''}
-                            alt=""
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                          {/* One-touch Crown badge on thumbnail */}
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSetAsRepresentativeCover(idx);
-                            }}
-                            className={`absolute top-0.5 right-0.5 p-0.5 rounded-full shadow-md transition-transform active:scale-90 cursor-pointer ${
-                              isRepPhoto
-                                ? 'bg-amber-400 text-stone-950 ring-1 ring-amber-300'
-                                : 'bg-black/70 text-stone-300 hover:bg-amber-400 hover:text-stone-950'
-                            }`}
-                            title={isRepPhoto ? '대표' : '대표 지정'}
-                          >
-                            <Crown className={`w-2.5 h-2.5 ${isRepPhoto ? 'fill-stone-950 stroke-none' : ''}`} />
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* Explicit Representative Photo Button for active photo */}
+                  {/* Representative Photo Action / Status Pill */}
+                  <div>
                     {!isRepresentativeCover ? (
                       <button
                         type="button"
@@ -1704,18 +1632,62 @@ export const DetailView: React.FC<DetailViewProps> = ({
                           e.stopPropagation();
                           handleSetAsRepresentativeCover();
                         }}
-                        className="ml-1 px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] font-black shadow-md flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
-                        title="이 사진을 대표 사진으로 지정"
+                        className="px-3.5 py-1 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] font-black shadow-lg border border-amber-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+                        title="현재 보고 있는 사진을 도감 대표 사진으로 지정"
                       >
                         <Crown className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
-                        <span>대표 지정</span>
+                        <span>대표 사진으로 설정</span>
                       </button>
                     ) : (
-                      <div className="ml-1 px-2.5 py-1.5 rounded-xl bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 shrink-0 backdrop-blur-md">
+                      <div className="px-3 py-1 rounded-full bg-stone-900/85 text-amber-300 text-[11px] font-bold border border-amber-400/40 shadow-md flex items-center gap-1.5 backdrop-blur-md">
                         <Crown className="w-3.5 h-3.5 fill-amber-300 stroke-none" />
                         <span>대표 사진</span>
                       </div>
                     )}
+                  </div>
+
+                  {/* Clean Horizontal Thumbnail Strip */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/60 backdrop-blur-md border border-white/20 shadow-2xl max-w-full overflow-x-auto scrollbar-none">
+                    {displayObservations.map((obs, idx) => {
+                      const isSelected = selectedObservationIndex === idx;
+                      const isRepPhoto = obs.photoUrl === specimen.originalImage;
+                      return (
+                        <button
+                          key={`unified-thumb-${obs.id || idx}`}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedObservationIndex(idx);
+                          }}
+                          className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 transition-all cursor-pointer shadow-md border ${
+                            isSelected
+                              ? 'ring-2 ring-white border-transparent opacity-100 scale-105 shadow-xl'
+                              : 'border-white/20 bg-stone-900/60 opacity-65 hover:opacity-100'
+                          }`}
+                          title={`사진 #${idx + 1}`}
+                        >
+                          <img
+                            src={obs.photoUrl || specimen.originalImage || ''}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Crown badge on thumbnail if it is representative photo */}
+                          {isRepPhoto && (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetAsRepresentativeCover(idx);
+                              }}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-amber-400 text-stone-950 shadow-md ring-1 ring-amber-300"
+                              title="도감 대표 사진"
+                            >
+                              <Crown className="w-2.5 h-2.5 fill-stone-950 stroke-none" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -2843,266 +2815,299 @@ export const DetailView: React.FC<DetailViewProps> = ({
                         </span>
                       </div>
 
-                      {/* 핵심 생태 정보 대화형 카드 (실제 데이터 보유 슬롯만 동적 렌더링: 버섯/데이터 미보유 시 3열 이하 균등 분할) */}
-                      <div className="space-y-2.5">
-                        <div className={`grid gap-1.5 sm:gap-2 ${ecoGridColsClass}`}>
-                          {availableEcoSlots.map((slot) => {
-                            const IconComp = slot.icon;
-                            const isSelected = activeEcoSlot === slot.id;
-                            return (
-                              <button
-                                key={slot.id}
-                                type="button"
-                                onClick={() => setActiveEcoSlot(isSelected ? null : slot.id)}
-                                className={`py-2 px-1.5 sm:px-2.5 rounded-xl border text-left flex flex-col justify-center min-w-0 transition-all cursor-pointer select-none active:scale-[0.98] ${
-                                  isSelected
-                                    ? 'bg-stone-900 text-white border-stone-900 shadow-sm ring-2 ring-stone-600/30'
-                                    : 'bg-stone-50/90 border-stone-200/90 hover:bg-stone-100/90 text-stone-900 shadow-2xs'
-                                }`}
-                              >
-                                <div className={`text-[10px] sm:text-[11px] font-bold flex items-center gap-1 leading-tight ${
-                                  isSelected ? 'text-stone-300' : 'text-stone-500'
-                                }`}>
-                                  <IconComp className={`w-3 h-3 shrink-0 ${slot.color}`} />
-                                  <span className="truncate">{slot.label}</span>
-                                </div>
-                                <div className={`font-extrabold text-[11px] sm:text-xs md:text-sm truncate leading-tight truncate mt-0.5 ${
-                                  isSelected ? 'text-white' : 'text-stone-900'
-                                }`} title={slot.val}>
-                                  {slot.val}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      {/* 생태 핵심 슬롯 (상단은 카드 슬롯 디자인, 클릭 시 아까처럼 아래로 펼쳐지며 내부는 표 형식 + 자세한 설명) */}
+                      {(() => {
+                        const ecoSlotsData = [
+                          // 1. 분류 슬롯
+                          {
+                            id: 'slot1' as const,
+                            label: '분류',
+                            val: slot1Val,
+                            icon: Dna,
+                            color: 'text-emerald-600',
+                            badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
+                            activeRing: 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/40',
+                            subtitle: isPlant ? 'Plantae' : isFungi ? 'Fungi' : 'Animalia',
+                            items: [
+                              { label: '계통', value: `${orderStr ? `${orderStr} · ` : ''}${slot1Val}` },
+                              { label: '학명', value: specimen.scientificName || '미확정', isItalic: true },
+                              {
+                                label: '계문',
+                                value: isPlant
+                                  ? '식물계 · 속씨식물문'
+                                  : isFungi
+                                  ? '균계 · 담자균문'
+                                  : isInsect
+                                  ? '동물계 · 절지동물문'
+                                  : isInvertebrate
+                                  ? isMollusk
+                                    ? '동물계 · 연체동물문'
+                                    : '동물계 · 절지동물문'
+                                  : '동물계 · 척삭동물문',
+                              },
+                            ].slice(0, 3),
+                            detailNarrative: isPlant
+                              ? `국제 식물분류체계(APG IV) 및 GBIF Backbone에 정식 등록된 관속식물문 계통군입니다. 엽록소를 통한 독립영양 생활사와 관속계 및 종자 번식 기관의 형태적 상동성을 공유하며, ${(ecoDetail?.family || specimen.family || '해당 과').split('(')[0].trim()}에 체계적으로 귀속되어 있습니다.`
+                              : isBird
+                              ? `국제조류학회(IOC) 및 GBIF에 정식 등재된 ${(ecoDetail?.order || specimen.order || '조류목').split('(')[0].trim()} ${(ecoDetail?.family || specimen.family || '조류과').split('(')[0].trim()} 조류입니다. 경량화된 비행 골격계와 발가락 대생 구조, 깃털 배열 형질을 공유하는 단계통(Monophyletic) 진화군입니다.`
+                              : isInsect
+                              ? `절지동물문 곤충강 계통군으로 머리·가슴·배 3마디 체절과 키틴질 외골격을 갖추고 있으며, ${(ecoDetail?.order || specimen.order || '곤충목').split('(')[0].trim()}의 고유 날개 맥상과 구기 구조를 통해 단계별 계통 분류가 확정되었습니다.`
+                              : isFungi
+                              ? `균계(Kingdom Fungi) 진정균류 계통으로 키틴질 세포벽과 균사체 네트워크를 통해 영양을 흡수하며, 포자 형성 자실체 구조를 바탕으로 분류학적 위치가 지정되어 있습니다.`
+                              : `세계생물다양성정보체계(GBIF) 기준 공인 분류 체계에 따라 ${(ecoDetail?.family || specimen.family || '해당 과').split('(')[0].trim()}에 정식 배속된 야생 생물종입니다.`,
+                            sourceLabel: API_SOURCES.taxonomy.fullLabel,
+                            dbCode: 'GBIF Backbone DB',
+                          },
 
-                        {/* --- 선택된 카드의 상세 내용 확장 박스 (Expanded Detail Box) --- */}
-                        <AnimatePresence>
-                          {activeEcoSlot && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0, y: -4 }}
-                              animate={{ opacity: 1, height: 'auto', y: 0 }}
-                              exit={{ opacity: 0, height: 0, y: -4 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="p-3.5 sm:p-4 rounded-2xl bg-white text-stone-900 border border-stone-200 shadow-sm space-y-3">
-                                {/* Slot 1 내용: 계통 분류 체계 */}
-                                {activeEcoSlot === 'slot1' && (
-                                  <div className="space-y-3">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 border border-stone-200">
-                                        분류: {slot1Val}
-                                      </span>
-                                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                        학명: {specimen.scientificName || '미확정'}
-                                      </span>
-                                    </div>
+                          // 2. 식성/생장/영양/포식 슬롯 (hasSlot2)
+                          ...(hasSlot2
+                            ? [
+                                {
+                                  id: 'slot2' as const,
+                                  label: slot2Label,
+                                  val: slot2Val,
+                                  icon: isPlant ? Leaf : isFungi ? Sparkles : (isArachnid || slot2Label === '포식') ? Target : Utensils,
+                                  color: isPlant ? 'text-emerald-600' : isFungi ? 'text-amber-600' : (isArachnid || slot2Label === '포식') ? 'text-rose-600' : 'text-amber-600',
+                                  badgeBg: isPlant ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80' : 'bg-amber-50 text-amber-800 border-amber-200/80',
+                                  activeRing: isPlant ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/40' : 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/40',
+                                  subtitle: isPlant ? 'Growth' : isFungi ? 'Nutrition' : isArachnid ? 'Predation' : 'Diet',
+                                  items: [
+                                    {
+                                      label: isPlant ? '양분' : isFungi ? '영양' : '먹이',
+                                      value: foodBadge.replace(/^(먹이|양분|영양):\s*/, ''),
+                                    },
+                                    {
+                                      label: isPlant ? '생육' : isFungi ? '유형' : isArachnid ? '포식' : '식성',
+                                      value: slot2Val,
+                                    },
+                                    {
+                                      label: '시기',
+                                      value: seasonBadge.replace(/^시기:\s*/, ''),
+                                    },
+                                  ].slice(0, 3),
+                                  detailNarrative: isPlant
+                                    ? '태양광을 흡수하여 유기물(포도당)을 합성하는 독립영양체(1차 생산자)로서 생태계 기저 에너지를 생산합니다. 뿌리를 통해 수분과 무기 양분을 흡수하고 기공 개폐로 증산작용을 조절하며, 개화기에는 곤충 매개 또는 풍매를 통해 수분을 수행하여 종자를 결실합니다.'
+                                    : isFungi
+                                    ? '체외로 고분자 분해 효소를 분비하여 리그닌과 셀룰로스를 분해한 뒤 단순 당류로 흡수하는 부생(Saprophytic) 영양 방식을 취합니다. 삼림 내 고목과 낙엽을 유기질 토양으로 환원시키는 생태계의 핵심 물질 순환자입니다.'
+                                    : ecoDetail?.dietAndBehavior?.trim() || `${specimen.koreanName}은(는) ${slot2Val}의 섭식 특성을 지니며, 서식지 환경에서 고유한 탐색 및 채이 전술을 구사하여 먹이그물 내에서 생태적 균형을 유지합니다.`,
+                                  sourceLabel: API_SOURCES.dietAndBehavior.fullLabel,
+                                  dbCode: 'GBIF · EOL Feeding',
+                                },
+                              ]
+                            : []),
 
-                                    {/* 계통 체인 */}
-                                    <div className="flex items-center gap-1.5 flex-wrap text-xs bg-stone-50 p-3 rounded-xl border border-stone-200/80">
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">계</span>
-                                        <span className="text-stone-800 font-bold">{isPlant ? '식물계' : isFungi ? '균계' : '동물계'}</span>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">문</span>
-                                        <span className="text-stone-800 font-bold">
-                                          {isPlant ? '관속식물문' : isInsect ? '절지동물문' : isInvertebrate ? (isMollusk ? '연체동물문' : '절지동물문') : '척삭동물문'}
-                                        </span>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">강</span>
-                                        <span className="text-stone-800 font-bold">
-                                          {isPlant ? '관속식물강' : isFungi ? '주름버섯강' : isBird ? '조강(조류)' : isMammal ? '포유강(포유류)' : isInsect ? '곤충강(곤충류)' : isFish ? '조기어강(어류)' : isAmphibian ? '양서강(양서류)' : isReptile ? '파충강(파충류)' : isArachnid ? '거미강(거미류)' : isMollusk ? '복족강(연체)' : isCrustacean ? '연갑강(갑각)' : '분류강'}
-                                        </span>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">목</span>
-                                        <span className="text-stone-800 font-bold">
-                                          {(ecoDetail?.order || specimen.order || '기록목').split('(')[0].trim()}
-                                        </span>
-                                      </div>
-                                      <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-
-                                      <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-stone-200 shadow-2xs">
-                                        <span className="text-[10px] text-stone-400 font-bold">과</span>
-                                        <span className="text-stone-800 font-bold">
-                                          {(ecoDetail?.family || specimen.family || '기록과').split('(')[0].trim()}
-                                        </span>
-                                      </div>
-                                      
-                                    </div>
-
-                                    {/* 상세 설명 */}
-                                    <p className="text-xs sm:text-[13px] text-stone-700 leading-relaxed bg-stone-50/50 p-3 rounded-xl border border-stone-150">
-                                      {isPlant
-                                        ? `국제 식물분류체계(APG IV) 및 GBIF Backbone에 정식 등록된 관속식물문 계통군입니다. 엽록소를 통한 독립영양 생활사와 관속계(물관·체관) 및 종자 번식 기관의 형태적 상동성을 공유하며, ${(ecoDetail?.family || specimen.family || '해당 과').split('(')[0].trim()}에 체계적으로 귀속되어 있습니다.`
-                                        : isBird
-                                        ? `국제조류학회(IOC) 및 GBIF에 정식 등재된 ${(ecoDetail?.order || specimen.order || '조류목').split('(')[0].trim()} ${(ecoDetail?.family || specimen.family || '조류과').split('(')[0].trim()} 조류입니다. 경량화된 비행 골격계와 발가락 대생 구조, 깃털 배열 형질을 공유하는 단계통(Monophyletic) 진화군입니다.`
-                                        : isInsect
-                                        ? `절지동물문 곤충강 계통군으로 머리·가슴·배 3마디 체절과 키틴질 외골격을 갖추고 있으며, ${(ecoDetail?.order || specimen.order || '곤충목').split('(')[0].trim()}의 고유 날개 맥상과 구기 구조를 통해 단계별 계통 분류가 확정되었습니다.`
-                                        : isInvertebrate
-                                        ? isArachnid
-                                          ? `무척추동물(Invertebrates) 절지동물문 거미강 계통군으로 두흉부·복부 2개 체절과 4쌍의 다리, 체외 소화 구기를 갖추고 있으며, ${(ecoDetail?.order || specimen.order || '거미목').split('(')[0].trim()}의 정밀 포식 생태군에 배속되어 있습니다.`
-                                          : isCrustacean
-                                          ? `무척추동물(Invertebrates) 절지동물문 연갑강 계통군으로 키틴질 두흉갑과 집게다리, 수생/저서 적응 호흡계를 갖추고 있으며, ${(ecoDetail?.order || specimen.order || '갑각목').split('(')[0].trim()}으로 분류됩니다.`
-                                          : `무척추동물(Invertebrates) 연체동물문 계통군으로 외투막과 유연한 신체 조직, 패각 보호 구조를 지니며, ${(ecoDetail?.order || specimen.order || '연체목').split('(')[0].trim()}에 배속되어 있습니다.`
-                                        : isFungi
-                                        ? `균계(Kingdom Fungi) 진정균류 계통으로 키틴질 세포벽과 균사체 네트워크를 통해 영양을 흡수하며, 포자 형성 자실체 구조를 바탕으로 분류학적 위치가 지정되어 있습니다.`
-                                        : `세계생물다양성정보체계(GBIF) 기준 공인 분류 체계에 따라 ${(ecoDetail?.family || specimen.family || '해당 과').split('(')[0].trim()}에 정식 배속된 야생 생물종입니다.`}
-                                    </p>
-
-                                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                      <span className="flex items-center gap-1 font-medium">
-                                        <span className="text-emerald-700 font-semibold">데이터 출처:</span>
-                                        <span>{API_SOURCES.taxonomy.fullLabel}</span>
-                                      </span>
-                                      <span className="font-mono text-[10px] text-stone-400">GBIF Backbone DB</span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Slot 2 내용: 생장/식성/영양 */}
-                                {activeEcoSlot === 'slot2' && (() => {
-                                  let dietCategory = (ecoDetail?.diet || specimen.diet || '잡식성').trim();
-                                  if (!dietCategory.endsWith('성') && /식$/.test(dietCategory)) {
-                                    dietCategory += '성';
-                                  }
-                                  if (!dietCategory) dietCategory = '잡식성';
-
-                                  const rawDiet = (ecoDetail?.dietAndBehavior || '').trim();
-                                  let formattedDiet = '';
-
-                                  if (isPlant) {
-                                    formattedDiet = '태양광을 흡수하여 유기물(포도당)을 합성하는 독립영양체(1차 생산자)로서 생태계 기저 에너지를 생산합니다. 뿌리를 통해 수분과 무기 양분을 흡수하고 기공 개폐로 증산작용을 조절하며, 개화기에는 곤충 매개(충매화) 또는 풍매를 통해 꽃가루받이(수분)를 수행하여 종자를 결실하는 생활사를 완성합니다.';
-                                  } else if (isFungi) {
-                                    formattedDiet = '체외로 고분자 분해 효소를 분비하여 리그닌과 셀룰로스를 분해한 뒤 단순 당류로 흡수하는 부생(Saprophytic) 영양 방식을 취합니다. 삼림 내 고목과 낙엽을 유기질 토양으로 환원시키는 생태계 청소부이자 핵심적인 물질 순환자입니다.';
-                                  } else if (rawDiet) {
-                                    const cleaned = rawDiet.replace(/^(으로|로)\s*,?\s*/, '');
-                                    if (/^(잡식성|초식성|육식성|잡식|초식|육식|어식|충식|부식)(으로|로)\s*/.test(cleaned)) {
-                                      formattedDiet = cleaned;
-                                    } else if (/^(잡식성|초식성|육식성|잡식|초식|육식|어식|충식|부식)/.test(cleaned)) {
-                                      formattedDiet = cleaned;
-                                    } else {
-                                      formattedDiet = `${dietCategory}으로, ${cleaned}`;
-                                    }
-                                  } else {
-                                    formattedDiet = `${specimen.koreanName}은(는) ${dietCategory}의 섭식 특성을 지니며, 서식지 환경에서 고유한 탐색 및 채이 전술을 구사하여 먹이그물(Food Web) 내에서 생태적 균형을 유지합니다.`;
-                                  }
-
-                                  return (
-                                    <div className="space-y-3">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 border border-stone-200">
-                                          {foodBadge}
-                                        </span>
-                                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                          {isPlant ? `생육: ${slot2Val}` : isFungi ? `유형: ${slot2Val}` : isArachnid ? `포식: ${slot2Val}` : `식성: ${slot2Val}`}
-                                        </span>
-                                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                          {seasonBadge}
-                                        </span>
-                                      </div>
-
-                                      <p className="text-xs sm:text-[13px] text-stone-700 leading-relaxed bg-stone-50/50 p-3 rounded-xl border border-stone-150">
-                                        {formattedDiet}
-                                      </p>
-
-                                      <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                        <span className="flex items-center gap-1 font-medium">
-                                          <span className="text-emerald-700 font-semibold">데이터 출처:</span>
-                                          <span>{API_SOURCES.dietAndBehavior.fullLabel}</span>
-                                        </span>
-                                        <span className="font-mono text-[10px] text-stone-400">GBIF · EOL DB</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-
-                                {/* Slot 3 내용: 표준 규격 */}
-                                {activeEcoSlot === 'slot3' && hasSlot3 && (
-                                  <div className="space-y-3">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 border border-stone-200">
-                                        크기: {slot3Val}
-                                      </span>
-                                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                        {isBird ? '기준: 부리끝~꼬리끝 전장' : isPlant ? '기준: 지상부 수고 및 엽신' : isFungi ? '기준: 갓 지름 및 대(자루) 길이' : isFish ? '기준: 주둥이~꼬리 전장' : '기준: 성체 표준 계측'}
-                                      </span>
-                                    </div>
-
-                                    <p className="text-xs sm:text-[13px] text-stone-700 leading-relaxed bg-stone-50/50 p-3 rounded-xl border border-stone-150">
-                                      {isBird
-                                        ? `조류의 체구 규격(전장 및 익장)은 비행 공기역학(Aerodynamics)과 익하중(체중 대비 날개 면적 비율)에 직접적인 영향을 미칩니다. ${specimen.koreanName}의 신체 비율은 ${habitatText.includes('도심') || habitatText.includes('숲') ? '나뭇가지와 장애물 사이를 민첩하게 선회하고 급제동하기에 최적화된 기동성' : '에너지를 절약하며 안정적인 활공과 순항 비행을 가능하게 하는 양력 효율'}을 제공하도록 진화했습니다.`
+                          // 3. 규격 슬롯 (hasSlot3 일 때만 노출)
+                          ...(hasSlot3
+                            ? [
+                                {
+                                  id: 'slot3' as const,
+                                  label: '규격',
+                                  val: slot3Val,
+                                  icon: Ruler,
+                                  color: 'text-sky-600',
+                                  badgeBg: 'bg-sky-50 text-sky-800 border-sky-200/80',
+                                  activeRing: 'border-sky-500 ring-2 ring-sky-500/20 bg-sky-50/40',
+                                  subtitle: 'Size',
+                                  items: [
+                                    { label: '크기', value: slot3Val },
+                                    {
+                                      label: '기준',
+                                      value: isBird
+                                        ? '부리끝~꼬리끝 전장'
                                         : isPlant
-                                        ? `지상부 수고와 엽신 크기는 태양광 수광 면적(Light Interception)을 극대화하면서도 강우와 강풍에 따른 줄기 전단 응력을 견디도록 설계된 초형 구조입니다. 줄기의 유연한 섬유질과 잎 표면의 큐티클층은 수분 손실을 억제하고 환경 스트레스에 저항합니다.`
+                                        ? '지상부 수고 및 엽신'
                                         : isFungi
-                                        ? `자실체(갓)의 직경과 대(자루)의 길이는 포자 비산 면적을 확보하고 대기 중 확산을 돕는 생식 기관의 형태학적 규격입니다.`
-                                        : isInsect
-                                        ? `키틴질 외골격의 마디 구조와 체구 비율은 체액의 과도한 증발을 차단하고, 근육 부착 지렛대 원리를 통해 자기 체중의 수십 배에 달하는 순간 가속력과 비행 기동성을 발휘할 수 있게 합니다.`
+                                        ? '갓 지름 및 대(자루) 길이'
                                         : isFish
-                                        ? `유선형 체형과 지느러미 배치는 물속에서의 유체 저항(Drag)을 최소화하고 측선 감각계를 통해 수류와 먹이의 진동을 정밀하게 감지하는 수중 적응형 생체 구조입니다.`
-                                        : isInvertebrate
-                                        ? isArachnid
-                                          ? `거미류 무척추동물의 신체 치수는 체외 소화 효소 분비 효율과 4쌍 다리의 정밀 기동력, 거미줄 포획 망 크기에 직접적인 영향을 미치며, 잠복 사냥과 천적 회피에 최적화되어 있습니다.`
-                                          : isCrustacean
-                                          ? `갑각류 무척추동물의 키틴질 두흉갑과 1쌍의 집게다리, 부채꼴 꼬리마디(Telson)는 바위 틈 은신과 저서 먹이 포획에 최적화되어 있으며, 위협 감지 시 복부를 굴곡시켜 순간적인 역추진 유영을 구사합니다.`
-                                          : `연체동물 무척추동물의 외투막과 패각/유연 신체 규격은 체내 수분 유지와 보식자 방어, 수생/습지 이동성에 최적화된 형태적 진화 결과입니다.`
-                                        : `${specimen.koreanName}의 표준 체구 치수는 서식지 지형에 맞춘 민첩한 이동과 에너지 항상성 유지를 위해 최적화된 형태학적 진화 결과물입니다.`}
-                                    </p>
+                                        ? '주둥이~꼬리 전장'
+                                        : '성체 표준 계측치',
+                                    },
+                                  ].slice(0, 3),
+                                  detailNarrative: isBird
+                                    ? `조류의 체구 규격(전장 및 익장)은 비행 공기역학(Aerodynamics)과 익하중(체중 대비 날개 면적 비율)에 직접적인 영향을 미칩니다. ${specimen.koreanName}의 신체 비율은 민첩한 기동성과 양력 효율을 제공하도록 진화했습니다.`
+                                    : isPlant
+                                    ? `지상부 수고와 엽신 크기는 태양광 수광 면적을 극대화하면서도 강우와 강풍에 따른 줄기 전단 응력을 견디도록 설계된 초형 구조입니다.`
+                                    : isFungi
+                                    ? `자실체(갓)의 직경과 대(자루)의 길이는 포자 비산 면적을 확보하고 대기 중 확산을 돕는 생식 기관의 형태학적 규격입니다.`
+                                    : `${specimen.koreanName}의 표준 체구 치수는 서식지 지형에 맞춘 민첩한 이동과 에너지 항상성 유지를 위해 최적화된 형태학적 진화 결과물입니다.`,
+                                  sourceLabel: API_SOURCES.appearance.fullLabel,
+                                  dbCode: 'GBIF Morphometrics',
+                                },
+                              ]
+                            : []),
 
-                                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                      <span className="flex items-center gap-1 font-medium">
-                                        <span className="text-emerald-700 font-semibold">데이터 출처:</span>
-                                        <span>{API_SOURCES.appearance.fullLabel}</span>
+                          // 4. 생태특화 슬롯 (hasSlot4 일 때만 노출, 버섯은 기본 생략)
+                          ...(hasSlot4
+                            ? [
+                                {
+                                  id: 'slot4' as const,
+                                  label: '특화',
+                                  val: cleanSlot4Val,
+                                  icon: Shield,
+                                  color: 'text-purple-600',
+                                  badgeBg: 'bg-purple-50 text-purple-800 border-purple-200/80',
+                                  activeRing: 'border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/40',
+                                  subtitle: 'Niche',
+                                  items: [
+                                    { label: '천적', value: predatorBadge.replace(/^천적:\s*/, '') },
+                                    { label: '서식', value: habitatBadge.replace(/^서식:\s*/, '') },
+                                    { label: '지위', value: statusBadge.replace(/^(지위|관리):\s*/, '') },
+                                  ].slice(0, 3),
+                                  detailNarrative: globalProfile.slot4DetailedNarrative || `${specimen.koreanName}은(는) 고유 서식 생태계에서 핵심적인 생태 지위를 담당하며 먹이사슬과 생물다양성 보전에 기여합니다.`,
+                                  sourceLabel: globalProfile.slot4DataSource,
+                                  dbCode: globalProfile.slot4DbCode,
+                                },
+                              ]
+                            : []),
+                        ];
+
+                        const activeSlotItem = ecoSlotsData.find(s => s.id === activeEcoSlot);
+                        const gridCols = ecoSlotsData.length === 4
+                          ? 'grid-cols-2 sm:grid-cols-4'
+                          : ecoSlotsData.length === 3
+                          ? 'grid-cols-3'
+                          : ecoSlotsData.length === 2
+                          ? 'grid-cols-2'
+                          : 'grid-cols-1';
+
+                        return (
+                          <div className="space-y-3">
+                            {/* 1. 슬롯 카드 그리드 (전반적인 슬롯은 표 형태가 아닌 깔끔한 카드 버튼 디자인) */}
+                            <div className={`grid ${gridCols} gap-2 sm:gap-2.5`}>
+                              {ecoSlotsData.map((slot) => {
+                                const isSelected = activeEcoSlot === slot.id;
+                                const IconComponent = slot.icon;
+
+                                return (
+                                  <button
+                                    key={slot.id}
+                                    type="button"
+                                    onClick={() => setActiveEcoSlot(isSelected ? null : slot.id)}
+                                    className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group select-none ${
+                                      isSelected
+                                        ? slot.activeRing
+                                        : 'bg-white/95 border-stone-200/90 hover:border-stone-300 hover:bg-stone-50/70 shadow-2xs'
+                                    }`}
+                                    title={`${slot.label} 상세 제원표 및 학술 설명 ${isSelected ? '접기' : '펼치기'}`}
+                                  >
+                                    {/* 상단: 아이콘 + 슬롯 라벨 + 토글 인디케이터 */}
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className="flex items-center gap-1.5">
+                                        <IconComponent className={`w-3.5 h-3.5 ${slot.color}`} />
+                                        <span className="text-[11px] font-black text-stone-600 tracking-tight">
+                                          {slot.label}
+                                        </span>
                                       </span>
-                                      <span className="font-mono text-[10px] text-stone-400">GBIF Morphometrics</span>
+                                      <span className={`text-[10px] flex items-center transition-transform ${isSelected ? 'text-emerald-700 font-bold' : 'text-stone-400 group-hover:text-stone-600'}`}>
+                                        {isSelected ? (
+                                          <ChevronUp className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <ChevronDown className="w-3.5 h-3.5" />
+                                        )}
+                                      </span>
                                     </div>
-                                  </div>
-                                )}
 
-                                {/* Slot 4 내용: 글로벌 생태 지위 및 카테고리 특화 상세 */}
-                                {activeEcoSlot === 'slot4' && hasSlot4 && (
-                                  <div className="space-y-3">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-800 border border-stone-200">
-                                          {predatorBadge}
+                                    {/* 중단: 핵심 값 (크고 굵게 명확히 표시) */}
+                                    <div className="mt-1.5 mb-1">
+                                      <div className="text-xs sm:text-[13px] font-black text-stone-900 leading-snug truncate">
+                                        {slot.val}
+                                      </div>
+                                    </div>
+
+                                    {/* 하단: 서브타이틀 또는 힌트 */}
+                                    <div className="flex items-center justify-between text-[9px] font-mono text-stone-500">
+                                      <span>{slot.subtitle}</span>
+                                      <span className="text-[9px] text-stone-500 font-medium">
+                                        {isSelected ? '접기' : '상세보기'}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* 2. 누르면 아까처럼 아래로 펼쳐지는 상세 영역 (표 형식 제원 + 아래 자세한 학술 설명) */}
+                            <AnimatePresence mode="wait">
+                              {activeSlotItem && (
+                                <motion.div
+                                  key={activeSlotItem.id}
+                                  initial={{ opacity: 0, height: 0, y: -4 }}
+                                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                  exit={{ opacity: 0, height: 0, y: -4 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="rounded-2xl border border-stone-200/90 bg-white p-3.5 sm:p-4 shadow-xs space-y-3">
+                                    {/* 헤더: 선택된 슬롯 제목 및 접기 버튼 */}
+                                    <div className="flex items-center justify-between pb-2 border-b border-stone-150">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`p-1.5 rounded-lg ${activeSlotItem.badgeBg} border`}>
+                                          <activeSlotItem.icon className="w-3.5 h-3.5" />
                                         </span>
-                                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                          {habitatBadge}
-                                        </span>
-                                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
-                                          {statusBadge}
-                                        </span>
+                                        <div>
+                                          <h4 className="text-xs sm:text-sm font-black text-stone-900 flex items-center gap-1.5">
+                                            <span>{activeSlotItem.label} 상세 제원표</span>
+                                            <span className="text-[10px] font-mono font-bold text-stone-500">
+                                              ({activeSlotItem.subtitle})
+                                            </span>
+                                          </h4>
+                                          <p className="text-[10px] text-stone-500 font-medium">
+                                            1행 1항목 표준 규격 및 공인 학술 데이터
+                                          </p>
+                                        </div>
                                       </div>
 
-                                    <p className="text-xs sm:text-[13px] text-stone-700 leading-relaxed bg-stone-50/50 p-3 rounded-xl border border-stone-150">
-                                      {globalProfile.slot4DetailedNarrative}
-                                    </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveEcoSlot(null)}
+                                        className="text-[11px] font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                        title="상세 제원 닫기"
+                                      >
+                                        <span>접기</span>
+                                        <ChevronUp className="w-3 h-3" />
+                                      </button>
+                                    </div>
 
-                                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                      <span className="flex items-center gap-1 font-medium">
-                                        <span className="text-emerald-700 font-semibold">데이터 출처:</span>
-                                        <span className="text-stone-700">{globalProfile.slot4DataSource}</span>
-                                      </span>
-                                      <span className="font-mono text-[10px] text-stone-400">
-                                        {globalProfile.slot4DbCode}
-                                      </span>
+                                    {/* [표 형식 UI] 내용만 계통, 학명, 계문 / 먹이, 식성, 시기 등이 깔끔한 표로 구성 */}
+                                    <div className="rounded-xl border border-stone-200/90 bg-white overflow-hidden divide-y divide-stone-150 text-xs">
+                                      {activeSlotItem.items.map((item, idx) => (
+                                        <div key={idx} className="grid grid-cols-[80px_1fr] sm:grid-cols-[100px_1fr] items-center">
+                                          {/* 좌측: 연한 색상 디자인 라벨 */}
+                                          <div className="px-3 py-2 bg-stone-50/90 border-r border-stone-150 font-bold text-stone-600 text-[11px] font-mono flex items-center">
+                                            {item.label}
+                                          </div>
+                                          {/* 우측: 내용 (1행에 1개의 내용, 최대 3개) */}
+                                          <div className={`px-3 py-2 text-stone-900 font-semibold break-keep ${item.isItalic ? 'italic font-serif' : ''}`}>
+                                            {item.value}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* [아래엔 자세한 설명으로!!] 전문 학술 상세 설명문 & 공식 출처 */}
+                                    <div className="bg-stone-50/80 rounded-xl p-3 border border-stone-200/70 space-y-2">
+                                      <div className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                                        <span>📖</span>
+                                        <span>{activeSlotItem.label} 전문 학술 해설</span>
+                                      </div>
+                                      <p className="text-xs sm:text-[13px] text-stone-700 leading-relaxed font-normal">
+                                        {activeSlotItem.detailNarrative}
+                                      </p>
+                                      <div className="flex items-center justify-between text-[10px] text-stone-400 pt-2 border-t border-stone-200/50">
+                                        <span className="flex items-center gap-1 font-medium text-emerald-800">
+                                          <span>출처:</span>
+                                          <span>{activeSlotItem.sourceLabel}</span>
+                                        </span>
+                                        <span className="font-mono text-stone-400 font-semibold">{activeSlotItem.dbCode}</span>
+                                      </div>
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })()}
 
                       {/* 균류(버섯) 전문 연구기관 확인 안내 배너 */}
                       {isFungi && (

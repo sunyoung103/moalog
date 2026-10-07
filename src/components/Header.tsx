@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       id="app-global-header"
-      className="sticky top-0 z-30 bg-[#E8EFF7]/90 backdrop-blur-md px-4 py-2.5 transition-all select-none shadow-2xs"
+      className="sticky top-0 z-30 bg-[#F5F5F7]/90 backdrop-blur-md px-4 py-2.5 transition-all select-none border-b border-stone-200/60"
     >
       <div className="max-w-lg mx-auto flex items-center justify-between">
         {/* Left: Title, collector tally, and PRO / Trial Badge */}

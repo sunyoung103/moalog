@@ -353,13 +353,13 @@ export function ArchiveView({
   return (
     <div className="px-3.5 py-3.5 pb-24" id="archive-view-container">
       {/* Sub-tabs Toggle Bar: 나의 도감 / 리포트 */}
-      <div className="flex bg-white p-1 rounded-2xl mb-4 shadow-2xs border border-stone-200">
+      <div className="flex galaxy-glass-card p-1 rounded-2xl mb-4">
         <button
           type="button"
           onClick={() => setActiveSubTab('collection')}
           className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'collection'
-              ? 'bg-emerald-800 text-white shadow-2xs'
+              ? 'bg-stone-900 text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -371,7 +371,7 @@ export function ArchiveView({
           onClick={() => setActiveSubTab('report')}
           className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'report'
-              ? 'bg-emerald-800 text-white shadow-2xs'
+              ? 'bg-stone-900 text-white shadow-xs'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
@@ -706,7 +706,7 @@ export function ArchiveView({
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
                         onClick={() => handleSpecimenClick(sp)}
-                        className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-stone-200/60 flex flex-col items-center cursor-pointer relative transition-all hover:shadow-md ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-stone-900' : ''}`}
+                        className={`galaxy-glass-card rounded-2xl p-2.5 flex flex-col items-center cursor-pointer relative transition-all hover:shadow-md active:scale-95 ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-stone-900' : ''}`}
                       >
                         {sp.number && (
                           <span className="absolute top-2 left-2 text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center gap-1">
@@ -773,7 +773,7 @@ export function ArchiveView({
                               onPointerUp={handlePointerUp}
                               onPointerLeave={handlePointerUp}
                               onClick={() => handleSpecimenClick(sp)}
-                              className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-stone-200/60 transition-all cursor-pointer flex flex-col justify-between relative hover:shadow-md ${
+                              className={`galaxy-glass-card rounded-2xl p-2.5 transition-all cursor-pointer flex flex-col justify-between relative hover:shadow-md active:scale-95 ${
                                 isMultiSelectMode && selectedIds.includes(sp.id) ? 'ring-2 ring-stone-900' : ''
                               }`}
                             >
@@ -887,48 +887,51 @@ export function ArchiveView({
               </div>
             )}
 
-            {/* Naturalist Status Summary Journal */}
-            <div className="mt-8 bg-white rounded-3xl p-5 shadow-sm mb-4">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="w-4 h-4 text-stone-800" />
-                <h3 className="text-sm font-bold text-stone-900">나의 생태 관찰 저널</h3>
+            {/* Naturalist Status Summary Journal - Galaxy Glass Style */}
+            <div className="mt-6 galaxy-glass-card rounded-[26px] p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-stone-700" />
+                  <h3 className="text-xs font-bold text-stone-900">생태 관찰 요약</h3>
+                </div>
+                <span className="text-[11px] font-mono font-bold text-stone-600">
+                  도감 {collectionPercentage}% 완성 ({userCollectedList.length}/{totalPossibleSpecies}종)
+                </span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-[#F6F8F6] p-3 rounded-2xl">
-                  <span className="block text-[10px] text-stone-500 font-bold mb-1">총 포착</span>
-                  <div className="flex items-end gap-1">
-                    <span className="text-xl font-black text-stone-900 leading-none">{userCollectedList.length}</span>
-                    <span className="text-[10px] text-stone-500 font-bold mb-0.5">종</span>
+
+              {/* 3 Metric Pods */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
+                  <span className="block text-[10px] text-stone-500 font-medium">총 포착</span>
+                  <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{userCollectedList.length}</span>
+                    <span className="text-[10px] text-stone-500">종</span>
                   </div>
                 </div>
-                
-                <div className="bg-[#F6F8F6] p-3 rounded-2xl">
-                  <span className="block text-[10px] text-stone-500 font-bold mb-1">방문 서식지</span>
-                  <div className="flex items-end gap-1">
-                    <span className="text-xl font-black text-stone-900 leading-none">{userStats.exploredHabitats?.length || 0}</span>
-                    <span className="text-[10px] text-stone-500 font-bold mb-0.5">곳</span>
+
+                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
+                  <span className="block text-[10px] text-stone-500 font-medium">방문 서식지</span>
+                  <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{userStats.exploredHabitats?.length || 0}</span>
+                    <span className="text-[10px] text-stone-500">곳</span>
+                  </div>
+                </div>
+
+                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
+                  <span className="block text-[10px] text-stone-500 font-medium">연속 관찰</span>
+                  <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{userStats.streakDays}</span>
+                    <span className="text-[10px] text-stone-500">일</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#F6F8F6] p-3.5 rounded-2xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-stone-900">
-                    <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    {userStats.streakDays}일 연속 관찰
-                  </span>
-                  <span className="text-[11px] font-bold text-emerald-700">도감 완성률 {collectionPercentage}%</span>
-                </div>
-                <div className="w-full bg-stone-200/60 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${collectionPercentage}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-stone-400 font-mono mt-2 text-right">
-                  생태 백과 {totalPossibleSpecies}종 중 {userCollectedList.length}종 수집
-                </p>
+              {/* Slim Progress Bar */}
+              <div className="w-full bg-stone-200/60 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-stone-900 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${collectionPercentage}%` }}
+                />
               </div>
             </div>
           </div>

@@ -101,7 +101,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     <div
       id="onboarding-fullscreen-window"
-      className="fixed inset-0 z-50 bg-[#E8EFF7] text-stone-900 flex flex-col justify-between overflow-y-auto select-none p-5 sm:p-8"
+      className="fixed inset-0 z-50 bg-[#F5F5F7] text-stone-900 flex flex-col justify-between overflow-y-auto select-none p-5 sm:p-8"
     >
       {/* Top Header Bar with MOALOG Logo */}
       <div className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-3">
