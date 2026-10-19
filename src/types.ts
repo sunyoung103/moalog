@@ -85,6 +85,13 @@ export interface Observation {
   environmentalCharacteristics?: string;
   focusPoint?: { x: number; y: number }; // Relative percentage (0-100) target point on photo
   focusAfMode?: 'Auto Multi-AF' | 'Spot Tap-AF' | 'Macro Focus' | 'Center Eye-AF';
+  isCapturedWithLens?: boolean; // True if captured via real-time Lens (camera), false if imported from album
+  analysisMetadata?: {
+    imageClarityScore: number; // 0-100
+    isTargetInFocus: boolean;
+    featuresDetected: string[]; // e.g., ["wing_pattern", "stamen", "leaf_veins"]
+    recognitionConfidence: number; // 0-100
+  };
 }
 
 export interface Candidate {
@@ -182,4 +189,61 @@ export interface UserStats {
   persona?: NaturalistPersona; // e.g. 'general', 'birder', 'botanist', 'mammalogist', 'entomologist'
   badges: string[];
 }
+
+export const EXPLORER_TITLES = {
+  ko: {
+    levels: [
+      { adj: '초보', level: 1, minBadges: 0 },
+      { adj: '관찰하는', level: 2, minBadges: 3 },
+      { adj: '숙련된', level: 3, minBadges: 6 },
+      { adj: '마스터', level: 4, minBadges: 10 },
+      { adj: '전설의', level: 5, minBadges: 14 },
+    ],
+    personas: {
+      general: { title: '만능 탐험가', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
+      botanist: { title: '식물 탐험가', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
+      plants: { title: '식물 탐험가', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
+      birder: { title: '조류 탐험가', color: 'text-[#778AA6]', hex: '#778AA6' },
+      birds: { title: '조류 탐험가', color: 'text-[#778AA6]', hex: '#778AA6' },
+      entomologist: { title: '곤충 탐험가', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
+      insects: { title: '곤충 탐험가', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
+      mammalogist: { title: '포유류 탐험가', color: 'text-[#C76C2C]', hex: '#C76C2C' },
+      mammals: { title: '포유류 탐험가', color: 'text-[#C76C2C]', hex: '#C76C2C' },
+      herpetologist: { title: '양서파충류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
+      reptiles: { title: '파충류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
+      amphibians: { title: '양서류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
+      ichthyologist: { title: '어류 탐험가', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
+      fishes: { title: '어류 탐험가', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
+      mycologist: { title: '균류 탐험가', color: 'text-[#EF4452]', hex: '#EF4452' },
+      fungi: { title: '균류 탐험가', color: 'text-[#EF4452]', hex: '#EF4452' },
+    }
+  },
+  en: {
+    levels: [
+      { adj: 'Novice', level: 1, minBadges: 0 },
+      { adj: 'Observing', level: 2, minBadges: 3 },
+      { adj: 'Experienced', level: 3, minBadges: 6 },
+      { adj: 'Master', level: 4, minBadges: 10 },
+      { adj: 'Legendary', level: 5, minBadges: 14 },
+    ],
+    personas: {
+      general: { title: 'General Explorer', color: 'text-stone-900', hex: '#18181B' },
+      botanist: { title: 'Plant Explorer', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
+      plants: { title: 'Plant Explorer', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
+      birder: { title: 'Bird Explorer', color: 'text-[#778AA6]', hex: '#778AA6' },
+      birds: { title: 'Bird Explorer', color: 'text-[#778AA6]', hex: '#778AA6' },
+      entomologist: { title: 'Insect Explorer', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
+      insects: { title: 'Insect Explorer', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
+      mammalogist: { title: 'Mammal Explorer', color: 'text-[#C76C2C]', hex: '#C76C2C' },
+      mammals: { title: 'Mammal Explorer', color: 'text-[#C76C2C]', hex: '#C76C2C' },
+      herpetologist: { title: 'Herptile Explorer', color: 'text-[#00A199]', hex: '#00A199' },
+      reptiles: { title: 'Reptile Explorer', color: 'text-[#00A199]', hex: '#00A199' },
+      amphibians: { title: 'Amphibian Explorer', color: 'text-[#00A199]', hex: '#00A199' },
+      ichthyologist: { title: 'Fish Explorer', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
+      fishes: { title: 'Fish Explorer', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
+      mycologist: { title: 'Fungi Explorer', color: 'text-[#EF4452]', hex: '#EF4452' },
+      fungi: { title: 'Fungi Explorer', color: 'text-[#EF4452]', hex: '#EF4452' },
+    }
+  }
+};
 

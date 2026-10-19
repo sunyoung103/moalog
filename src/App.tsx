@@ -13,6 +13,8 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { LoginModal } from './components/LoginModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { HotspotGuideModal } from './components/HotspotGuideModal';
+import { ExportCardModal } from './components/ExportCardModal';
+import { ExplorerQuestModal } from './components/ExplorerQuestModal';
 import { Toast } from './components/Toast';
 
 const DEFAULT_USER_STATS: UserStats = {
@@ -94,6 +96,17 @@ export default function App() {
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isHotspotsOpen, setIsHotspotsOpen] = useState(false);
+  const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
+  const [isGlobalExportCardOpen, setIsGlobalExportCardOpen] = useState(false);
+  const [globalExportSpecimen, setGlobalExportSpecimen] = useState<Specimen | null>(null);
+  const [globalExportMode, setGlobalExportMode] = useState<'specimen' | 'summary'>('specimen');
+
+  const handleOpenExportCard = (sp?: Specimen, mode?: 'specimen' | 'summary') => {
+    setGlobalExportSpecimen(sp || null);
+    setGlobalExportMode(mode || (sp ? 'specimen' : 'summary'));
+    setIsGlobalExportCardOpen(true);
+  };
+
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     try {
       return !localStorage.getItem('moalog_onboarded');
@@ -315,6 +328,7 @@ export default function App() {
             onUpdatePersona={(newPersona) =>
               setUserStats((prev) => ({ ...prev, persona: newPersona }))
             }
+            onOpenQuestModal={() => setIsQuestModalOpen(true)}
           />
         )}
 
@@ -336,8 +350,11 @@ export default function App() {
         {currentTab === 'map' && (
           <FieldMapView
             specimens={activeSpecimens.filter((s) => !s.isPending)}
+            userStats={userStats}
+            onUpdatePersona={(newPersona) => setUserStats((prev) => ({ ...prev, persona: newPersona }))}
             onSelectSpecimen={(sp) => setSelectedSpecimen(sp)}
             onOpenLens={() => setCurrentTab('lens')}
+            onOpenExportCard={handleOpenExportCard}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             isProUser={userStats.isProUser}
@@ -363,12 +380,14 @@ export default function App() {
       {selectedSpecimen && (
         <DetailView
           specimen={selectedSpecimen}
+          allSpecimens={specimens}
           currentPersona={userStats.persona || 'general'}
           onClose={() => setSelectedSpecimen(null)}
           onSelectTaxonomyFilter={handleSelectTaxonomyFilter}
           onAddObservation={handleAddObservation}
           onUpdateSpecimen={handleUpdateSpecimen}
           onDeleteSpecimen={handleDeleteSpecimen}
+          onOpenExportCard={handleOpenExportCard}
           onOpenLens={() => {
             setSelectedSpecimen(null);
             setCurrentTab('lens');
@@ -451,6 +470,25 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Samsung Health Style Glassmorphism Eco Card Modal */}
+      <ExportCardModal
+        isOpen={isGlobalExportCardOpen}
+        onClose={() => setIsGlobalExportCardOpen(false)}
+        specimen={globalExportSpecimen}
+        specimens={specimens}
+        userStats={userStats}
+        initialMode={globalExportMode}
+        onShowToast={showToast}
+      />
+
+      {/* Explorer Quest & Level Modal */}
+      <ExplorerQuestModal
+        isOpen={isQuestModalOpen}
+        onClose={() => setIsQuestModalOpen(false)}
+        userStats={userStats}
+        specimens={specimens}
+      />
     </div>
   );
 }

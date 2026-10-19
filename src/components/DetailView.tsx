@@ -61,12 +61,14 @@ import {
   RefreshCw,
   Bookmark,
   Globe,
+  Share2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPECIES_ECOLOGY_ENCYCLOPEDIA } from '../data/hotspots';
 import { getCuratedBioAudio, playSynthesizedBioSound, stopAnySynthesizedSound, BioAudioTrack } from '../utils/natureAudio';
 import { EditSpecimenModal } from './EditSpecimenModal';
 import { AiChatbotModal } from './AiChatbotModal';
+import { ExportCardModal } from './ExportCardModal';
 import { RadarChart } from './RadarChart';
 import { EcoDexGaugeCard } from './EcoDexGaugeCard';
 import { ObservationTimelineCard } from './ObservationTimelineCard';
@@ -117,6 +119,7 @@ export function toFriendlyCategoryName(raw: string | undefined | null, categoryK
 
 interface DetailViewProps {
   specimen: Specimen;
+  allSpecimens?: Specimen[];
   currentPersona: string;
   onClose: () => void;
   onSelectTaxonomyFilter: (taxon: string) => void;
@@ -124,10 +127,12 @@ interface DetailViewProps {
   onUpdateSpecimen?: (updatedSpecimen: Specimen) => void;
   onDeleteSpecimen?: (specimenId: string) => void;
   onOpenLens?: () => void;
+  onOpenExportCard?: (specimen: Specimen) => void;
 }
 
 export const DetailView: React.FC<DetailViewProps> = ({
   specimen,
+  allSpecimens,
   currentPersona,
   onClose,
   onSelectTaxonomyFilter,
@@ -135,9 +140,13 @@ export const DetailView: React.FC<DetailViewProps> = ({
   onUpdateSpecimen,
   onDeleteSpecimen,
   onOpenLens,
+  onOpenExportCard,
 }) => {
   // Photo selection carousel index
   const [selectedObservationIndex, setSelectedObservationIndex] = useState(0);
+
+  // Local Samsung Health Export Card Modal State
+  const [isLocalExportOpen, setIsLocalExportOpen] = useState(false);
 
   // Active Visual Theme mode (Photo, Sticker, Postal Stamp, Collector Card)
   const [visualTheme, setVisualTheme] = useState<CardVisualTheme>('photo');
@@ -1359,8 +1368,20 @@ export const DetailView: React.FC<DetailViewProps> = ({
                 </button>
               </div>
 
-              {/* Top Right: Explicit Edit Button */}
+              {/* Top Right: Explicit Edit Button & Samsung Health Eco Card */}
               <div className="pointer-events-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenExportCard) onOpenExportCard(specimen);
+                    else setIsLocalExportOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-full bg-emerald-700/90 hover:bg-emerald-600 text-white backdrop-blur-md shadow-lg border border-emerald-400/40 flex items-center gap-1.5 text-xs font-black transition-all active:scale-95 cursor-pointer"
+                  title="삼성 헬스 스타일 생태 카드 공유"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-white" />
+                  <span>생태 카드</span>
+                </button>
                 {onUpdateSpecimen && (
                   <button
                     type="button"
@@ -3562,7 +3583,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
                   const hasFieldNotes = Boolean(
                     ecoDetail?.bestObservationTip?.trim() ||
                     ecoDetail?.photoGearTip?.trim() ||
-                    ecoDetail?.fieldEtiquette?.trim()
+                    ecoDetail?.fieldEtiquette?.trim() ||
+                    ecoDetail?.keyIdentification?.trim()
                   );
 
                   if (!hasFieldNotes && !ecoDetail) {
@@ -3571,243 +3593,182 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
                   return (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                      {/* Left: 현장 탐사 필드노트 가이드 (col-span-6) - bestObservationTip, photoGearTip, fieldEtiquette 중 하나라도 있을 때만 렌더링 */}
+                      {/* Left: 현장 탐사 필드노트 가이드 (col-span-6) - 최대한 간결하고 핵심적인 UI */}
                       {hasFieldNotes && (
-                        <div className="lg:col-span-6 bg-white rounded-2xl p-4 sm:p-5 border border-stone-200 shadow-2xs space-y-4 flex flex-col justify-between">
-                          <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-stone-150 pb-3">
-                        <div>
-                          <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight flex items-center gap-2">
-                            <span>📓 실전 필드노트</span>
-                          </h3>
-                          <p className="text-[11px] text-stone-500 font-medium mt-0.5">
-                            현장 관찰·동정 가이드 및 항목별 공인 생태 API 연동 데이터
-                          </p>
-                        </div>
-                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-300 shrink-0">
-                          탐사 가이드
-                        </span>
-                      </div>
-                      
-                      {/* 1. 실전 구별 포인트 (Key Diagnostic Characters & Morphological Traits) */}
-                      {ecoDetail?.keyIdentification && (
-                        <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200/90 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center text-[10px]">🔍</span>
-                              <span>실전 동정 & 구별 포인트</span>
-                            </span>
-                            <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              형질 동정
-                            </span>
-                          </div>
-                          <p className="text-xs sm:text-sm leading-relaxed text-stone-800 font-medium bg-white p-3 rounded-lg border border-stone-200/70">
-                            {ecoDetail.keyIdentification}
-                          </p>
-                          {/* Item 1 API Source Attribution */}
-                          <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[10.5px] text-stone-500">
-                            <span className="flex items-center gap-1 font-medium truncate mr-2">
-                              <span className="text-emerald-700 font-semibold shrink-0">🏛️ 연동 API:</span>
-                              <span className="text-stone-700 truncate">{API_SOURCES.keyIdentification.fullLabel}</span>
-                            </span>
-                            <span className="text-[9.5px] font-mono text-stone-400 shrink-0">{API_SOURCES.keyIdentification.shortTag}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 2. 현장 관찰 및 촬영 팁 (Field Observation & Photography Guide - only rendered if bestObservationTip is provided) */}
-                      {ecoDetail?.bestObservationTip && ecoDetail.bestObservationTip.trim().length > 0 && (
-                        <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200/90 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px]">📍</span>
-                              <span>현장 관찰 및 생태 촬영 가이드</span>
-                            </span>
-                            {ecoDetail?.categoryFocus && (
-                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded border border-emerald-300">
-                                {ecoDetail.categoryFocus}
+                        <div className="lg:col-span-6 bg-white rounded-3xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs space-y-3.5 flex flex-col justify-between">
+                          <div className="space-y-3">
+                            {/* 헤더 */}
+                            <div className="flex items-center justify-between border-b border-stone-150 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-xs font-black shrink-0 border border-amber-200">
+                                  📓
+                                </span>
+                                <div>
+                                  <h3 className="text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5">
+                                    실전 필드노트
+                                  </h3>
+                                  <p className="text-[10.5px] text-stone-500 font-medium">
+                                    핵심 동정 포인트 & 현장 관찰 가이드
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                핵심 요약
                               </span>
-                            )}
-                          </div>
-                          <p className="text-xs sm:text-sm leading-relaxed text-stone-800 font-medium bg-white p-3 rounded-lg border border-stone-200/70">
-                            {ecoDetail.bestObservationTip}
-                          </p>
-                          {/* Item 2 API Source Attribution */}
-                          <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[10.5px] text-stone-500">
-                            <span className="flex items-center gap-1 font-medium truncate mr-2">
-                              <span className="text-emerald-700 font-semibold shrink-0">🏛️ 연동 API:</span>
-                              <span className="text-stone-700 truncate">{API_SOURCES.observationGuide.fullLabel}</span>
-                            </span>
-                            <span className="text-[9.5px] font-mono text-stone-400 shrink-0">{API_SOURCES.observationGuide.shortTag}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 3. 월별 관찰 빈도 히스토그램 (iNaturalist Live Phenology Histogram) */}
-                      <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200/80 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-sky-100 text-sky-800 flex items-center justify-center text-[10px]">📅</span>
-                            <span>월별 관찰 빈도 (iNaturalist 실시간 집계)</span>
-                          </span>
-                          <span className="text-[11px] font-extrabold text-emerald-800 bg-white/90 px-2.5 py-0.5 rounded-md border border-emerald-300">
-                            {ecoDetail?.seasonality || '사계절 관찰 가능'}
-                          </span>
-                        </div>
-
-                        {/* 12-Month Bar Chart Sparkline directly from authentic iNaturalist API */}
-                        {(() => {
-                          const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-                          const rawCounts: number[] = monthNames.map((_, idx) => (inatHistogram && inatHistogram[idx + 1] !== undefined ? inatHistogram[idx + 1] : 0));
-                          const totalObs = rawCounts.reduce((sum, c) => sum + c, 0);
-                          const maxCount = Math.max(...rawCounts, 0);
-                          const hasRealHist = inatHistogram && totalObs > 0;
-
-                          return (
-                            <div className="space-y-2 pt-1">
-                              <div className="flex items-center justify-between text-[11px] text-emerald-950 font-bold">
-                                <span>월별 글로벌 관찰 레코드:</span>
-                                <span className="text-[10.5px] font-mono text-emerald-800">
-                                  {hasRealHist ? `총 ${totalObs.toLocaleString()}건 집계` : (isLoadingInat ? '데이터 집계 중...' : '기록 대기 중')}
-                                </span>
-                              </div>
-
-                              {hasRealHist ? (
-                                <div className="grid grid-cols-12 gap-1 items-end h-16 px-1 bg-white/95 p-2 rounded-lg border border-emerald-200/80">
-                                  {rawCounts.map((rawCount, idx) => {
-                                    const percentage = maxCount > 0 ? (rawCount / maxCount) : 0;
-                                    const isPeak = rawCount === maxCount && rawCount > 0;
-                                    return (
-                                      <div key={idx} className="flex flex-col items-center h-full justify-end group relative" title={`${monthNames[idx]}: ${rawCount.toLocaleString()}건 글로벌 관찰`}>
-                                        <span className="text-[7.5px] font-mono text-stone-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity mb-0.5 truncate max-w-full">
-                                          {rawCount >= 1000 ? `${(rawCount / 1000).toFixed(1)}k` : rawCount}
-                                        </span>
-                                        <div
-                                          className={`w-full rounded-t transition-all duration-300 ${
-                                            isPeak
-                                              ? 'bg-emerald-800 shadow-xs'
-                                              : percentage >= 0.5
-                                              ? 'bg-emerald-600'
-                                              : percentage > 0.1
-                                              ? 'bg-emerald-400'
-                                              : rawCount > 0
-                                              ? 'bg-emerald-300'
-                                              : 'bg-stone-200'
-                                          }`}
-                                          style={{ height: `${Math.max(6, percentage * 44)}px` }}
-                                        />
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="bg-white/80 p-3 rounded-lg border border-emerald-200 text-center text-xs text-stone-600 font-medium">
-                                  {isLoadingInat ? (
-                                    <span>iNaturalist 월별 관찰 히스토그램 로딩 중...</span>
-                                  ) : (
-                                    <span>해당 종의 iNaturalist 글로벌 월별 관찰 데이터를 동기화 중입니다. (자생 시기: {ecoDetail?.seasonality || '연중'})</span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="grid grid-cols-12 gap-1 text-center font-mono text-[8.5px] text-emerald-900 font-bold pt-0.5">
-                                {monthNames.map((m, idx) => {
-                                  const isPeak = hasRealHist && rawCounts[idx] === maxCount && maxCount > 0;
-                                  return (
-                                    <span key={idx} className={isPeak ? 'text-emerald-950 font-extrabold underline' : ''}>
-                                      {m}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Item 3 API Source Attribution */}
-                              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[10.5px] text-emerald-900">
-                                <span className="flex items-center gap-1 font-medium truncate mr-2">
-                                  <span className="text-emerald-800 font-bold shrink-0">🏛️ 연동 API:</span>
-                                  <span className="text-emerald-950 truncate">{API_SOURCES.phenologyHistogram.fullLabel}</span>
-                                </span>
-                                <span className="text-[9.5px] font-mono text-emerald-700 shrink-0">{API_SOURCES.phenologyHistogram.shortTag}</span>
-                              </div>
                             </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* 4 & 5. 서식 환경 & 주요 관찰 장비 및 에티켓 */}
-                    {(() => {
-                      const hasHabitat = !!(ecoDetail?.habitat?.trim() || specimen.habitatType?.trim());
-                      const hasGear = !!(ecoDetail?.photoGearTip?.trim());
-                      const hasEtiquette = !!(ecoDetail?.fieldEtiquette?.trim());
-                      const hasGearOrEtiquette = hasGear || hasEtiquette;
-
-                      if (!hasHabitat && !hasGearOrEtiquette) return null;
-
-                      return (
-                        <div className={`grid grid-cols-1 ${hasHabitat && hasGearOrEtiquette ? 'sm:grid-cols-2' : ''} gap-2.5 pt-2 border-t border-stone-100`}>
-                          {/* 4. 선호 서식처 환경 */}
-                          {hasHabitat && (
-                            <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200/80 space-y-2 flex flex-col justify-between">
-                              <div className="space-y-1.5">
-                                <span className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                                  <span>🌿 선호 서식처 환경</span>
-                                </span>
-                                <p className="text-[11px] text-stone-700 leading-relaxed font-medium bg-white p-2.5 rounded-lg border border-stone-200/60">
-                                  {ecoDetail?.habitat?.trim() || specimen.habitatType}
+                            
+                            {/* 1. 핵심 구별 포인트 (Key Diagnostic Characters) - 돋보이는 엠버 콜아웃 */}
+                            {ecoDetail?.keyIdentification && (
+                              <div className="bg-amber-50/70 border-l-4 border-l-amber-500 border border-amber-200/70 rounded-xl p-3 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                                    <span>🔍 핵심 구별 포인트</span>
+                                  </span>
+                                  <span className="text-[9.5px] font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded">
+                                    형질 동정
+                                  </span>
+                                </div>
+                                <p className="text-xs sm:text-[13px] leading-relaxed text-stone-800 font-medium">
+                                  {ecoDetail.keyIdentification}
                                 </p>
                               </div>
-                              {/* Item 4 API Source Attribution */}
-                              <div className="pt-1.5 border-t border-stone-200/60 flex items-center justify-between text-[10px] text-stone-500">
-                                <span className="flex items-center gap-1 font-medium truncate mr-1">
-                                  <span className="text-emerald-700 font-semibold shrink-0">🏛️ 출처:</span>
-                                  <span className="text-stone-700 truncate">{API_SOURCES.habitatField.fullLabel}</span>
-                                </span>
-                                <span className="text-[9px] font-mono text-stone-400 shrink-0">{API_SOURCES.habitatField.shortTag}</span>
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* 5. 추천 탐사 장비 & 야생 에티켓 (only if either gear or etiquette exists) */}
-                          {hasGearOrEtiquette && (
-                            <div className="bg-stone-50/90 p-3.5 rounded-xl border border-stone-200/80 space-y-2 flex flex-col justify-between">
-                              <div className="space-y-1.5">
-                                <span className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                                  <span>🎒 추천 탐사 장비 & 야생 에티켓</span>
-                                </span>
-                                <div className="text-[11px] text-stone-700 leading-relaxed font-medium space-y-1 bg-white p-2.5 rounded-lg border border-stone-200/60">
-                                  {hasGear && (
-                                    <p><strong className="text-stone-900">장비:</strong> {ecoDetail!.photoGearTip}</p>
-                                  )}
-                                  {hasEtiquette && (
-                                    <p><strong className="text-stone-900">에티켓:</strong> {ecoDetail!.fieldEtiquette}</p>
+                            {/* 2. 현장 관찰 & 촬영 팁 (Best Observation Tip) - 상쾌한 에메랄드 콜아웃 */}
+                            {ecoDetail?.bestObservationTip && ecoDetail.bestObservationTip.trim().length > 0 && (
+                              <div className="bg-emerald-50/60 border-l-4 border-l-emerald-600 border border-emerald-200/70 rounded-xl p-3 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                                    <span>📸 현장 관찰 & 촬영 팁</span>
+                                  </span>
+                                  {ecoDetail?.categoryFocus && (
+                                    <span className="text-[9.5px] font-bold text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-200/80">
+                                      {ecoDetail.categoryFocus}
+                                    </span>
                                   )}
                                 </div>
+                                <p className="text-xs sm:text-[13px] leading-relaxed text-stone-800 font-medium">
+                                  {ecoDetail.bestObservationTip}
+                                </p>
                               </div>
-                              {/* Item 5 API Source Attribution */}
-                              <div className="pt-1.5 border-t border-stone-200/60 flex items-center justify-between text-[10px] text-stone-500">
-                                <span className="flex items-center gap-1 font-medium truncate mr-1">
-                                  <span className="text-emerald-700 font-semibold shrink-0">🏛️ 출처:</span>
-                                  <span className="text-stone-700 truncate">{API_SOURCES.fieldEtiquette.fullLabel}</span>
-                                </span>
-                                <span className="text-[9px] font-mono text-stone-400 shrink-0">{API_SOURCES.fieldEtiquette.shortTag}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                            )}
 
-                    {/* General Summary Footer of Field Notes Card */}
-                    <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
-                      <span className="flex items-center gap-1 font-medium">
-                        <span className="text-emerald-700 font-semibold">🏛️ 필드노트 종합:</span>
-                        <span className="text-stone-700">{API_SOURCES.fieldNotes.fullLabel}</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-stone-400 shrink-0">GBIF · iNat · NIE</span>
-                    </div>
-                  </div>
-                )}
+                            {/* 3. 출현 시기 & 12개월 관찰 빈도 (iNaturalist Live Phenology Histogram) */}
+                            <div className="bg-stone-50/90 border border-stone-200/80 rounded-xl p-3 space-y-2">
+                              {(() => {
+                                const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+                                const rawCounts: number[] = monthNames.map((_, idx) => (inatHistogram && inatHistogram[idx + 1] !== undefined ? inatHistogram[idx + 1] : 0));
+                                const totalObs = rawCounts.reduce((sum, c) => sum + c, 0);
+                                const maxCount = Math.max(...rawCounts, 0);
+                                const hasRealHist = inatHistogram && totalObs > 0;
+
+                                return (
+                                  <>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                                        <span className="text-stone-500 font-medium text-[11px]">📅 출현 시기:</span>
+                                        <span className="text-emerald-800 font-black">
+                                          {ecoDetail?.seasonality || '사계절 관찰 가능'}
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] font-mono text-stone-500 font-medium">
+                                        {hasRealHist ? `글로벌 ${totalObs.toLocaleString()}건` : (isLoadingInat ? '집계 중...' : '기록 대기')}
+                                      </span>
+                                    </div>
+
+                                    {/* 12-Month Micro Sparkline */}
+                                    <div className="grid grid-cols-12 gap-1 items-end h-10 px-1.5 py-1 bg-white rounded-lg border border-stone-200/60">
+                                      {rawCounts.map((rawCount, idx) => {
+                                        const percentage = maxCount > 0 ? (rawCount / maxCount) : 0;
+                                        const isPeak = rawCount === maxCount && rawCount > 0;
+                                        return (
+                                          <div key={idx} className="flex flex-col items-center h-full justify-end group relative" title={`${monthNames[idx]}: ${rawCount.toLocaleString()}건`}>
+                                            <div
+                                              className={`w-full rounded-xs transition-all duration-300 ${
+                                                isPeak
+                                                  ? 'bg-emerald-700 ring-1 ring-emerald-500'
+                                                  : percentage >= 0.5
+                                                  ? 'bg-emerald-500'
+                                                  : percentage > 0.1
+                                                  ? 'bg-emerald-300'
+                                                  : rawCount > 0
+                                                  ? 'bg-emerald-200'
+                                                  : 'bg-stone-200'
+                                              }`}
+                                              style={{ height: `${Math.max(4, percentage * 28)}px` }}
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    <div className="grid grid-cols-12 gap-1 text-center font-mono text-[8px] text-stone-400">
+                                      {monthNames.map((_, idx) => {
+                                        const isPeak = hasRealHist && rawCounts[idx] === maxCount && maxCount > 0;
+                                        return (
+                                          <span key={idx} className={isPeak ? 'text-emerald-800 font-black' : ''}>
+                                            {idx + 1}월
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+
+                            {/* 4 & 5. 서식처 & 장비/에티켓 (컴팩트 2열 그리드) */}
+                            {(() => {
+                              const hasHabitat = !!(ecoDetail?.habitat?.trim() || specimen.habitatType?.trim());
+                              const hasGear = !!(ecoDetail?.photoGearTip?.trim());
+                              const hasEtiquette = !!(ecoDetail?.fieldEtiquette?.trim());
+                              const hasGearOrEtiquette = hasGear || hasEtiquette;
+
+                              if (!hasHabitat && !hasGearOrEtiquette) return null;
+
+                              return (
+                                <div className={`grid grid-cols-1 ${hasHabitat && hasGearOrEtiquette ? 'sm:grid-cols-2' : ''} gap-2`}>
+                                  {hasHabitat && (
+                                    <div className="bg-stone-50/80 border border-stone-200/70 rounded-xl p-2.5 space-y-0.5">
+                                      <span className="text-[11px] font-bold text-stone-900 flex items-center gap-1">
+                                        <span>🌿 선호 서식처</span>
+                                      </span>
+                                      <p className="text-[11px] text-stone-700 font-medium leading-relaxed">
+                                        {ecoDetail?.habitat?.trim() || specimen.habitatType}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {hasGearOrEtiquette && (
+                                    <div className="bg-stone-50/80 border border-stone-200/70 rounded-xl p-2.5 space-y-0.5">
+                                      <span className="text-[11px] font-bold text-stone-900 flex items-center gap-1">
+                                        <span>🎒 장비 & 에티켓</span>
+                                      </span>
+                                      <div className="text-[11px] text-stone-700 font-medium leading-relaxed space-y-0.5">
+                                        {hasGear && (
+                                          <p><strong className="text-stone-900">장비:</strong> {ecoDetail!.photoGearTip}</p>
+                                        )}
+                                        {hasEtiquette && (
+                                          <p><strong className="text-stone-900">에티켓:</strong> {ecoDetail!.fieldEtiquette}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          {/* 단일 통합 공인 데이터 출처 푸터 */}
+                          <div className="pt-2.5 border-t border-stone-200/70 flex items-center justify-between text-[10.5px] text-stone-500">
+                            <span className="flex items-center gap-1 font-medium">
+                              <span className="text-emerald-700 font-semibold">🏛️ 공인 데이터:</span>
+                              <span className="text-stone-600">NIBR · iNat · NIE · GBIF</span>
+                            </span>
+                            <span className="text-[9.5px] font-mono text-stone-400 shrink-0">실시간 연동</span>
+                          </div>
+                        </div>
+                      )}
 
                 {/* Right: Pokédex Eco-Gauge Stat Card (포켓몬 도감 스타일 에코 게이지 카드) */}
                 {ecoDetail && (
@@ -3999,19 +3960,35 @@ export const DetailView: React.FC<DetailViewProps> = ({
             </div>
           </div>
 
-          {/* Floating AI Naturalist Button */}
-          <div className="fixed bottom-4 right-4 z-40">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={() => setIsAiChatOpen(true)}
-              className="flex items-center gap-2 px-4 py-3 rounded-full bg-stone-900 hover:bg-emerald-800 text-white shadow-xl border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer"
-              title="AI 생태학자에게 질문하기"
-            >
-              <Bot className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold">AI 생태학자</span>
-            </motion.button>
+          {/* Floating Actions: Samsung Health Eco Card & AI Naturalist */}
+          <div className="fixed bottom-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none max-w-lg mx-auto">
+            <div className="pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenExportCard) onOpenExportCard(specimen);
+                  else setIsLocalExportOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-emerald-700/95 hover:bg-emerald-600 text-white shadow-xl border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer text-xs font-black"
+                title="삼성 헬스 생태 카드 공유"
+              >
+                <Share2 className="w-3.5 h-3.5 text-white" />
+                <span>삼성 헬스 카드</span>
+              </button>
+            </div>
+            <div className="pointer-events-auto">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                type="button"
+                onClick={() => setIsAiChatOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900/95 hover:bg-stone-800 text-white shadow-xl border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                title="AI 생태학자에게 질문하기"
+              >
+                <Bot className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold">AI 생태학자</span>
+              </motion.button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -4261,6 +4238,16 @@ export const DetailView: React.FC<DetailViewProps> = ({
         isOpen={isInfoModalOpen}
         onClose={() => setIsInfoModalOpen(false)}
         data={infoModalData}
+      />
+
+      {/* Samsung Health Style Eco Card Modal */}
+      <ExportCardModal
+        isOpen={isLocalExportOpen}
+        onClose={() => setIsLocalExportOpen(false)}
+        specimen={specimen}
+        specimens={allSpecimens && allSpecimens.length > 0 ? allSpecimens : [specimen]}
+        userStats={{ streakDays: 5, badges: ['badge-01'] } as any}
+        initialMode="specimen"
       />
     </>
   );

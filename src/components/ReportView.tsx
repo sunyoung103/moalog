@@ -33,10 +33,14 @@ import {
   UserCheck,
   Droplets,
   Fish,
+  Tag,
+  Hash,
+  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Specimen, UserStats, NaturalistPersona } from '../types';
+import { Specimen, UserStats, NaturalistPersona, EXPLORER_TITLES } from '../types';
 import { NATURALIST_PERSONAS, SPECIES_ECOLOGY_ENCYCLOPEDIA } from '../data/hotspots';
+import { evaluateExplorerBadges, EvaluatedBadge } from '../data/badges';
 import { RecentSpecimenBasket } from './RecentSpecimenBasket';
 
 interface ReportViewProps {
@@ -46,19 +50,7 @@ interface ReportViewProps {
   onSelectSpecimen: (sp: Specimen) => void;
   onOpenLens: () => void;
   onOpenHotspots: () => void;
-}
-
-interface BadgeItem {
-  id: string;
-  title: string;
-  icon: string;
-  desc: string;
-  category: string;
-  currentProgress: number;
-  targetProgress: number;
-  progressUnit: string;
-  tip: string;
-  unlockedAt?: string;
+  onOpenQuestModal: () => void;
 }
 
 export const ReportView: React.FC<ReportViewProps> = ({
@@ -67,9 +59,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
   onUpdatePersona,
   onSelectSpecimen,
   onOpenLens,
+  onOpenQuestModal,
 }) => {
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
-  const [selectedBadgeModal, setSelectedBadgeModal] = useState<BadgeItem | null>(null);
+  const [selectedBadgeModal, setSelectedBadgeModal] = useState<EvaluatedBadge | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
 
   const safeSpecimens = specimens || [];
@@ -106,6 +99,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
   const introducedCount = collectedList.length - nativeCount;
   const nativePctCalc = Math.round((nativeCount / (collectedList.length || 1)) * 100);
+  const totalAvailableSpecimens = specimens.filter((s) => !s.isDeleted).length || 1;
+  const collectionRatePct = Math.round((collectedList.length / totalAvailableSpecimens) * 100);
   const lcCount = collectedList.length;
 
   // Habitat Distribution with domain-appropriate natural tone colors
@@ -116,153 +111,36 @@ export const ReportView: React.FC<ReportViewProps> = ({
     { name: '인가/화단/초지', pct: 10, count: Math.round(collectedList.length * 0.10), color: '#d97706', bgClass: 'bg-amber-600' },
   ];
 
-  // Base Badges logic (Expanded to 12 milestones including locked challenges)
   const streakDays = userStats.streakDays || 5;
 
-  const ALL_BADGES: BadgeItem[] = [
-    {
-      id: 'badge-01',
-      title: '첫 생물 포착자',
-      icon: '🌟',
-      desc: '첫 번째 생태 도감 표본을 직접 촬영하여 등록 완료',
-      category: '입문 탐험',
-      currentProgress: Math.min(1, collectedList.length),
-      targetProgress: 1,
-      progressUnit: '종 수집',
-      tip: '카메라 렌즈로 주변의 야생화나 조류를 촬영해 첫 표본을 등록해 보세요.',
-      unlockedAt: collectedList.length >= 1 ? '2026.08.10' : undefined,
-    },
-    {
-      id: 'badge-02',
-      title: '5일 연속 관찰가',
-      icon: '🔥',
-      desc: '5일 연속으로 자연 생태를 관찰하고 관찰 기록을 작성',
-      category: '연속 기록',
-      currentProgress: Math.min(5, streakDays),
-      targetProgress: 5,
-      progressUnit: '일 연속',
-      tip: '매일 한 번씩 포착 렌즈로 주변 생태를 기록하여 연승을 유지하세요.',
-      unlockedAt: streakDays >= 5 ? '2026.08.15' : undefined,
-    },
-    {
-      id: 'badge-03',
-      title: '식물학 큐레이터',
-      icon: '🌿',
-      desc: '야생화, 교목, 틈새 식물 등 식물 표본 3종 이상 수집',
-      category: '식물학',
-      currentProgress: Math.min(3, plantCount),
-      targetProgress: 3,
-      progressUnit: '종 수집',
-      tip: '길가 야생화나 공원 나무의 잎/꽃을 촬영하여 도감에 수집해 보세요.',
-      unlockedAt: plantCount >= 3 ? '2026.08.18' : undefined,
-    },
-    {
-      id: 'badge-04',
-      title: '도시 탐조가 (Birder)',
-      icon: '🪶',
-      desc: '도심 텃새 및 야생 조류 표본 2종 이상 관찰 및 등록',
-      category: '조류학',
-      currentProgress: Math.min(2, birdCount),
-      targetProgress: 2,
-      progressUnit: '종 수집',
-      tip: '참새, 까치, 박새, 직박구리 등 주변 조류를 관찰해 보세요.',
-      unlockedAt: birdCount >= 2 ? '2026.08.20' : undefined,
-    },
-    {
-      id: 'badge-05',
-      title: '미소 곤충 탐험가',
-      icon: '🐞',
-      desc: '꽃과 수풀에 서식하는 나비, 벌, 무당벌레 등 곤충 표본 2종 이상 수집',
-      category: '곤충학',
-      currentProgress: Math.min(2, insectCount),
-      targetProgress: 2,
-      progressUnit: '종 수집',
-      tip: '화단 주변에서 활동하는 수분 곤충이나 잎 위의 딱정벌레를 매크로 촬영해 보세요.',
-      unlockedAt: insectCount >= 2 ? '2026.08.22' : undefined,
-    },
-    {
-      id: 'badge-06',
-      title: '생태 보전 기록자',
-      icon: '🛡️',
-      desc: '보호종 또는 관심대상(LC) 야생 생물 5종 이상 등록',
-      category: '생태보전',
-      currentProgress: Math.min(5, collectedList.length),
-      targetProgress: 5,
-      progressUnit: '종 등록',
-      tip: '다양한 야생 생물의 학명과 보전 지위를 확인하며 도감을 채워보세요.',
-      unlockedAt: collectedList.length >= 5 ? '2026.08.25' : undefined,
-    },
-    {
-      id: 'badge-07',
-      title: '다중 서식지 정복자',
-      icon: '🗺️',
-      desc: '도심 공원, 수변, 산림 등 3곳 이상의 서로 다른 서식지 탐사',
-      category: '필드탐사',
-      currentProgress: Math.min(3, 4),
-      targetProgress: 3,
-      progressUnit: '개 서식지',
-      tip: '서식지 지도를 열고 새로운 환경의 핫스팟을 방문하여 표본을 수집하세요.',
-      unlockedAt: '2026.08.24',
-    },
-    {
-      id: 'badge-08',
-      title: '연간 생애주기 기록자',
-      icon: '🍂',
-      desc: '기후대별 생태 주기 변화를 기록하고 12개 이상의 관찰 로그 작성',
-      category: '생태주기',
-      currentProgress: Math.min(12, 14),
-      targetProgress: 12,
-      progressUnit: '회 기록',
-      tip: '활동기, 번식기, 휴면기 등 시기별로 표본에 추가 관찰 기록을 남겨보세요.',
-      unlockedAt: '2026.08.28',
-    },
-    {
-      id: 'badge-09',
-      title: '글로벌 생물다양성 마스터',
-      icon: '🌍',
-      desc: '총 10종 이상의 생물 표본을 수집하여 글로벌 바이오매스 완성',
-      category: '마일스톤',
-      currentProgress: Math.min(10, collectedList.length),
-      targetProgress: 10,
-      progressUnit: '종 등록',
-      tip: '식물, 조류, 곤충, 포유류 등 다양한 분류군을 고르게 탐색하세요.',
-    },
-    {
-      id: 'badge-10',
-      title: '포유류 야생 트래커',
-      icon: '🐾',
-      desc: '다람쥐, 청설모 등 포유류 생물 2종 이상을 추적하여 등록',
-      category: '포유류학',
-      currentProgress: Math.min(2, mammalCount),
-      targetProgress: 2,
-      progressUnit: '종 수집',
-      tip: '도심 공원이나 산림 수목 지대에서 포유류의 은신처와 먹이 활동을 포착하세요.',
-    },
-    {
-      id: 'badge-11',
-      title: '새벽/황혼 박명 탐험가',
-      icon: '🌅',
-      desc: '일출 또는 일몰 전후 1시간 골든아워에 생물 3회 이상 포착',
-      category: '특수시간대',
-      currentProgress: 1,
-      targetProgress: 3,
-      progressUnit: '회 포착',
-      tip: '조류의 아침 코러스 시간대나 곤충의 일몰 전 황금빛 광선에서 촬영하세요.',
-    },
-    {
-      id: 'badge-12',
-      title: '마이크로 접사 마스터',
-      icon: '🔬',
-      desc: '식물의 꽃술/잎맥 또는 곤충의 날개/더듬이 5회 이상 초정밀 접사',
-      category: '촬영기법',
-      currentProgress: 3,
-      targetProgress: 5,
-      progressUnit: '회 접사',
-      tip: '렌즈를 피사체에 10cm 이내로 근접시켜 세부 미세구조를 담아내세요.',
-    },
-  ];
+  const ALL_BADGES = React.useMemo(() => {
+    return evaluateExplorerBadges(specimens, userStats);
+  }, [specimens, userStats]);
 
-  const unlockedBadgesCount = ALL_BADGES.filter((b) => b.currentProgress >= b.targetProgress).length;
+  const unlockedBadgesCount = ALL_BADGES.filter((b) => b.isUnlocked).length;
+
+  const levelIdx = 
+    unlockedBadgesCount >= 14 ? 4 :
+    unlockedBadgesCount >= 10 ? 3 :
+    unlockedBadgesCount >= 6 ? 2 :
+    unlockedBadgesCount >= 3 ? 1 : 0;
+  
+  const lang = 'ko'; 
+  
+  const currentPersona = NATURALIST_PERSONAS[userStats?.persona || 'general'] || NATURALIST_PERSONAS.general;
+  const currentPersonaColor = currentPersona.accentColor || '#6B9F0A';
+
+  const personaKey = (userStats.persona as keyof typeof EXPLORER_TITLES.ko.personas) || 'general';
+  
+  const personaData = React.useMemo(() => 
+    EXPLORER_TITLES[lang].personas[personaKey] || EXPLORER_TITLES[lang].personas.general,
+    [personaKey]
+  );
+  
+  const levelData = React.useMemo(() => 
+    EXPLORER_TITLES[lang].levels[levelIdx] || EXPLORER_TITLES[lang].levels[0],
+    [levelIdx]
+  );
 
   // 2. DYNAMIC PERSONAL OBSERVATION ARCHETYPE
   let derivedPersonaKey: NaturalistPersona = 'general';
@@ -288,9 +166,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
   // Filter Badges list
   const filteredBadges = ALL_BADGES.filter((b) => {
-    const isUnlocked = b.currentProgress >= b.targetProgress;
-    if (badgeFilter === 'unlocked') return isUnlocked;
-    if (badgeFilter === 'locked') return !isUnlocked;
+    if (badgeFilter === 'unlocked') return b.isUnlocked;
+    if (badgeFilter === 'locked') return !b.isUnlocked;
     return true;
   });
 
@@ -301,8 +178,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '식물',
       count: plantCount,
       pct: plantPct,
-      color: '#10B981',
-      bgClass: 'bg-emerald-500',
+      color: '#6B9F0A',
+      bgClass: 'bg-[#6B9F0A]',
       icon: Leaf,
     },
     {
@@ -310,8 +187,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '조류',
       count: birdCount,
       pct: birdPct,
-      color: '#0284C7',
-      bgClass: 'bg-sky-500',
+      color: '#778AA6',
+      bgClass: 'bg-[#778AA6]',
       icon: Feather,
     },
     {
@@ -319,8 +196,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '곤충',
       count: insectCount,
       pct: insectPct,
-      color: '#D97706',
-      bgClass: 'bg-amber-500',
+      color: '#DFAD3E',
+      bgClass: 'bg-[#DFAD3E]',
       icon: Bug,
     },
     {
@@ -328,8 +205,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '포유류',
       count: mammalCount,
       pct: mammalPct,
-      color: '#8B5CF6',
-      bgClass: 'bg-purple-500',
+      color: '#C76C2C',
+      bgClass: 'bg-[#C76C2C]',
       icon: Cat,
     },
     {
@@ -337,8 +214,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '균류',
       count: fungiCount,
       pct: fungiPct,
-      color: '#F97316',
-      bgClass: 'bg-orange-500',
+      color: '#EF4452',
+      bgClass: 'bg-[#EF4452]',
       icon: Sparkles,
     },
     {
@@ -346,8 +223,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '양서·파충류',
       count: herpCount,
       pct: herpPct,
-      color: '#14B8A6',
-      bgClass: 'bg-teal-500',
+      color: '#00A199',
+      bgClass: 'bg-[#00A199]',
       icon: Droplets,
     },
     {
@@ -355,8 +232,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '어류',
       count: fishCount,
       pct: fishPct,
-      color: '#3B82F6',
-      bgClass: 'bg-blue-500',
+      color: '#1E6EF4',
+      bgClass: 'bg-[#1E6EF4]',
       icon: Fish,
     },
     {
@@ -364,40 +241,172 @@ export const ReportView: React.FC<ReportViewProps> = ({
       name: '무척추·기타',
       count: invertCount,
       pct: invertPct,
-      color: '#64748B',
-      bgClass: 'bg-slate-500',
+      color: '#DD928C',
+      bgClass: 'bg-[#DD928C]',
       icon: Layers,
     },
   ];
 
-  // Dynamic monthly observations aggregation (May ~ Oct 2026 - Recent 6 Months)
-  const monthCounts: Record<string, number> = {
-    '5월': 0, '6월': 0, '7월': 0, '8월': 0, '9월': 0, '10월': 0,
-  };
+  // =========================================================================
+  // Dynamic monthly observations aggregation (Current Month & Recent 6 Months)
+  // Overall vs Custom Tendency (2 classifications only: 맞춤 성향 vs 기타 탐사)
+  // =========================================================================
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+
+  const isGeneralPersona = (userStats?.persona || 'general') === 'general' || currentPersona.id === 'general';
+  const personaRecommendedCats = currentPersona?.recommendedCategories || [];
+
+  // Generate 6 month slots ending at current month
+  const recent6MonthsSlots = Array.from({ length: 6 }, (_, idx) => {
+    const offsetMonths = 5 - idx;
+    const slotDate = new Date(currentYear, currentMonth - 1 - offsetMonths, 1);
+    const y = slotDate.getFullYear();
+    const m = slotDate.getMonth() + 1;
+    const ymKey = `${y}.${String(m).padStart(2, '0')}`;
+    const monthLabel = `${m}월`;
+    const isCurrent = offsetMonths === 0;
+
+    return {
+      ymKey,
+      y,
+      m,
+      monthLabel,
+      isCurrent,
+      label: isCurrent ? '이번달' : undefined,
+    };
+  });
+
+  const monthObsCounts: Record<string, number> = {};
+  const monthPersonaCounts: Record<string, number> = {};
+  recent6MonthsSlots.forEach((s) => {
+    monthObsCounts[s.ymKey] = 0;
+    monthPersonaCounts[s.ymKey] = 0;
+  });
+
+  let totalRecent6Months = 0;
+  let totalPersona6Months = 0;
+  let earliestObsDate: string | null = null;
+
   collectedList.forEach((sp) => {
+    const isPersonaMatch = personaRecommendedCats.includes(sp.category);
     sp.observations?.forEach((obs) => {
-      const match = obs.date?.match(/\d{4}\.(\d{2})/);
-      if (match) {
-        const m = parseInt(match[1], 10);
-        const k = `${m}월`;
-        if (monthCounts[k] !== undefined) {
-          monthCounts[k] += 1;
+      if (!obs.date) return;
+      const m = obs.date.replace(/-/g, '.').match(/(\d{4})\.(\d{1,2})/);
+      if (m) {
+        const ym = `${m[1]}.${m[2].padStart(2, '0')}`;
+        if (!earliestObsDate || ym < earliestObsDate) {
+          earliestObsDate = ym;
+        }
+        if (monthObsCounts[ym] !== undefined) {
+          monthObsCounts[ym] += 1;
+          totalRecent6Months += 1;
+          if (isPersonaMatch) {
+            monthPersonaCounts[ym] += 1;
+            totalPersona6Months += 1;
+          }
         }
       }
     });
   });
 
-  const recent6MonthsData = [
-    { month: '5월', count: Math.max(monthCounts['5월'], Math.max(2, Math.round(collectedList.length * 0.18))), isCurrent: false },
-    { month: '6월', count: Math.max(monthCounts['6월'], Math.max(4, Math.round(collectedList.length * 0.32))), isCurrent: false },
-    { month: '7월', count: Math.max(monthCounts['7월'], Math.max(6, Math.round(collectedList.length * 0.50))), isCurrent: false },
-    { month: '8월', count: Math.max(monthCounts['8월'], Math.max(8, Math.round(collectedList.length * 0.70))), isCurrent: false },
-    { month: '9월', count: Math.max(monthCounts['9월'], Math.max(12, Math.round(collectedList.length * 0.90))), isCurrent: false },
-    { month: '10월', count: Math.max(monthCounts['10월'], Math.max(5, Math.round(collectedList.length * 0.40))), isCurrent: true, label: '이번달' },
-  ];
-  const maxMonthCount = Math.max(...recent6MonthsData.map((d) => d.count), 10);
-  const totalRecent6Months = recent6MonthsData.reduce((acc, d) => acc + d.count, 0);
-  const avgMonthlyCount = (totalRecent6Months / 6).toFixed(1);
+  const personaRatioPct = totalRecent6Months > 0 ? Math.round((totalPersona6Months / totalRecent6Months) * 100) : 0;
+  const otherObsCount = Math.max(0, totalRecent6Months - totalPersona6Months);
+  const otherRatioPct = 100 - personaRatioPct;
+
+  const activeMonthsWithObs = recent6MonthsSlots.filter((s) => (monthObsCounts[s.ymKey] || 0) > 0);
+  const explorerTenureMonths = Math.max(1, activeMonthsWithObs.length);
+  const isFirstMonthUser = activeMonthsWithObs.length <= 1;
+
+  const recent6MonthsData = recent6MonthsSlots.map((s) => {
+    const rawCount = monthObsCounts[s.ymKey] || 0;
+    const personaCount = monthPersonaCounts[s.ymKey] || 0;
+    const isBeforeUserStart = earliestObsDate ? s.ymKey < earliestObsDate : !s.isCurrent;
+    return {
+      month: s.monthLabel,
+      ymKey: s.ymKey,
+      count: rawCount,
+      personaCount,
+      isCurrent: s.isCurrent,
+      isBeforeUserStart: isBeforeUserStart && rawCount === 0,
+      label: s.isCurrent ? '이번달' : (isBeforeUserStart && rawCount === 0 ? '시작전' : undefined),
+    };
+  });
+
+  const maxMonthCount = Math.max(...recent6MonthsData.map((d) => d.count), 5);
+  const avgMonthlyCount = (totalRecent6Months / Math.max(1, explorerTenureMonths)).toFixed(1);
+
+  // =========================================================================
+  // Dynamic Aggregation of Top Captured Tags (주요 포착 태그)
+  // =========================================================================
+  const capturedTagStats = React.useMemo(() => {
+    const tagCountMap: Record<string, {
+      tag: string;
+      count: number;
+      categoryType: 'trait' | 'habitat' | 'conservation' | 'behavior';
+      specimens: Specimen[];
+    }> = {};
+
+    collectedList.forEach((sp) => {
+      // Find matching encyclopedia entry
+      const eco = SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
+        (e) => e.koreanName === sp.koreanName || e.scientificName === sp.scientificName
+      );
+
+      // Collect raw candidate tags
+      const rawCandidates = [
+        ...(sp.traitChips || []),
+        ...(eco?.tags || []),
+      ];
+
+      // Add habitat if available
+      if (sp.habitatType) {
+        const hClean = sp.habitatType.split(/[/,]/)[0].trim();
+        if (hClean.length >= 2) rawCandidates.push(hClean);
+      }
+
+      const uniqueInThisSpecimen = new Set<string>();
+
+      rawCandidates.forEach((raw) => {
+        if (!raw || typeof raw !== 'string') return;
+        const cleaned = raw.trim().replace(/^#/, '');
+        if (cleaned.length < 2 || cleaned.length > 15) return;
+        if (/^\d+$/.test(cleaned)) return;
+        if (['자생종', '생물', '야생', '관찰', '식물계', '동물계', '종'].includes(cleaned)) return;
+
+        // Normalize spacing
+        const key = cleaned.replace(/\s+/g, '');
+        if (uniqueInThisSpecimen.has(key)) return;
+        uniqueInThisSpecimen.add(key);
+
+        if (!tagCountMap[key]) {
+          let catType: 'trait' | 'habitat' | 'conservation' | 'behavior' = 'trait';
+          if (/하천|공원|숲|산림|습지|사구|수변|정원|화단|연못|골목길|도심/.test(key)) {
+            catType = 'habitat';
+          } else if (/천연기념물|보호|멸종위기|1급수지표|지표종|특산|IUCN|취약/.test(key)) {
+            catType = 'conservation';
+          } else if (/야행성|비행|사냥|포식|수분|동면|명음|울음|흡밀|잠수|호버링/.test(key)) {
+            catType = 'behavior';
+          }
+
+          tagCountMap[key] = {
+            tag: cleaned,
+            count: 0,
+            categoryType: catType,
+            specimens: [],
+          };
+        }
+
+        tagCountMap[key].count += 1;
+        if (!tagCountMap[key].specimens.some((s) => s.id === sp.id)) {
+          tagCountMap[key].specimens.push(sp);
+        }
+      });
+    });
+
+    return Object.values(tagCountMap).sort((a, b) => b.count - a.count);
+  }, [collectedList]);
 
   return (
     <div className="space-y-4 pb-16 select-none bg-stone-100/60 p-1" id="report-view-container">
@@ -405,28 +414,21 @@ export const ReportView: React.FC<ReportViewProps> = ({
           1. NATURALIST PROFILE & ACTIVITY SUMMARY (GALAXY GLASS STYLE)
           ======================================================== */}
       <section className="galaxy-glass-card rounded-[28px] p-5 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-2xl bg-white/80 text-stone-800 border border-white/90 flex items-center justify-center shrink-0 shadow-2xs">
-              <CurrentIcon className="w-5 h-5 stroke-[2.2px]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-extrabold text-stone-900 truncate">
-                {activePersona.title}
-              </h2>
-              <p className="text-xs text-stone-500 font-medium leading-tight mt-0.5">
-                {activePersona.description}
-              </p>
-            </div>
-          </div>
-
+        <div className="text-center space-y-3">
+          <h2
+            className="text-2xl font-black tracking-tight transition-colors"
+            style={{ color: currentPersonaColor }}
+          >
+            <span>{levelData.adj}</span>{' '}
+            <span>{currentPersona.title}</span>
+          </h2>
           <button
             type="button"
             onClick={() => setIsPersonaModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 bg-white/90 hover:bg-white px-3 py-1.5 rounded-full transition-all cursor-pointer border border-white/80 shadow-2xs shrink-0 active:scale-95"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-4 py-1.5 rounded-full transition-all cursor-pointer border border-stone-200 shadow-2xs active:scale-95"
           >
-            <SlidersHorizontal className="w-3 h-3 text-stone-500" />
-            <span>성향 변경</span>
+            <SlidersHorizontal className="w-3.5 h-3.5 text-stone-500" />
+            <span>유형 변경</span>
           </button>
         </div>
 
@@ -446,97 +448,152 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <span className="text-[11px] text-stone-500 font-medium">일째</span>
             </div>
           </div>
-          <div className="galaxy-glass-subtle rounded-2xl p-3 text-center">
-            <span className="text-[11px] text-stone-500 font-medium block mb-0.5">자생종 지수</span>
+          <div
+            onClick={onOpenQuestModal}
+            className="rotating-gradient-border galaxy-glass-subtle rounded-2xl p-3 text-center cursor-pointer hover:scale-105 transition-all active:scale-95 group"
+            title="클릭하여 생태 탐험가 레벨 및 퀘스트 보기"
+          >
+            <span className="text-[10px] text-stone-500 font-bold block mb-0.5">탐험가 레벨</span>
             <div className="flex items-baseline justify-center gap-0.5">
-              <span className="text-lg sm:text-xl font-extrabold text-stone-900 font-mono">{nativePctCalc}</span>
-              <span className="text-[11px] text-stone-500 font-medium">%</span>
+              <span className="text-sm font-extrabold text-stone-900 font-mono truncate">Lv.{levelIdx + 1}</span>
             </div>
           </div>
         </div>
+
       </section>
 
       {/* ========================================================
-          2. RECENT 6-MONTH EXPLORATION TREND (GALAXY GLASS CARD)
+          2. RECENT 6-MONTH EXPLORATION TREND & TENDENCY RATIO
+          (만능 탐험가는 탐사 추이 미노출, 특정 관심 성향 탐험가 전용)
           ======================================================== */}
-      <section className="galaxy-glass-card rounded-[28px] p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm sm:text-base font-extrabold text-stone-900 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-stone-700" />
-            <span>월별 탐사 추이</span>
-          </h3>
-          <span className="text-xs font-mono font-bold text-stone-700 bg-white/80 px-2.5 py-1 rounded-full border border-white/90 shadow-2xs">
-            월평균 {avgMonthlyCount}종
-          </span>
-        </div>
-
-        {/* Solid Activity Bar Chart on Level Baseline */}
-        <div className="galaxy-glass-subtle rounded-2xl p-4 sm:p-5">
-          {/* Chart Drawing Area */}
-          <div className="relative h-40 flex items-end justify-between gap-2 pt-6 pb-0 border-b border-stone-200">
-            {/* Horizontal Reference Grid Line */}
-            <div className="absolute top-8 left-0 right-0 border-t border-dashed border-stone-200 pointer-events-none" />
-            <div className="absolute top-20 left-0 right-0 border-t border-dashed border-stone-200/60 pointer-events-none" />
-
-            {recent6MonthsData.map((item) => {
-              // Exact height percentage based on max count, with min 14% height for visibility
-              const barHeightPct = Math.max(14, Math.round((item.count / maxMonthCount) * 100));
-
-              return (
-                <div
-                  key={item.month}
-                  className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
+            {!isGeneralPersona && (
+        <section className="galaxy-glass-card rounded-[28px] p-5 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-extrabold text-stone-900 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 transition-colors" style={{ color: currentPersonaColor }} />
+                <span>최대 6개월 탐사 추이</span>
+              </h3>
+              {isFirstMonthUser ? (
+                <span
+                  className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs transition-colors"
+                  style={{
+                    color: currentPersonaColor,
+                    backgroundColor: `${currentPersonaColor}18`,
+                    borderColor: `${currentPersonaColor}40`,
+                  }}
                 >
-                  {/* Count indicator on top of bar */}
-                  <span className={`text-[11px] font-mono font-bold mb-1 transition-transform group-hover:scale-110 ${
-                    item.isCurrent ? 'text-stone-900 font-black' : 'text-stone-500'
-                  }`}>
-                    {item.count}
-                  </span>
-
-                  {/* Solid Column Bar with Level Baseline */}
-                  <div className="w-full max-w-[34px] sm:max-w-[42px] flex flex-col justify-end h-full">
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${barHeightPct}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className={`w-full rounded-t-lg transition-colors ${
-                        item.isCurrent
-                          ? 'bg-stone-900 shadow-sm'
-                          : 'bg-stone-300 group-hover:bg-stone-400'
-                      }`}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* X-Axis Month Labels */}
-          <div className="flex items-center justify-between gap-2 pt-2">
-            {recent6MonthsData.map((item) => (
-              <div key={item.month} className="flex-1 text-center">
-                <span className={`text-xs block ${
-                  item.isCurrent ? 'font-extrabold text-stone-900' : 'font-medium text-stone-500'
-                }`}>
-                  {item.month}
+                  🌱 탐사 1개월 차 (실시간 누적 중)
                 </span>
-                {item.label && (
-                  <span className="text-[9px] font-bold text-stone-800 bg-stone-200/80 px-1 py-0.2 rounded-md inline-block mt-0.5">
-                    {item.label}
-                  </span>
-                )}
-              </div>
-            ))}
+              ) : (
+                <span className="text-[11px] font-bold text-stone-700 bg-white/90 px-2.5 py-0.5 rounded-full border border-white/90 shadow-2xs">
+                  누적 {explorerTenureMonths}개월 활동
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-mono font-bold text-stone-700 bg-white/80 px-2.5 py-1 rounded-full border border-white/90 shadow-2xs">
+              {isFirstMonthUser ? `이번달 ${recent6MonthsData.find((d) => d.isCurrent)?.count || 0}회 관찰` : `월평균 ${avgMonthlyCount}회`}
+            </span>
           </div>
 
-          {/* Activity Insight Footer */}
-          <div className="mt-3 pt-2.5 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-500">
-            <span>최근 6개월 누적 {totalRecent6Months}회 관찰</span>
-            <span className="font-bold text-stone-700">전월 대비 탐사 활동 활발</span>
+          {/* Clean Activity Bar Chart */}
+          <div className="galaxy-glass-subtle rounded-2xl p-4 sm:p-5 space-y-3">
+            {/* Chart Drawing Area */}
+            <div className="relative h-40 flex items-end justify-between gap-2 pt-6 pb-0 border-b border-stone-200">
+              {/* Horizontal Reference Grid Line */}
+              <div className="absolute top-8 left-0 right-0 border-t border-dashed border-stone-200 pointer-events-none" />
+              <div className="absolute top-20 left-0 right-0 border-t border-dashed border-stone-200/60 pointer-events-none" />
+
+              {recent6MonthsData.map((item) => {
+                const hasCount = item.count > 0;
+                const barHeightPct = hasCount ? Math.max(16, Math.round((item.count / maxMonthCount) * 100)) : 4;
+                const personaBarPct = item.count > 0 ? Math.round((item.personaCount / item.count) * 100) : 0;
+                const tooltipText = `${item.month}: ${item.personaCount}건(${personaBarPct}%)`;
+
+                return (
+                  <div
+                    key={item.ymKey}
+                    className="flex-1 flex flex-col items-center justify-end h-full group relative cursor-pointer"
+                    title={tooltipText}
+                  >
+                    {/* Count indicator on top of bar */}
+                    <span
+                      className={`text-[11px] font-mono mb-1 ${
+                        item.isCurrent
+                          ? 'font-black'
+                          : (hasCount ? 'text-stone-700 font-bold' : 'text-stone-300')
+                      }`}
+                      style={item.isCurrent ? { color: currentPersonaColor } : undefined}
+                    >
+                      {hasCount ? item.count : (item.isBeforeUserStart ? '-' : '0')}
+                    </span>
+
+                    {/* Level Baseline Column Bar */}
+                    <div className="w-full max-w-[34px] sm:max-w-[42px] flex flex-col justify-end h-full">
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${barHeightPct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className={`w-full rounded-t-lg overflow-hidden flex flex-col-reverse shadow-2xs ${
+                          !hasCount ? (item.isBeforeUserStart ? 'bg-stone-200/50' : 'bg-stone-200/80') : 'bg-stone-300'
+                        }`}
+                      >
+                        {hasCount && item.personaCount > 0 && (
+                          <div
+                            style={{
+                              height: `${personaBarPct}%`,
+                              backgroundColor: currentPersonaColor,
+                            }}
+                            className="w-full transition-all"
+                          />
+                        )}
+                      </motion.div>
+                    </div>
+
+                    {/* Short Tooltip on Hover */}
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                      {item.personaCount}건({personaBarPct}%)
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* X-Axis Month Labels */}
+            <div className="flex items-center justify-between gap-2 pt-1">
+              {recent6MonthsData.map((item) => (
+                <div key={item.ymKey} className="flex-1 text-center py-1">
+                  <span className={`text-xs block ${
+                    item.isCurrent ? 'font-extrabold text-stone-900' : 'font-medium text-stone-500'
+                  }`}>
+                    {item.month}
+                  </span>
+                  {item.label && (
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md inline-block mt-0.5 ${
+                        item.isCurrent
+                          ? 'text-white'
+                          : 'text-stone-400 bg-stone-100'
+                      }`}
+                      style={item.isCurrent ? { backgroundColor: currentPersonaColor } : undefined}
+                    >
+                      {item.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Activity Insight Footer */}
+            <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-500 flex-wrap gap-1.5">
+              <span>최근 6개월 누적 {totalRecent6Months}회 관찰 분석 완료</span>
+              <span className="font-bold transition-colors" style={{ color: currentPersonaColor }}>
+                {currentPersona.title} 맞춤 연동
+              </span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ========================================================
           3. BIODIVERSITY BALANCE (8 ACTUAL NATURAL CATEGORIES)
@@ -603,57 +660,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
         </div>
       </section>
 
-      {/* ========================================================
-          4. HABITAT & NATIVE CONSERVATION SUMMARY
-          ======================================================== */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="galaxy-glass-card rounded-[28px] p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-stone-700" />
-              <span>자생종 생태 지수</span>
-            </span>
-            <span className="text-xs font-mono font-extrabold text-stone-900 bg-white/80 px-2 py-0.5 rounded-full border border-white/90 shadow-2xs">
-              {nativePctCalc}% 자생
-            </span>
-          </div>
-          <div className="space-y-1.5">
-            <div className="w-full h-2 bg-stone-200/70 rounded-full overflow-hidden flex">
-              <div style={{ width: `${nativePctCalc}%` }} className="bg-stone-800 rounded-full" />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-stone-500 font-medium">
-              <span>자생종 {nativeCount}종</span>
-              <span>귀화·외래종 {introducedCount}종</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="galaxy-glass-card rounded-[28px] p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-stone-700" />
-              <span>주요 탐사 서식지</span>
-            </span>
-            <span className="text-xs font-mono font-extrabold text-stone-900 bg-white/80 px-2 py-0.5 rounded-full border border-white/90 shadow-2xs">
-              도심 공원 45%
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/80 text-stone-700 border border-white/90 shadow-2xs">
-              🌳 도심 녹지 45%
-            </span>
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/80 text-stone-700 border border-white/90 shadow-2xs">
-              🌲 산림 30%
-            </span>
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/80 text-stone-700 border border-white/90 shadow-2xs">
-              💧 수변 15%
-            </span>
-          </div>
-        </div>
-      </section>
 
       {/* ========================================================
-          5. ACHIEVEMENT BADGES (GALAXY GLASS STYLE)
+          6. ACHIEVEMENT BADGES (GALAXY GLASS STYLE)
           ======================================================== */}
       <section className="galaxy-glass-card rounded-[28px] p-5 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -693,42 +703,61 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
         </div>
 
-        {/* Badges Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Badges List / Cards with Titles, Descriptions, and Chips - 2 Columns */}
+        <div className="grid grid-cols-2 gap-2.5">
           {filteredBadges.map((badge) => {
-            const isUnlocked = badge.currentProgress >= badge.targetProgress;
+            const isUnlocked = badge.isUnlocked;
+            const progressPct = Math.min(100, Math.round((badge.currentProgress / badge.targetProgress) * 100));
 
             return (
               <div
                 key={badge.id}
                 onClick={() => setSelectedBadgeModal(badge)}
-                className="p-3.5 rounded-2xl galaxy-glass-subtle hover:bg-white/90 transition-all cursor-pointer flex flex-col items-center justify-between text-center group active:scale-95"
-              >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 shadow-xs transition-transform group-hover:scale-105 ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center group hover:shadow-sm ${
                   isUnlocked
-                    ? 'bg-white border-2 border-emerald-400 text-emerald-600'
-                    : 'bg-stone-200/80 text-stone-400'
-                }`}>
-                  {isUnlocked ? badge.icon : <Lock className="w-5 h-5 text-stone-400" />}
+                    ? 'bg-emerald-50/40 border-emerald-200/60 hover:border-emerald-300'
+                    : 'bg-white/60 border-stone-200/60 hover:border-stone-300'
+                }`}
+              >
+                {/* Icon */}
+                <div
+                  className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-2xl transition-transform group-hover:scale-105 shadow-2xs mb-3 ${
+                    isUnlocked
+                      ? 'bg-emerald-100/80 border border-emerald-200 text-emerald-700'
+                      : 'bg-stone-100 border border-stone-200 text-stone-400'
+                  }`}
+                >
+                  {isUnlocked ? <span>{badge.icon}</span> : <Lock className="w-5 h-5 text-stone-400" />}
                 </div>
 
-                <h4 className="text-xs font-bold text-stone-900 truncate w-full mb-1">
-                  {badge.title}
-                </h4>
-
-                <p className="text-[10px] text-stone-500 line-clamp-2 h-7 font-normal mb-2 leading-tight">
-                  {badge.desc}
-                </p>
-
-                <div className="w-full">
+                {/* Chips */}
+                <div className="flex items-center justify-center gap-1.5 mb-2 flex-wrap">
+                  <span className="text-[10px] font-medium text-stone-500 bg-stone-100/80 px-2 py-0.5 rounded-full">
+                    {badge.category}
+                  </span>
                   {isUnlocked ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block border border-emerald-200">
-                      달성 완료
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                      달성 완료 ✦
                     </span>
                   ) : (
-                    <span className="text-[10px] font-mono font-medium text-stone-500 bg-stone-200/70 px-2 py-0.5 rounded-full inline-block">
-                      {badge.currentProgress}/{badge.targetProgress} {badge.progressUnit}
+                    <span className="text-[10px] font-bold text-stone-600 bg-stone-200/70 px-2 py-0.5 rounded-full">
+                      진행 중 ({progressPct}%)
                     </span>
+                  )}
+                </div>
+
+                {/* Title & Description */}
+                <div className="w-full">
+                  <h4 className="font-bold text-sm text-stone-900 mb-1 line-clamp-1">{badge.title}</h4>
+                  <p className="text-xs text-stone-500 leading-relaxed line-clamp-2">{badge.desc}</p>
+
+                  {!isUnlocked && (
+                    <div className="w-full bg-stone-200/70 rounded-full h-1.5 overflow-hidden mt-3">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 bg-stone-400"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -748,67 +777,103 @@ export const ReportView: React.FC<ReportViewProps> = ({
         />
       </section>
 
-      {/* ================= BADGE DETAIL MODAL ================= */}
+      {/* ================= BADGE DETAIL MODAL (GALAXY GLASS STYLE) ================= */}
       <AnimatePresence>
-        {selectedBadgeModal && (
-          <div
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
-            onClick={() => setSelectedBadgeModal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm wabi-glass-card bg-white/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-white/60 select-none text-stone-900 text-center relative overflow-hidden"
+        {selectedBadgeModal && (() => {
+          const isBadgeUnlocked = selectedBadgeModal.isUnlocked;
+          const badgeProgressPct = Math.min(100, Math.round((selectedBadgeModal.currentProgress / selectedBadgeModal.targetProgress) * 100));
+
+          return (
+            <div
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSelectedBadgeModal(null)}
             >
-              <button
-                type="button"
-                onClick={() => setSelectedBadgeModal(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+              <motion.div
+                initial={{ scale: 0.94, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.94, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-sm galaxy-glass-card rounded-[28px] p-5 sm:p-6 shadow-2xl border border-white/80 select-none text-stone-900 text-center relative overflow-hidden"
               >
-                <X className="w-5 h-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBadgeModal(null)}
+                  className="absolute top-4 right-4 p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
 
-              <div className="w-20 h-20 rounded-3xl bg-stone-900 text-white border border-stone-800 shadow-xl flex items-center justify-center text-4xl mx-auto mb-4">
-                {selectedBadgeModal.currentProgress >= selectedBadgeModal.targetProgress ? selectedBadgeModal.icon : '🔒'}
-              </div>
-
-              <span className="text-[10px] font-mono font-bold text-stone-700 bg-stone-100 px-2.5 py-0.5 rounded-full inline-block mb-1 border border-stone-200">
-                {selectedBadgeModal.category}
-              </span>
-
-              <h3 className="text-lg font-black text-stone-900 mb-1">
-                {selectedBadgeModal.title}
-              </h3>
-
-              <p className="text-xs text-stone-600 leading-relaxed mb-4 font-medium">
-                {selectedBadgeModal.desc}
-              </p>
-
-              <div className="p-3.5 bg-stone-50/90 rounded-2xl border border-stone-200/80 mb-4 text-left space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span>달성 진행 상황</span>
-                  <span className="font-mono text-stone-900 font-black">
-                    {selectedBadgeModal.currentProgress} / {selectedBadgeModal.targetProgress} {selectedBadgeModal.progressUnit}
-                  </span>
+                <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl shadow-xs ${
+                  isBadgeUnlocked
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-600'
+                    : 'bg-stone-100 border border-stone-200 text-stone-400'
+                }`}>
+                  {isBadgeUnlocked ? selectedBadgeModal.icon : '🔒'}
                 </div>
 
-                <p className="text-[11px] text-stone-500 font-medium pt-1 border-t border-stone-200">
-                  💡 <strong>획득 팁:</strong> {selectedBadgeModal.tip}
-                </p>
-              </div>
+                <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <span className="text-[11px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
+                    {selectedBadgeModal.category}
+                  </span>
+                  {isBadgeUnlocked ? (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                      달성 완료
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-stone-500 bg-stone-200/70 px-2 py-0.5 rounded-full">
+                      진행 중 ({badgeProgressPct}%)
+                    </span>
+                  )}
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedBadgeModal(null)}
-                className="wabi-glass-bubble w-full py-3 bg-stone-900 text-white font-black text-xs rounded-xl hover:bg-stone-800 transition-colors cursor-pointer shadow-md"
-              >
-                닫기
-              </button>
-            </motion.div>
-          </div>
-        )}
+                <h3 className="text-base font-extrabold text-stone-900 mb-1">
+                  {selectedBadgeModal.title}
+                </h3>
+
+                <p className="text-xs text-stone-600 mb-3.5 font-medium leading-normal">
+                  {selectedBadgeModal.desc}
+                </p>
+
+                {/* Progress Indicator */}
+                <div className="p-3 galaxy-glass-subtle rounded-xl mb-3 text-left space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-stone-800">
+                    <span>달성 진행도</span>
+                    <span className="font-mono">
+                      {selectedBadgeModal.currentProgress} / {selectedBadgeModal.targetProgress} {selectedBadgeModal.progressUnit}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-stone-200/80 rounded-full overflow-hidden">
+                    <div
+                      style={{ width: `${badgeProgressPct}%` }}
+                      className={`h-full rounded-full transition-all ${isBadgeUnlocked ? 'bg-emerald-500' : 'bg-stone-800'}`}
+                    />
+                  </div>
+                  {selectedBadgeModal.unlockedAt && (
+                    <p className="text-[10px] text-emerald-700 font-medium pt-0.5">
+                      달성일: {selectedBadgeModal.unlockedAt}
+                    </p>
+                  )}
+                </div>
+
+                {/* Short Actionable Tip */}
+                <div className="text-left px-3 py-2 bg-amber-50/80 rounded-xl border border-amber-200/60 mb-4 flex items-center gap-2">
+                  <span className="text-xs shrink-0">💡</span>
+                  <p className="text-[11px] text-amber-900 font-medium leading-snug">
+                    {selectedBadgeModal.tip}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedBadgeModal(null)}
+                  className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs active:scale-98"
+                >
+                  확인
+                </button>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ================= PERSONA OVERRIDE MODAL ================= */}

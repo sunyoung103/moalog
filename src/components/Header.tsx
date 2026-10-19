@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Settings2, X, Crown, Sparkles } from 'lucide-react';
+import { Search, Settings2, X, Crown, Sparkles, Trophy } from 'lucide-react';
 import { UserStats } from '../types';
 
 interface HeaderProps {
@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="max-w-lg mx-auto flex items-center justify-between">
         {/* Left: Title, collector tally, and PRO / Trial Badge */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="flex items-baseline gap-1.5">
             <h1
               id="header-main-title"

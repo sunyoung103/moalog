@@ -33,6 +33,7 @@ import {
 import { Specimen, UserStats, SpecimenCategory, NaturalistPersona } from '../types';
 import { SPECIES_ECOLOGY_ENCYCLOPEDIA, NATURALIST_PERSONAS, HOTSPOT_DATA } from '../data/hotspots';
 import { ReportView } from './ReportView';
+import { ExportCardModal } from './ExportCardModal';
 
 interface ArchiveViewProps {
   specimens: Specimen[];
@@ -47,6 +48,7 @@ interface ArchiveViewProps {
   userStats: UserStats;
   onOpenMyPage: () => void;
   onUpdatePersona?: (persona: NaturalistPersona) => void;
+  onOpenQuestModal: () => void;
 }
 
 export function ArchiveView({
@@ -62,16 +64,19 @@ export function ArchiveView({
   userStats,
   onOpenMyPage,
   onUpdatePersona,
+  onOpenQuestModal,
 }: ArchiveViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'collection' | 'report'>('collection');
   const [selectedCategory, setSelectedCategory] = useState<SpecimenCategory>('all');
-  const [sortMode, setSortMode] = useState<'dex_number' | 'latest' | 'oldest' | 'korean_alpha' | 'distance' | 'taxonomy'>('dex_number');
+  const [sortMode, setSortMode] = useState<'persona' | 'dex_number' | 'latest' | 'oldest' | 'korean_alpha' | 'distance' | 'taxonomy'>('dex_number');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<'sticker' | 'photo'>('sticker');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isMultiDeleteConfirmOpen, setIsMultiDeleteConfirmOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isExportCardModalOpen, setIsExportCardModalOpen] = useState(false);
+  const [exportTargetSpecimen, setExportTargetSpecimen] = useState<Specimen | null>(null);
   const [currentShareCardIndex, setCurrentShareCardIndex] = useState(0);
   const [shareCopyToast, setShareCopyToast] = useState<string | null>(null);
   const [expandedSpeciesId, setExpandedSpeciesId] = useState<string | null>(null);
@@ -288,8 +293,25 @@ export function ArchiveView({
     return true;
   });
 
+  const currentPersona = NATURALIST_PERSONAS[userStats?.persona || 'general'] || NATURALIST_PERSONAS.general;
+  const personaRecommendedCats = currentPersona?.recommendedCategories || [];
+
   const sortedList = [...filteredCollectedList];
-  if (sortMode === 'dex_number') {
+  if (sortMode === 'persona') {
+    sortedList.sort((a, b) => {
+      const matchA = personaRecommendedCats.includes('all' as any) || personaRecommendedCats.includes(a.category as any) ? 1 : 0;
+      const matchB = personaRecommendedCats.includes('all' as any) || personaRecommendedCats.includes(b.category as any) ? 1 : 0;
+      if (matchA !== matchB) return matchB - matchA; // prioritized species first
+
+      const dateA = a.observations?.[0]?.date ? new Date(`${a.observations[0].date} ${a.observations[0].time || '00:00'}`).getTime() : 0;
+      const dateB = b.observations?.[0]?.date ? new Date(`${b.observations[0].date} ${b.observations[0].time || '00:00'}`).getTime() : 0;
+      if (dateA !== dateB) return dateB - dateA;
+
+      const numA = parseInt((a.number || '').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt((b.number || '').replace(/\D/g, ''), 10) || 0;
+      return numA - numB;
+    });
+  } else if (sortMode === 'dex_number') {
     sortedList.sort((a, b) => {
       const numA = parseInt((a.number || '').replace(/\D/g, ''), 10) || 0;
       const numB = parseInt((b.number || '').replace(/\D/g, ''), 10) || 0;
@@ -322,8 +344,7 @@ export function ArchiveView({
   }, {});
 
   const filteredHotspots = HOTSPOT_DATA.filter((spot) => {
-    const currentPersona = NATURALIST_PERSONAS[userStats?.persona || 'general'] || NATURALIST_PERSONAS.general;
-    const recommended = currentPersona?.recommendedCategories || [];
+    const recommended = personaRecommendedCats;
 
     const hasMatchingSpecies = spot.targetSpecies?.some((target) => {
       const item = SPECIES_ECOLOGY_ENCYCLOPEDIA.find((e) => e.koreanName === target.koreanName);
@@ -554,17 +575,18 @@ export function ArchiveView({
                     {selectedIds.length === filteredCollectedList.length && filteredCollectedList.length > 0 ? '해제' : '전체'}
                   </button>
 
-                  {/* Photocard Share Button */}
+                  {/* Samsung Health Glassmorphism Eco Card Share Button */}
                   <button
                     onClick={() => {
                       if (selectedIds.length > 0) {
-                        setCurrentShareCardIndex(0);
-                        setIsShareModalOpen(true);
+                        const target = specimens.find((s) => s.id === selectedIds[0]) || null;
+                        setExportTargetSpecimen(target);
+                        setIsExportCardModalOpen(true);
                       }
                     }}
                     disabled={selectedIds.length === 0}
-                    className="p-1.5 rounded-xl text-white bg-stone-700 hover:bg-stone-600 disabled:opacity-40 transition-colors flex items-center justify-center border border-stone-600"
-                    title="포켓몬 카드 스타일로 공유"
+                    className="p-1.5 rounded-xl text-white bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 transition-colors flex items-center justify-center border border-emerald-600"
+                    title="삼성 헬스 스타일 생태 카드로 공유"
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
@@ -586,80 +608,68 @@ export function ArchiveView({
               </div>
             ) : (
               <div className="flex items-center justify-between px-1 relative">
-                {/* System Sort Dropdown Trigger & Quick Toggle */}
-                <div className="flex items-center gap-1.5 relative">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                      className="wabi-glass-bubble flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 text-xs font-bold text-stone-800 transition-all active:scale-95 border border-white/80"
-                    >
-                      <ArrowUpDown className="w-3 h-3 text-stone-500" />
-                      <span>
-                        {sortMode === 'dex_number' && '번호순'}
-                        {sortMode === 'latest' && '최신순'}
-                        {sortMode === 'korean_alpha' && '가나다순'}
-                        {sortMode === 'distance' && '거리순 (1회조회)'}
-                        {sortMode === 'taxonomy' && '분류별'}
-                      </span>
-                      <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Compact System Sort Dropdown List */}
-                    {isSortMenuOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-30"
-                          onClick={() => setIsSortMenuOpen(false)}
-                        />
-                        <div className="absolute left-0 top-full mt-1.5 w-56 wabi-glass-card bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl py-1.5 z-40 animate-fadeIn border border-white/80">
-                          <div className="px-3 py-1.5 border-b border-stone-100 text-[10px] font-mono text-stone-400 font-bold uppercase tracking-wider">
-                            도감 정렬 순서 선택
-                          </div>
-                          {[
-                            { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
-                            { id: 'latest', label: '최신순', desc: '최근 관찰 순서' },
-                            { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
-                            { id: 'taxonomy', label: '분류별', desc: '계통(과/문)별 정렬' },
-                            { id: 'distance', label: '거리순', desc: '내 관찰 위치 기준 거리순' },
-                          ].map((item) => {
-                            const isSelected = sortMode === item.id;
-                            return (
-                              <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => {
-                                  setSortMode(item.id as any);
-                                  setIsSortMenuOpen(false);
-                                }}
-                                className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-colors hover:bg-stone-50/80 ${
-                                  isSelected ? 'bg-stone-100/90 text-stone-900 font-bold' : 'text-stone-600'
-                                }`}
-                              >
-                                <div>
-                                  <p className="leading-tight">{item.label}</p>
-                                  <p className="text-[9px] text-stone-400 mt-0.5">{item.desc}</p>
-                                </div>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 ml-1" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* 1-Tap Quick Sort Toggle between No.001~ and Latest */}
+                {/* System Sort Dropdown */}
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSortMode(prev => prev === 'dex_number' ? 'latest' : 'dex_number');
-                    }}
-                    className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-stone-200/70 hover:bg-stone-300 text-stone-700 active:scale-95 transition-all"
-                    title="번호순 / 최신순 빠른 전환"
+                    onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                    className="wabi-glass-bubble flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 text-xs font-bold text-stone-800 transition-all active:scale-95 border border-white/80"
                   >
-                    {sortMode === 'dex_number' ? '⇄ 최신순' : '⇄ 번호순'}
+                    <ArrowUpDown className="w-3 h-3 text-stone-500" />
+                    <span>
+                      {sortMode === 'persona' && `성향 맞춤순 (${currentPersona.title})`}
+                      {sortMode === 'dex_number' && '번호순'}
+                      {sortMode === 'latest' && '최신순'}
+                      {sortMode === 'korean_alpha' && '가나다순'}
+                      {sortMode === 'distance' && '거리순 (1회조회)'}
+                      {sortMode === 'taxonomy' && '분류별'}
+                    </span>
+                    <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
+
+                  {/* Compact System Sort Dropdown List */}
+                  {isSortMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setIsSortMenuOpen(false)}
+                      />
+                      <div className="absolute left-0 top-full mt-1.5 w-56 wabi-glass-card bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl py-1.5 z-40 animate-fadeIn border border-white/80">
+                        <div className="px-3 py-1.5 border-b border-stone-100 text-[10px] font-mono text-stone-400 font-bold uppercase tracking-wider flex items-center justify-between">
+                          <span>도감 정렬 순서</span>
+                        </div>
+                        {[
+                          { id: 'persona', label: `✨ 성향 맞춤순 (${currentPersona.title})`, desc: `${currentPersona.title} 주 관심 분야 우선` },
+                          { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
+                          { id: 'latest', label: '최신순', desc: '최근 관찰 순서' },
+                          { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
+                          { id: 'taxonomy', label: '분류별', desc: '계통(과/문)별 정렬' },
+                          { id: 'distance', label: '거리순', desc: '내 관찰 위치 기준 거리순' },
+                        ].map((item) => {
+                          const isSelected = sortMode === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                setSortMode(item.id as any);
+                                setIsSortMenuOpen(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-colors hover:bg-stone-50/80 ${
+                                isSelected ? 'bg-stone-100/90 text-stone-900 font-bold' : 'text-stone-600'
+                              }`}
+                            >
+                              <div>
+                                <p className="leading-tight">{item.label}</p>
+                                <p className="text-[9px] text-stone-400 mt-0.5">{item.desc}</p>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 ml-1" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -945,6 +955,7 @@ export function ArchiveView({
             onSelectSpecimen={onSelectSpecimen}
             onOpenLens={onOpenLens}
             onOpenHotspots={onOpenHotspots}
+            onOpenQuestModal={onOpenQuestModal}
           />
         )}
       </div>
@@ -1152,6 +1163,16 @@ export function ArchiveView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Samsung Health Style Glassmorphism Eco Card Modal */}
+      <ExportCardModal
+        isOpen={isExportCardModalOpen}
+        onClose={() => setIsExportCardModalOpen(false)}
+        specimen={exportTargetSpecimen}
+        specimens={specimens}
+        userStats={userStats}
+        initialMode="specimen"
+      />
     </div>
   );
 }
