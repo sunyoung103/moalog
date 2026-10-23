@@ -36,6 +36,7 @@ import {
   Tag,
   Hash,
   Info,
+  Share2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Specimen, UserStats, NaturalistPersona, EXPLORER_TITLES } from '../types';
@@ -51,6 +52,7 @@ interface ReportViewProps {
   onOpenLens: () => void;
   onOpenHotspots: () => void;
   onOpenQuestModal: () => void;
+  onOpenReportShare?: () => void;
 }
 
 export const ReportView: React.FC<ReportViewProps> = ({
@@ -60,6 +62,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   onSelectSpecimen,
   onOpenLens,
   onOpenQuestModal,
+  onOpenReportShare,
 }) => {
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
   const [selectedBadgeModal, setSelectedBadgeModal] = useState<EvaluatedBadge | null>(null);
@@ -962,6 +965,18 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Bottom-Right Floating Action Button for Report Card Sharing */}
+      <div className="fixed bottom-20 right-6 z-40">
+        <button
+          type="button"
+          onClick={onOpenReportShare}
+          className="w-12 h-12 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-[0_10px_25px_rgba(5,150,105,0.4)] transition-all cursor-pointer active:scale-95 border border-emerald-400/50"
+          title="종합 생태 리포트 카드 공유"
+        >
+          <Share2 className="w-5 h-5 text-white" />
+        </button>
+      </div>
     </div>
   );
 };

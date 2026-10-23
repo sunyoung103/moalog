@@ -33,6 +33,8 @@ const DEFAULT_USER_STATS: UserStats = {
   photoQuality: 'original',
   unitSystem: 'metric',
   viewJournalMode: true,
+  language: 'ko',
+  showEnglishNameWithLocal: true,
   badges: ['badge-01', 'badge-05', 'badge-06', 'badge-08', 'badge-09', 'badge-10'],
 };
 
@@ -194,6 +196,34 @@ export default function App() {
     );
     setSelectedSpecimen(null);
     showToast('관찰 기록이 휴지통으로 이동되었습니다. (30일 보관)');
+  };
+
+  const handleDeleteObservation = (specimenId: string, observationIndex: number) => {
+    setSpecimens((prev) =>
+      prev.map((s) => {
+        if (s.id === specimenId) {
+          const obsList = s.observations ? [...s.observations] : [];
+          if (obsList.length > 0 && observationIndex >= 0 && observationIndex < obsList.length) {
+            obsList.splice(observationIndex, 1);
+          }
+          const nextOriginal =
+            obsList.length > 0
+              ? obsList[0].photoUrl || s.originalImage || ''
+              : s.originalImage || '';
+          const updated: Specimen = {
+            ...s,
+            observations: obsList,
+            originalImage: nextOriginal,
+          };
+          if (selectedSpecimen?.id === specimenId) {
+            setSelectedSpecimen(updated);
+          }
+          return updated;
+        }
+        return s;
+      })
+    );
+    showToast('관찰 사진이 삭제되었습니다.');
   };
 
   const handleRestoreSpecimen = (specimenId: string) => {
@@ -382,11 +412,13 @@ export default function App() {
           specimen={selectedSpecimen}
           allSpecimens={specimens}
           currentPersona={userStats.persona || 'general'}
+          userStats={userStats}
           onClose={() => setSelectedSpecimen(null)}
           onSelectTaxonomyFilter={handleSelectTaxonomyFilter}
           onAddObservation={handleAddObservation}
           onUpdateSpecimen={handleUpdateSpecimen}
           onDeleteSpecimen={handleDeleteSpecimen}
+          onDeleteObservation={handleDeleteObservation}
           onOpenExportCard={handleOpenExportCard}
           onOpenLens={() => {
             setSelectedSpecimen(null);

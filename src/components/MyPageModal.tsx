@@ -25,9 +25,12 @@ import {
   UserCheck,
   Cloud,
   Cpu,
+  Globe,
+  Languages,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
+import { SUPPORTED_LANGUAGES } from '../utils/speciesNameHelper';
 
 interface MyPageModalProps {
   userStats: UserStats;
@@ -65,6 +68,7 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
   onDeleteAccount,
 }) => {
   const [isPersonaSubPageOpen, setIsPersonaSubPageOpen] = useState(false);
+  const [isLanguageSubPageOpen, setIsLanguageSubPageOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isTrashSubPageOpen, setIsTrashSubPageOpen] = useState(false);
   const [isSubManagementSubPageOpen, setIsSubManagementSubPageOpen] = useState(false);
@@ -194,6 +198,118 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                     );
                   })}
                 </div>
+              </div>
+            </motion.div>
+          ) : isLanguageSubPageOpen ? (
+            /* ================= [SUB-PAGE] Language Selection Depth ================= */
+            <motion.div
+              key="language-subpage"
+              initial={{ x: 30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -30, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col h-full flex-1 overflow-hidden"
+            >
+              <div className="flex items-center justify-between pb-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsLanguageSubPageOpen(false)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1 cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>설정으로 돌아가기</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-4 flex-1 overflow-y-auto pr-1 scrollbar-none">
+                <div>
+                  <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-stone-700" />
+                    <span>도감 및 앱 표시 언어</span>
+                  </h3>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    다국어 생물명 및 UI 표시 언어를 선택하세요.
+                  </p>
+                </div>
+
+                {/* Language Selection Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {SUPPORTED_LANGUAGES.map((lang) => {
+                    const isSelected = (userStats.language || 'ko') === lang.code;
+                    return (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => {
+                          onUpdateStats({ language: lang.code });
+                          onShowToast(`언어가 ${lang.label}(으)로 변경되었습니다`);
+                        }}
+                        className={`p-3 rounded-2xl text-left border transition-all flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#202424] text-white border-[#202424] shadow-md'
+                            : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-lg shrink-0">{lang.flag}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate leading-tight">{lang.nativeLabel}</p>
+                            <p className={`text-[10px] truncate ${isSelected ? 'text-stone-300' : 'text-stone-400'}`}>
+                              {lang.label}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 영어이름 함께 보기 토글 (비영어권 언어 선택 시 노출) */}
+                {(userStats.language || 'ko') !== 'en' && (
+                  <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-xs flex items-center justify-between">
+                    <div className="flex items-center gap-3 pr-2">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                        <Languages className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-stone-900">영어이름 함께 보기</p>
+                          <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">
+                            비영어권 전용
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 mt-0.5 leading-relaxed">
+                          도감 및 상세 정보에서 현지어명 옆에 영문 통칭(English Name)을 함께 표시합니다
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentVal = userStats.showEnglishNameWithLocal !== false;
+                        onUpdateStats({ showEnglishNameWithLocal: !currentVal });
+                        onShowToast(!currentVal ? '영어이름 함께 보기가 켜졌습니다' : '영어이름 함께 보기가 꺼졌습니다');
+                      }}
+                      className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center shrink-0 cursor-pointer ${
+                        userStats.showEnglishNameWithLocal !== false
+                          ? 'bg-[#202424] justify-end'
+                          : 'bg-stone-200 justify-start'
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : isSubManagementSubPageOpen ? (
@@ -624,6 +740,35 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                           </button>
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* 언어 설정 그룹 (Language Settings Sub-page Trigger) */}
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs font-bold text-stone-700 px-1">언어 및 지역</h3>
+                    <div className="bg-white rounded-2xl p-1.5 shadow-xs border border-stone-200/60">
+                      <button
+                        type="button"
+                        onClick={() => setIsLanguageSubPageOpen(true)}
+                        className="w-full p-3 rounded-xl hover:bg-stone-50 transition-all flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
+                            <Globe className="w-4 h-4" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-xs font-bold text-stone-900">도감 및 앱 표시 언어 설정</p>
+                            <p className="text-[10px] text-stone-400 mt-0.5">
+                              {SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.nativeLabel} ({SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.label})
+                              {(userStats.language || 'ko') !== 'en' && userStats.showEnglishNameWithLocal !== false ? ' · 영어이름 함께 보기 켜짐' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-bold text-stone-400">
+                          <span>변경</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </button>
                     </div>
                   </div>
 

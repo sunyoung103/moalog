@@ -28,12 +28,33 @@ import {
   Sun,
   Droplets,
   Fish,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 import { Specimen, UserStats, SpecimenCategory, NaturalistPersona } from '../types';
 import { SPECIES_ECOLOGY_ENCYCLOPEDIA, NATURALIST_PERSONAS, HOTSPOT_DATA } from '../data/hotspots';
 import { ReportView } from './ReportView';
 import { ExportCardModal } from './ExportCardModal';
+import { GestureArchiveCollection } from './GestureArchiveCollection';
+import { formatSpeciesDisplayName, getSpeciesEnglishName, getSpeciesPrimaryName } from '../utils/speciesNameHelper';
+
+const personaToCategory: Record<string, string> = {
+  botanist: 'plants',
+  plants: 'plants',
+  birder: 'birds',
+  birds: 'birds',
+  entomologist: 'insects',
+  insects: 'insects',
+  mammalogist: 'mammals',
+  mammals: 'mammals',
+  herpetologist: 'herptiles',
+  reptiles: 'herptiles',
+  amphibians: 'herptiles',
+  ichthyologist: 'fishes',
+  fishes: 'fishes',
+  mycologist: 'fungi',
+  fungi: 'fungi',
+};
 
 interface ArchiveViewProps {
   specimens: Specimen[];
@@ -67,16 +88,31 @@ export function ArchiveView({
   onOpenQuestModal,
 }: ArchiveViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'collection' | 'report'>('collection');
-  const [selectedCategory, setSelectedCategory] = useState<SpecimenCategory>('all');
-  const [sortMode, setSortMode] = useState<'persona' | 'dex_number' | 'latest' | 'oldest' | 'korean_alpha' | 'distance' | 'taxonomy'>('dex_number');
+  const [selectedCategory, setSelectedCategory] = useState<SpecimenCategory>(() => {
+    const currentPersonaId = userStats?.persona || 'general';
+    const primary = personaToCategory[currentPersonaId];
+    return (primary as SpecimenCategory) || 'all';
+  });
+
+  useEffect(() => {
+    const currentPersonaId = userStats?.persona || 'general';
+    const primary = personaToCategory[currentPersonaId];
+    if (primary) {
+      setSelectedCategory(primary as SpecimenCategory);
+    } else {
+      setSelectedCategory('all');
+    }
+  }, [userStats?.persona]);
+  const [sortMode, setSortMode] = useState<'dex_number' | 'latest' | 'oldest' | 'korean_alpha' | 'distance' | 'taxonomy'>('dex_number');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const [displayMode, setDisplayMode] = useState<'sticker' | 'photo'>('sticker');
+  const [displayMode, setDisplayMode] = useState<'gesture' | 'sticker' | 'photo'>('gesture');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isMultiDeleteConfirmOpen, setIsMultiDeleteConfirmOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isExportCardModalOpen, setIsExportCardModalOpen] = useState(false);
   const [exportTargetSpecimen, setExportTargetSpecimen] = useState<Specimen | null>(null);
+  const [exportCardInitialMode, setExportCardInitialMode] = useState<'specimen' | 'summary'>('specimen');
   const [currentShareCardIndex, setCurrentShareCardIndex] = useState(0);
   const [shareCopyToast, setShareCopyToast] = useState<string | null>(null);
   const [expandedSpeciesId, setExpandedSpeciesId] = useState<string | null>(null);
@@ -117,8 +153,12 @@ export function ArchiveView({
     }
   };
 
-  const availableCategories = [
-    { id: 'all', label: '전체', icon: Compass },
+
+
+  const currentPersonaId = userStats?.persona || 'general';
+  const primaryCatId = personaToCategory[currentPersonaId] || null;
+
+  const baseCategories = [
     { id: 'plants', label: '식물', icon: Leaf },
     { id: 'insects', label: '곤충', icon: Bug },
     { id: 'birds', label: '조류', icon: Feather },
@@ -127,6 +167,20 @@ export function ArchiveView({
     { id: 'herptiles', label: '양서&파충류', icon: Droplets },
     { id: 'fishes', label: '어류', icon: Fish },
     { id: 'fungi', label: '균류', icon: Sparkles },
+  ];
+
+  let orderedCats = [...baseCategories];
+  if (primaryCatId) {
+    const idx = orderedCats.findIndex(c => c.id === primaryCatId);
+    if (idx > -1) {
+      const [matched] = orderedCats.splice(idx, 1);
+      orderedCats.unshift(matched);
+    }
+  }
+
+  const availableCategories = [
+    { id: 'all', label: '전체', icon: Compass },
+    ...orderedCats,
   ];
 
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -282,8 +336,12 @@ export function ArchiveView({
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
+      const eng = getSpeciesEnglishName(sp).toLowerCase();
+      const localized = getSpeciesPrimaryName(sp, userStats?.language).toLowerCase();
       return (
         (sp.koreanName || '').toLowerCase().includes(q) ||
+        localized.includes(q) ||
+        eng.includes(q) ||
         (sp.scientificName || '').toLowerCase().includes(q) ||
         ((sp.family || '').toLowerCase().includes(q)) ||
         (sp.traitChips && sp.traitChips.some((t) => (t || '').toLowerCase().includes(q)))
@@ -297,21 +355,7 @@ export function ArchiveView({
   const personaRecommendedCats = currentPersona?.recommendedCategories || [];
 
   const sortedList = [...filteredCollectedList];
-  if (sortMode === 'persona') {
-    sortedList.sort((a, b) => {
-      const matchA = personaRecommendedCats.includes('all' as any) || personaRecommendedCats.includes(a.category as any) ? 1 : 0;
-      const matchB = personaRecommendedCats.includes('all' as any) || personaRecommendedCats.includes(b.category as any) ? 1 : 0;
-      if (matchA !== matchB) return matchB - matchA; // prioritized species first
-
-      const dateA = a.observations?.[0]?.date ? new Date(`${a.observations[0].date} ${a.observations[0].time || '00:00'}`).getTime() : 0;
-      const dateB = b.observations?.[0]?.date ? new Date(`${b.observations[0].date} ${b.observations[0].time || '00:00'}`).getTime() : 0;
-      if (dateA !== dateB) return dateB - dateA;
-
-      const numA = parseInt((a.number || '').replace(/\D/g, ''), 10) || 0;
-      const numB = parseInt((b.number || '').replace(/\D/g, ''), 10) || 0;
-      return numA - numB;
-    });
-  } else if (sortMode === 'dex_number') {
+  if (sortMode === 'dex_number') {
     sortedList.sort((a, b) => {
       const numA = parseInt((a.number || '').replace(/\D/g, ''), 10) || 0;
       const numB = parseInt((b.number || '').replace(/\D/g, ''), 10) || 0;
@@ -342,6 +386,19 @@ export function ArchiveView({
     acc[family].push(sp);
     return acc;
   }, {});
+
+  Object.keys(groupedByFamily).forEach((family) => {
+    groupedByFamily[family].sort((a, b) => {
+      if (sortMode === 'dex_number') {
+        const numA = parseInt((a.number || '').replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt((b.number || '').replace(/\D/g, ''), 10) || 0;
+        if (numA !== numB) return numA - numB;
+      }
+      return a.koreanName.localeCompare(b.koreanName, 'ko-KR');
+    });
+  });
+
+  const sortedFamilyEntries = Object.entries(groupedByFamily).sort(([a], [b]) => a.localeCompare(b, 'ko-KR'));
 
   const filteredHotspots = HOTSPOT_DATA.filter((spot) => {
     const recommended = personaRecommendedCats;
@@ -511,7 +568,7 @@ export function ArchiveView({
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
                     <span className="text-xs font-bold text-amber-950">
-                      분류 확정 대기 ({pendingSpecimens.length}건)
+                      분류 확정 대기 {pendingSpecimens.length}건
                     </span>
                   </div>
                   <span className="text-[10px] text-amber-800 font-medium">탭하여 도감에 등록</span>
@@ -575,21 +632,6 @@ export function ArchiveView({
                     {selectedIds.length === filteredCollectedList.length && filteredCollectedList.length > 0 ? '해제' : '전체'}
                   </button>
 
-                  {/* Samsung Health Glassmorphism Eco Card Share Button */}
-                  <button
-                    onClick={() => {
-                      if (selectedIds.length > 0) {
-                        const target = specimens.find((s) => s.id === selectedIds[0]) || null;
-                        setExportTargetSpecimen(target);
-                        setIsExportCardModalOpen(true);
-                      }
-                    }}
-                    disabled={selectedIds.length === 0}
-                    className="p-1.5 rounded-xl text-white bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 transition-colors flex items-center justify-center border border-emerald-600"
-                    title="삼성 헬스 스타일 생태 카드로 공유"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
 
                   {/* Delete Button */}
                   <button
@@ -617,11 +659,10 @@ export function ArchiveView({
                   >
                     <ArrowUpDown className="w-3 h-3 text-stone-500" />
                     <span>
-                      {sortMode === 'persona' && `성향 맞춤순 (${currentPersona.title})`}
                       {sortMode === 'dex_number' && '번호순'}
                       {sortMode === 'latest' && '최신순'}
                       {sortMode === 'korean_alpha' && '가나다순'}
-                      {sortMode === 'distance' && '거리순 (1회조회)'}
+                      {sortMode === 'distance' && '거리순 1회조회'}
                       {sortMode === 'taxonomy' && '분류별'}
                     </span>
                     <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
@@ -639,7 +680,6 @@ export function ArchiveView({
                           <span>도감 정렬 순서</span>
                         </div>
                         {[
-                          { id: 'persona', label: `✨ 성향 맞춤순 (${currentPersona.title})`, desc: `${currentPersona.title} 주 관심 분야 우선` },
                           { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
                           { id: 'latest', label: '최신순', desc: '최근 관찰 순서' },
                           { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
@@ -674,180 +714,26 @@ export function ArchiveView({
 
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-stone-500 font-mono">
-                    {filteredCollectedList.length}건
+                    {filteredCollectedList.length}건 관찰됨
                   </span>
-                  <div className="flex bg-stone-200/60 p-0.5 rounded-xl">
-                    <button
-                      onClick={() => setDisplayMode('sticker')}
-                      className={`p-1.5 rounded-lg transition-all ${
-                        displayMode === 'sticker' ? 'bg-white shadow-xs text-stone-900' : 'text-stone-500'
-                      }`}
-                      title="스티커 뷰"
-                    >
-                      <Sticker className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDisplayMode('photo')}
-                      className={`p-1.5 rounded-lg transition-all ${
-                        displayMode === 'photo' ? 'bg-white shadow-xs text-stone-900' : 'text-stone-500'
-                      }`}
-                      title="사진 뷰"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
 
-            {/* Specimen Grid / Sticker Album */}
+            {/* Specimen Grid / Gesture Collection */}
             {filteredCollectedList && filteredCollectedList.length > 0 ? (
-              displayMode === 'sticker' ? (
-                /* STICKER VIEW: 5px Solid White Sticker Border Styling */
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 py-2">
-                  {filteredCollectedList.map((sp) => {
-                    const stickerImg = sp.stickerImage || sp.originalImage;
-                    return (
-                      <motion.div
-                        key={sp.id}
-                        whileHover={{ y: -3 }}
-                        whileTap={{ scale: 0.94 }}
-                        onPointerDown={() => handlePointerDown(sp.id)}
-                        onPointerUp={handlePointerUp}
-                        onPointerLeave={handlePointerUp}
-                        onClick={() => handleSpecimenClick(sp)}
-                        className={`galaxy-glass-card rounded-2xl p-2.5 flex flex-col items-center cursor-pointer relative transition-all hover:shadow-md active:scale-95 ${isMultiSelectMode && selectedIds.includes(sp.id) ? 'opacity-80 ring-2 ring-stone-900' : ''}`}
-                      >
-                        {sp.number && (
-                          <span className="absolute top-2 left-2 text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                            <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
-                            <span>{sp.number}</span>
-                          </span>
-                        )}
-                        {isMultiSelectMode && (
-                          <div className={`absolute top-2 right-2 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-xs ${selectedIds.includes(sp.id) ? 'bg-emerald-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
-                            {selectedIds.includes(sp.id) && <Check className="w-3 h-3" />}
-                          </div>
-                        )}
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center relative p-1 mt-3">
-                          {stickerImg ? (
-                            <img
-                              src={stickerImg}
-                              alt={sp.koreanName}
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=600&q=80';
-                              }}
-                              className="w-full h-full object-contain"
-                              style={{
-                                filter:
-                                  'drop-shadow(2px 2px 0px #ffffff) drop-shadow(-2px -2px 0px #ffffff) drop-shadow(2px -2px 0px #ffffff) drop-shadow(-2px 2px 0px #ffffff) drop-shadow(0px 2px 0px #ffffff) drop-shadow(0px -2px 0px #ffffff) drop-shadow(2px 0px 0px #ffffff) drop-shadow(-2px 0px 0px #ffffff) drop-shadow(0 6px 12px rgba(0,0,0,0.14))',
-                              }}
-                            />
-                          ) : (
-                            <span className="text-3xl">🌿</span>
-                          )}
-                        </div>
-                        <span className="mt-2 text-xs font-black text-stone-900 text-center tracking-tight truncate max-w-full">
-                          {sp.koreanName}
-                        </span>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* STANDARD PHOTO CARD VIEW: Exhibition Poster Card Layout */
-                groupedByFamily && Object.entries(groupedByFamily).length > 0 &&
-                (Object.entries(groupedByFamily) as [string, Specimen[]][]).map(
-                  ([family, items]) => (
-                    <div key={family} className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-black text-stone-900 tracking-tight flex items-center gap-1.5">
-                          <span className="text-emerald-800 text-[10px]">✦</span>
-                          <span>{family}</span>
-                        </span>
-                        <span className="text-[10px] text-stone-600 font-mono font-bold bg-stone-200/60 px-2 py-0.5 rounded-md">
-                          {items.length}개 표본
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        {items.map((sp) => {
-                          const targetImage = sp.originalImage || sp.stickerImage;
-
-                          return (
-                            <motion.div
-                              key={sp.id}
-                              whileHover={{ y: -2 }}
-                              whileTap={{ scale: 0.97 }}
-                              onPointerDown={() => handlePointerDown(sp.id)}
-                              onPointerUp={handlePointerUp}
-                              onPointerLeave={handlePointerUp}
-                              onClick={() => handleSpecimenClick(sp)}
-                              className={`galaxy-glass-card rounded-2xl p-2.5 transition-all cursor-pointer flex flex-col justify-between relative hover:shadow-md active:scale-95 ${
-                                isMultiSelectMode && selectedIds.includes(sp.id) ? 'ring-2 ring-stone-900' : ''
-                              }`}
-                            >
-                              {isMultiSelectMode && (
-                                <div className={`absolute top-3 right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${selectedIds.includes(sp.id) ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-400'}`}>
-                                  {selectedIds.includes(sp.id) && <Check className="w-3 h-3" />}
-                                </div>
-                              )}
-                              <div className="relative aspect-square w-full rounded-xl bg-stone-100 overflow-hidden mb-2 flex items-center justify-center">
-                                {targetImage ? (
-                                  <img
-                                    src={targetImage}
-                                    alt={sp.koreanName}
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=600&q=80';
-                                    }}
-                                    referrerPolicy="no-referrer"
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-2xl opacity-40">🌿</span>
-                                )}
-
-                                {sp.confidence && (
-                                  <span className="absolute bottom-1.5 right-1.5 bg-stone-900/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md font-extrabold shadow-2xs">
-                                    {sp.confidence}%
-                                  </span>
-                                )}
-                              </div>
-
-                              <div>
-                                <div className="flex items-baseline justify-between">
-                                  <h4 className="text-xs font-black text-stone-900 truncate">
-                                    {sp.koreanName}
-                                  </h4>
-                                  <span className="text-[9px] font-mono font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1">
-                                    <span className="text-[10px]">{getCategoryIcon(sp.category)}</span>
-                                    <span>{sp.number || 'No.01'}</span>
-                                  </span>
-                                </div>
-                                <p className="text-[10px] text-stone-600 italic truncate font-serif mt-0.5">
-                                  {sp.scientificName}
-                                </p>
-                                <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-stone-700 bg-stone-50 p-1.5 rounded-lg border border-stone-100">
-                                  <span className="truncate max-w-[85px] font-medium">
-                                    {sp.locationCoord?.name || sp.habitatType || '도심'}
-                                  </span>
-                                  <ChevronRight className="w-3 h-3 text-stone-400" />
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )
-                )
-              )
+              <GestureArchiveCollection
+                specimens={filteredCollectedList}
+                onSelectSpecimen={onSelectSpecimen}
+                userStats={userStats}
+                selectedCategory={selectedCategory}
+              />
             ) : (
-              <div className="wabi-glass-card rounded-3xl p-6 shadow-md mt-4 text-center border border-white/80 bg-white/80 backdrop-blur-xl">
-                <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
-                  🔍
+              <div className="rounded-3xl p-6 mt-4 text-center border border-stone-200/80 bg-white shadow-xs font-geist">
+                <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-3 text-stone-600">
+                  <Search className="w-5 h-5 stroke-[1.75]" />
                 </div>
-                <h4 className="text-sm font-black text-stone-900 mb-1 tracking-tight">
+                <h4 className="text-sm font-bold text-stone-900 mb-1 tracking-tight">
                   {searchQuery ? `'${searchQuery}' 검색 결과` : '새로운 생태 기록 탐사'}
                 </h4>
                 <p className="text-xs text-stone-500 mb-4 max-w-xs mx-auto">
@@ -867,9 +753,8 @@ export function ArchiveView({
                         const matched = safeSpecimens.find(s => s.koreanName.includes(sample));
                         if (matched) onSelectSpecimen(matched);
                       }}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-stone-100/90 hover:bg-stone-200 text-stone-800 border border-stone-200/60 active:scale-95 transition-all flex items-center gap-1"
+                      className="text-[11px] font-mono font-medium px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/60 active:scale-95 transition-all"
                     >
-                      <span>🌿</span>
                       <span>{sample}</span>
                     </button>
                   ))}
@@ -956,6 +841,11 @@ export function ArchiveView({
             onOpenLens={onOpenLens}
             onOpenHotspots={onOpenHotspots}
             onOpenQuestModal={onOpenQuestModal}
+            onOpenReportShare={() => {
+              setExportCardInitialMode('summary');
+              setExportTargetSpecimen(null);
+              setIsExportCardModalOpen(true);
+            }}
           />
         )}
       </div>
@@ -1094,7 +984,7 @@ export function ArchiveView({
                             {/* Specimen Info */}
                             <div className="space-y-1 text-center my-1">
                               <h4 className="text-base font-black text-white tracking-tight">
-                                {sp.koreanName}
+                                {formatSpeciesDisplayName(sp, { language: userStats?.language, showEnglishNameWithLocal: userStats?.showEnglishNameWithLocal })}
                               </h4>
                               <p className="text-[11px] text-amber-200/90 font-serif italic tracking-wide">
                                 {sp.scientificName}
@@ -1171,7 +1061,7 @@ export function ArchiveView({
         specimen={exportTargetSpecimen}
         specimens={specimens}
         userStats={userStats}
-        initialMode="specimen"
+        initialMode={exportCardInitialMode}
       />
     </div>
   );

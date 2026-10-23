@@ -103,10 +103,13 @@ export interface Candidate {
   category?: 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
 }
 
+export type SupportedLanguage = 'ko' | 'en' | 'zh' | 'ja' | 'fr' | 'es' | 'de';
+
 export interface Specimen {
   id: string;
   number: string;
   koreanName: string;
+  englishName?: string;
   scientificName: string;
   category: 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
   family: string; // e.g. "국화과 (Asteraceae)"
@@ -188,6 +191,8 @@ export interface UserStats {
   viewJournalMode: boolean; // Focus on narrative observation rather than completion %
   persona?: NaturalistPersona; // e.g. 'general', 'birder', 'botanist', 'mammalogist', 'entomologist'
   badges: string[];
+  language?: SupportedLanguage; // 'ko' | 'en' | 'zh' | 'ja' | 'fr' | 'es' | 'de'
+  showEnglishNameWithLocal?: boolean; // When non-English is chosen, show English name alongside
 }
 
 export const EXPLORER_TITLES = {

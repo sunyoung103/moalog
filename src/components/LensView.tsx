@@ -25,6 +25,10 @@ import {
   Radio,
   Video,
   HelpCircle,
+  Share2,
+  Crop,
+  ZoomIn,
+  Move,
 } from 'lucide-react';
 import { Specimen, Observation } from '../types';
 import { getApiSource, getIdentificationSourceMetadata } from '../utils/apiSources';
@@ -404,6 +408,8 @@ interface SessionShot {
   isAlbum: boolean;
   zoomScale: number;
   focusPoint?: { x: number; y: number };
+  cropOffset?: { x: number; y: number };
+  cropZoom?: number;
   focusAfMode?: 'Auto Multi-AF' | 'Spot Tap-AF' | 'Macro Focus' | 'Center Eye-AF';
 }
 
@@ -456,6 +462,15 @@ export const LensView: React.FC<LensViewProps> = ({
   const [sessionShots, setSessionShots] = useState<SessionShot[]>([]);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [reviewActiveIndex, setReviewActiveIndex] = useState(0);
+
+  // Interactive Magnifier Crop & Center Shift state
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [showCropMagnifierBtn, setShowCropMagnifierBtn] = useState(false);
+  const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cropZoom, setCropZoom] = useState(1.15);
+
+  // Delete Confirm Prompt ("모아로그에서 제거할까요?")
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   // Tap-to-focus state & percentage ref
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
@@ -760,6 +775,28 @@ export const LensView: React.FC<LensViewProps> = ({
     }
 
     return { pose, size, direction, background, clarity, total, grade, stars, gradeTitle, feedbackTip };
+  };
+
+  // Handle sharing current capture
+  const handleShare = async () => {
+    if (sessionShots.length === 0) return;
+    const shot = sessionShots[reviewActiveIndex];
+    const title = shot.preset.name || '자연 생물 포착';
+    const text = `[포착 생물 도감] ${title} (신뢰도 ${shot.preset.confidence}%) - 자연 생물 탐사 현장에서 포착했습니다!`;
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      alert('포착 정보와 링크가 클립보드에 복사되었습니다!');
+    } catch {
+      alert('공유 링크 복사 완료');
+    }
   };
 
   // Add all session shots to Archive
@@ -1250,15 +1287,10 @@ export const LensView: React.FC<LensViewProps> = ({
                 포착된 사진 ({reviewActiveIndex + 1}/{sessionShots.length})
               </div>
               <button
-                onClick={() => {
-                  setSessionShots((prev) => prev.filter((_, i) => i !== reviewActiveIndex));
-                  if (sessionShots.length === 1) {
-                    setIsReviewOpen(false);
-                  } else if (reviewActiveIndex >= sessionShots.length - 1) {
-                    setReviewActiveIndex(Math.max(0, sessionShots.length - 2));
-                  }
-                }}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 text-red-500 transition-colors"
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 text-red-500 transition-colors cursor-pointer"
+                title="삭제하기"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -1277,19 +1309,52 @@ export const LensView: React.FC<LensViewProps> = ({
                 >
                   {/* Side-by-Side: Original (Focused) vs Cutout */}
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Left: Original (Simulated 1:1 Focus Crop) */}
-                    <div className="aspect-square rounded-2xl bg-stone-800 overflow-hidden relative border border-stone-700 shadow-inner">
+                    {/* Left: Original (Simulated 1:1 Focus Crop & Magnifier Crop) */}
+                    <div
+                      onClick={() => setShowCropMagnifierBtn((prev) => !prev)}
+                      className="aspect-square rounded-2xl bg-stone-800 overflow-hidden relative border border-stone-700 shadow-inner cursor-pointer group select-none"
+                    >
                       <img
                         src={sessionShots[reviewActiveIndex].imageUrl}
                         alt="Original focus"
                         style={{
-                          transform: `scale(${1.15 * (sessionShots[reviewActiveIndex].zoomScale || 1.0)})`,
+                          transform: `scale(${
+                            (sessionShots[reviewActiveIndex].cropZoom || 1.15) *
+                            (sessionShots[reviewActiveIndex].zoomScale || 1.0)
+                          }) translate(${sessionShots[reviewActiveIndex].cropOffset?.x || 0}%, ${
+                            sessionShots[reviewActiveIndex].cropOffset?.y || 0
+                          }%)`,
                         }}
                         className="w-full h-full object-cover origin-center transition-transform"
                       />
                       <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-medium text-stone-200">
                         원본 ({zoomScale > 1.0 ? `${(sessionShots[reviewActiveIndex].zoomScale || 1.0).toFixed(1)}x ` : ''}1:1 프레임)
                       </div>
+
+                      {/* 돋보기 / 크롭 버튼 */}
+                      {showCropMagnifierBtn ? (
+                        <motion.button
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const current = sessionShots[reviewActiveIndex];
+                            setCropOffset(current.cropOffset || { x: 0, y: 0 });
+                            setCropZoom(current.cropZoom || 1.15);
+                            setIsCropModalOpen(true);
+                          }}
+                          className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/80 hover:bg-black text-amber-300 flex items-center justify-center shadow-2xl border-2 border-amber-400 backdrop-blur-md active:scale-95 transition-all z-20 cursor-pointer"
+                          title="중심 이동 및 크롭 조정"
+                        >
+                          <Search className="w-6 h-6" />
+                        </motion.button>
+                      ) : (
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-amber-300 text-[9px] font-bold flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                          <Search className="w-2.5 h-2.5" />
+                          <span>터치시 돋보기 크롭</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Right: AI Cutout */}
@@ -1332,7 +1397,17 @@ export const LensView: React.FC<LensViewProps> = ({
                         <>
                           <div className="flex items-center justify-between pb-3 border-b border-stone-200/60 mb-3">
                             <div>
-                              <h3 className="text-base font-black text-stone-900">{sessionShots[reviewActiveIndex].preset.name || (sessionShots[reviewActiveIndex].preset as any).koreanName || '자연 생물'}</h3>
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <h3 className="text-base font-black text-stone-900">{sessionShots[reviewActiveIndex].preset.name || (sessionShots[reviewActiveIndex].preset as any).koreanName || '자연 생물'}</h3>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsManualSpeciesPickerOpen(true)}
+                                  className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[10px] font-bold flex items-center gap-1 transition-colors shrink-0 shadow-xs cursor-pointer"
+                                >
+                                  <BookOpen className="w-3 h-3 text-amber-400" />
+                                  <span>종 변경</span>
+                                </button>
+                              </div>
                               <p className="text-[10px] text-stone-500 font-mono mt-0.5">
                                 신뢰도 {sessionShots[reviewActiveIndex].preset.confidence}%
                               </p>
@@ -1366,16 +1441,253 @@ export const LensView: React.FC<LensViewProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Bottom Floating Action: Register All */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/90 via-white/80 to-transparent backdrop-blur-sm">
+            {/* Bottom Floating Action: Change Species, Share, and Register */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white/95 via-white/90 to-transparent backdrop-blur-md border-t border-stone-200/50 flex items-center gap-2">
               <button
-                onClick={handleRegisterAll}
-                className="w-full py-4 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-sm rounded-2xl shadow-[0_4px_20px_rgba(251,191,36,0.3)] flex items-center justify-center gap-2 transition-transform active:scale-95"
+                type="button"
+                onClick={() => setIsManualSpeciesPickerOpen(true)}
+                className="flex-1 py-3.5 bg-stone-900 hover:bg-stone-800 text-stone-200 font-bold text-xs rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
               >
-                <Check className="w-5 h-5 stroke-[3px]" />
-                {sessionShots.length}장 한 번에 도감 등록하기
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                <span>종 변경</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex-1 py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 text-stone-600" />
+                <span>공유하기</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleRegisterAll}
+                className="flex-[1.5] py-3.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-2xl shadow-[0_4px_20px_rgba(251,191,36,0.3)] flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3px]" />
+                <span>{sessionShots.length}장 도감 등록</span>
               </button>
             </div>
+
+            {/* Interactive Crop / Center Shift Modal */}
+            <AnimatePresence>
+              {isCropModalOpen && (
+                <div
+                  className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col p-4 sm:p-6 text-white justify-between select-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Top Bar */}
+                  <div className="flex items-center justify-between py-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-amber-400/20 text-amber-400 flex items-center justify-center">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-white">피사체 중심 이동 및 크롭</h4>
+                        <p className="text-[10px] text-stone-400">화면 중심을 살짝 이동하거나 확대 크롭하세요</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCropModalOpen(false)}
+                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 flex items-center justify-center cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* 1:1 Interactive Crop Viewport with 3x3 Grid and Reticle */}
+                  <div className="my-auto max-w-sm w-full mx-auto space-y-4">
+                    <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-stone-950 border-2 border-amber-400/50 shadow-2xl">
+                      <img
+                        src={sessionShots[reviewActiveIndex].imageUrl}
+                        alt="Crop target"
+                        style={{
+                          transform: `scale(${cropZoom}) translate(${cropOffset.x}%, ${cropOffset.y}%)`,
+                        }}
+                        className="w-full h-full object-cover origin-center transition-transform"
+                      />
+
+                      {/* 3x3 Rule of Thirds Grid Overlay */}
+                      <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 border border-white/20">
+                        <div className="border-r border-b border-white/20" />
+                        <div className="border-r border-b border-white/20" />
+                        <div className="border-b border-white/20" />
+                        <div className="border-r border-b border-white/20" />
+                        <div className="border-r border-b border-white/20 relative flex items-center justify-center">
+                          {/* Focal Reticle in center */}
+                          <div className="w-8 h-8 rounded-full border border-amber-400/80 border-dashed animate-spin-slow flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                          </div>
+                        </div>
+                        <div className="border-b border-white/20" />
+                        <div className="border-r border-white/20" />
+                        <div className="border-r border-white/20" />
+                        <div />
+                      </div>
+
+                      {/* Badges */}
+                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[9px] font-mono text-amber-300 border border-white/10">
+                        배율 {cropZoom.toFixed(2)}x · 중심 ({cropOffset.x > 0 ? `+${cropOffset.x}` : cropOffset.x}%, {cropOffset.y > 0 ? `+${cropOffset.y}` : cropOffset.y}%)
+                      </div>
+                    </div>
+
+                    {/* Controls: Directional D-pad for Center Shift + Zoom Slider */}
+                    <div className="bg-stone-900/90 rounded-2xl p-3.5 border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-stone-200">살짝 중심 이동 (방향 패드)</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropOffset({ x: 0, y: 0 });
+                            setCropZoom(1.15);
+                          }}
+                          className="text-[10px] text-amber-400 hover:underline font-bold cursor-pointer"
+                        >
+                          중앙 초기화
+                        </button>
+                      </div>
+
+                      {/* D-Pad Buttons */}
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCropOffset((prev) => ({ ...prev, x: Math.min(25, prev.x + 3) }))}
+                          className="w-10 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-black active:scale-90 cursor-pointer"
+                          title="왼쪽으로 이동"
+                        >
+                          ◀
+                        </button>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setCropOffset((prev) => ({ ...prev, y: Math.min(25, prev.y + 3) }))}
+                            className="w-10 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-black active:scale-90 cursor-pointer"
+                            title="위로 이동"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCropOffset((prev) => ({ ...prev, y: Math.max(-25, prev.y - 3) }))}
+                            className="w-10 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-black active:scale-90 cursor-pointer"
+                            title="아래로 이동"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCropOffset((prev) => ({ ...prev, x: Math.max(-25, prev.x - 3) }))}
+                          className="w-10 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-black active:scale-90 cursor-pointer"
+                          title="오른쪽으로 이동"
+                        >
+                          ▶
+                        </button>
+                      </div>
+
+                      {/* Zoom Slider */}
+                      <div className="pt-2 border-t border-white/10 flex items-center gap-3">
+                        <span className="text-[11px] font-bold text-stone-400 shrink-0">크롭 배율</span>
+                        <input
+                          type="range"
+                          min={1.0}
+                          max={2.2}
+                          step={0.05}
+                          value={cropZoom}
+                          onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                          className="w-full accent-amber-400 cursor-pointer"
+                        />
+                        <span className="text-[11px] font-mono text-amber-300 font-bold shrink-0">
+                          {cropZoom.toFixed(1)}x
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Apply & Cancel */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setIsCropModalOpen(false)}
+                      className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-stone-300 font-bold text-xs cursor-pointer"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSessionShots((prev) =>
+                          prev.map((s, idx) =>
+                            idx === reviewActiveIndex
+                              ? { ...s, cropOffset, cropZoom }
+                              : s
+                          )
+                        );
+                        setIsCropModalOpen(false);
+                        setToastMessage('피사체 중심 및 크롭이 적용되었습니다.');
+                      }}
+                      className="flex-2 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4 stroke-[3px]" />
+                      <span>크롭 중심 적용하기</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Delete Confirmation Modal: "모아로그에서 제거할까요?" */}
+            <AnimatePresence>
+              {isDeleteConfirmOpen && (
+                <div
+                  className="fixed inset-0 z-70 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl text-center space-y-4 text-stone-900"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                      <Trash2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-stone-900">모아로그에서 제거할까요?</h3>
+                      <p className="text-xs text-stone-500 mt-1">
+                        현재 포착된 사진과 분석 데이터가 즉시 삭제됩니다.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsDeleteConfirmOpen(false)}
+                        className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs cursor-pointer"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSessionShots((prev) => prev.filter((_, i) => i !== reviewActiveIndex));
+                          setIsDeleteConfirmOpen(false);
+                          if (sessionShots.length === 1) {
+                            setIsReviewOpen(false);
+                          } else if (reviewActiveIndex >= sessionShots.length - 1) {
+                            setReviewActiveIndex(Math.max(0, sessionShots.length - 2));
+                          }
+                          setToastMessage('사진이 모아로그에서 제거되었습니다.');
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md cursor-pointer"
+                      >
+                        제거하기
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1612,14 +1924,24 @@ export const LensView: React.FC<LensViewProps> = ({
                             y: 50
                           }
                         };
-                        const newShot: SessionShot = {
-                          id: Date.now().toString(),
-                          imageUrl: customPhotoUrl || currentPreset.image,
-                          preset: presetObj as any,
-                          isAlbum: false,
-                          zoomScale: 1.0,
-                        };
-                        setSessionShots((prev) => [...prev, newShot]);
+                        if (isReviewOpen && sessionShots.length > 0) {
+                          setSessionShots((prev) =>
+                            prev.map((shot, idx) =>
+                              idx === reviewActiveIndex
+                                ? { ...shot, preset: presetObj as any }
+                                : shot
+                            )
+                          );
+                        } else {
+                          const newShot: SessionShot = {
+                            id: Date.now().toString(),
+                            imageUrl: customPhotoUrl || currentPreset.image,
+                            preset: presetObj as any,
+                            isAlbum: false,
+                            zoomScale: 1.0,
+                          };
+                          setSessionShots((prev) => [...prev, newShot]);
+                        }
                         setIsManualSpeciesPickerOpen(false);
                         sounds.playChime();
                       }}

@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { Specimen, Observation, SpeciesEcologyDetail } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { Specimen, Observation, SpeciesEcologyDetail, UserStats } from '../types';
 import { getApiSource, getIdentificationSourceMetadata, API_SOURCES } from '../utils/apiSources';
 import { isValidEcologyDetail, isSpecimenDataMatch, validateSpecimenEcologyData, isMeaningfulContent } from '../utils/validation';
+import { getSpeciesPrimaryName, getSpeciesEnglishName, formatSpeciesDisplayName } from '../utils/speciesNameHelper';
 import {
   MapPin,
   Sparkles,
@@ -62,6 +63,9 @@ import {
   Bookmark,
   Globe,
   Share2,
+  Copy,
+  Download,
+  Quote,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPECIES_ECOLOGY_ENCYCLOPEDIA } from '../data/hotspots';
@@ -74,13 +78,12 @@ import { EcoDexGaugeCard } from './EcoDexGaugeCard';
 import { ObservationTimelineCard } from './ObservationTimelineCard';
 import { InfoCriteriaModal, InfoModalContent } from './InfoCriteriaModal';
 import { getGlobalEcoStatusProfile } from '../utils/globalEcologyTaxonomy';
+import { MorphingAudioPlayer } from './MorphingAudioPlayer';
+import { MorphingFieldNote } from './MorphingFieldNote';
 
-// Sticker design themes for swipeable collection card
-export type CardVisualTheme =
-  | 'photo' // 1. Real photo
-  | 'sticker_classic' // 2. Die-cut Sticker with art score
-  | 'stamp_vintage' // 3. Postal Stamp (우표 감성)
-  | 'collector_card'; // 4. Premium Hologram Collector Card (점수/스탯 포함)
+
+
+export type CardVisualTheme = 'photo' | 'sticker_classic' | 'stamp_vintage' | 'collector_card';
 
 // Client-side cache for ecology details across persona and species
 const clientEcologyDetailsCache = new Map<string, any>();
@@ -121,11 +124,13 @@ interface DetailViewProps {
   specimen: Specimen;
   allSpecimens?: Specimen[];
   currentPersona: string;
+  userStats?: UserStats;
   onClose: () => void;
   onSelectTaxonomyFilter: (taxon: string) => void;
   onAddObservation: (specimenId: string, observation: Observation) => void;
   onUpdateSpecimen?: (updatedSpecimen: Specimen) => void;
   onDeleteSpecimen?: (specimenId: string) => void;
+  onDeleteObservation?: (specimenId: string, observationIndex: number) => void;
   onOpenLens?: () => void;
   onOpenExportCard?: (specimen: Specimen) => void;
 }
@@ -134,11 +139,13 @@ export const DetailView: React.FC<DetailViewProps> = ({
   specimen,
   allSpecimens,
   currentPersona,
+  userStats,
   onClose,
   onSelectTaxonomyFilter,
   onAddObservation,
   onUpdateSpecimen,
   onDeleteSpecimen,
+  onDeleteObservation,
   onOpenLens,
   onOpenExportCard,
 }) => {
@@ -147,6 +154,15 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
   // Local Samsung Health Export Card Modal State
   const [isLocalExportOpen, setIsLocalExportOpen] = useState(false);
+
+  // Image tap controls and Bottom Sheet State
+  const [showImageControls, setShowImageControls] = useState(false);
+  const [isShareBottomSheetOpen, setIsShareBottomSheetOpen] = useState(false);
+  const [shareBottomSheetCardType, setShareBottomSheetCardType] = useState<
+    'official_branded' | 'certificate' | 'sns_square'
+  >('official_branded');
+  const [customOneLineReview, setCustomOneLineReview] = useState('');
+  const [shareBottomSheetToast, setShareBottomSheetToast] = useState<string | null>(null);
 
   // Active Visual Theme mode (Photo, Sticker, Postal Stamp, Collector Card)
   const [visualTheme, setVisualTheme] = useState<CardVisualTheme>('photo');
@@ -233,6 +249,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
   // Real Photo Art & Subject Match Analysis API state
   const [livePhotoArtScore, setLivePhotoArtScore] = useState<any>(null);
   const [isLoadingPhotoArt, setIsLoadingPhotoArt] = useState(false);
+  const [chartTooltip, setChartTooltip] = useState<{idx: number, count: number} | null>(null);
 
   // Real Audio Vocalization Recording State (Curated / xeno-canto / iNaturalist sound API / Web Audio Synth)
   const [audioData, setAudioData] = useState<BioAudioTrack>(() => getCuratedBioAudio(specimen.koreanName, specimen.category));
@@ -536,10 +553,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
   // Ref for local photo upload input
   const photoFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Guarantee observation photos (max 5 photos)
+  // Guarantee observation photos and sort so representative photo is always first (index 0 / left)
   const rawObservations =
     specimen.observations && specimen.observations.length > 0
-      ? specimen.observations
+      ? [...specimen.observations]
       : [
           {
             id: 'sample-obs-1',
@@ -573,8 +590,19 @@ export const DetailView: React.FC<DetailViewProps> = ({
           },
         ];
 
+  const sortedObservations = useMemo(() => {
+    if (!specimen.originalImage) return rawObservations;
+    const copy = [...rawObservations];
+    const repIndex = copy.findIndex((obs) => obs.photoUrl === specimen.originalImage);
+    if (repIndex > 0) {
+      const [repObs] = copy.splice(repIndex, 1);
+      copy.unshift(repObs);
+    }
+    return copy;
+  }, [rawObservations, specimen.originalImage]);
+
   // Strictly enforce max 12 photos
-  const displayObservations = rawObservations.slice(0, 12);
+  const displayObservations = sortedObservations.slice(0, 12);
 
   // Add photo up to max 12 handler
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -616,8 +644,12 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
   // Delete photo handler
   const handleDeletePhoto = (indexToDelete: number) => {
+    // If it's the last photo, trigger total specimen deletion instead
     if (displayObservations.length <= 1) {
-      alert('최소 1장의 대표 사진은 유지되어야 합니다.');
+      if (confirm('마지막 사진입니다. 표본 도감을 삭제하시겠습니까?')) {
+        onDeleteSpecimen?.(specimen.id);
+        onClose?.();
+      }
       return;
     }
     const updatedObs = displayObservations.filter((_, idx) => idx !== indexToDelete);
@@ -1135,6 +1167,9 @@ export const DetailView: React.FC<DetailViewProps> = ({
     const idxToSet = typeof targetIdx === 'number' ? targetIdx : selectedObservationIndex;
     const chosenObs = (displayObservations && displayObservations[idxToSet]) || activeObs;
     if (!chosenObs) return;
+    
+    // Prevent redundant update if already representative
+    if (chosenObs.photoUrl === specimen.originalImage) return;
 
     const reorderedObservations = [
       chosenObs,
@@ -1314,6 +1349,61 @@ export const DetailView: React.FC<DetailViewProps> = ({
         transition={{ duration: 0.25 }}
         className="fixed inset-0 z-50 bg-stone-100 text-stone-900 w-full h-full overflow-y-auto select-none flex flex-col scrollbar-none"
       >
+        {/* Dedicated White Top Header Bar (Not overlapping with photo stage) */}
+        <div className="bg-white px-4 py-3 border-b border-stone-200/80 flex items-center justify-between shrink-0 sticky top-0 z-50 shadow-xs">
+          {/* Left: Back button */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-800 flex items-center justify-center transition-colors cursor-pointer"
+              title="뒤로가기"
+            >
+              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          {/* Center: Toggle Button between 백과 and 포착 */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-full border border-stone-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setIsPhotoReviewMode(false)}
+              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+                !isPhotoReviewMode
+                  ? 'bg-white text-emerald-700 shadow-xs border border-stone-200/60'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              백과
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPhotoReviewMode(true)}
+              className={`px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+                isPhotoReviewMode
+                  ? 'bg-stone-900 text-amber-300 shadow-xs'
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              포착
+            </button>
+          </div>
+
+          {/* Right: Edit icon only (no X button, no text) */}
+          <div className="flex items-center gap-1">
+            {onUpdateSpecimen && (
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-800 flex items-center justify-center transition-colors cursor-pointer"
+                title="표본 정보 수정 및 관리"
+              >
+                <Edit3 className="w-4 h-4 text-amber-600" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Scrollable Body Content */}
         <div className="flex-1 w-full max-w-lg mx-auto pb-28 relative">
           {/* Toast: Cover Set Feedback */}
@@ -1335,101 +1425,21 @@ export const DetailView: React.FC<DetailViewProps> = ({
               1. Photo Stage (1:1 Aspect Ratio with Floating Circle Buttons)
               ======================================================== */}
           <div className="relative w-full bg-stone-950 overflow-hidden select-none">
-            {/* Top Floating Circular Action Controls over Photo */}
+            {/* Top Floating Circular Action Controls over Photo (Empty since header now holds mode switch) */}
             <div className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none">
-              {/* Top Left: Circular Back Button + High Contrast Mode Switcher Badge */}
-              <div className="pointer-events-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-stone-900/70 hover:bg-stone-900/90 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center justify-center transition-all active:scale-90 cursor-pointer"
-                  title="뒤로가기"
-                >
-                  <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPhotoReviewMode(!isPhotoReviewMode)}
-                  className="px-3.5 py-2 rounded-full bg-stone-900/90 hover:bg-stone-950 text-white text-xs font-black backdrop-blur-md shadow-2xl border border-white/30 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer select-none"
-                  title="클릭하여 모드 전환"
-                >
-                  {isPhotoReviewMode ? (
-                    <>
-                      <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                      <span>포착 점수 모드</span>
-                    </>
-                  ) : (
-                    <>
-                      <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>생태 백과 모드</span>
-                    </>
-                  )}
-                  <span className="text-[10px] text-stone-300 bg-white/20 px-1.5 py-0.5 rounded-md font-extrabold ml-0.5">전환 ▾</span>
-                </button>
-              </div>
-
-              {/* Top Right: Explicit Edit Button & Samsung Health Eco Card */}
-              <div className="pointer-events-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onOpenExportCard) onOpenExportCard(specimen);
-                    else setIsLocalExportOpen(true);
-                  }}
-                  className="px-3 py-2 rounded-full bg-emerald-700/90 hover:bg-emerald-600 text-white backdrop-blur-md shadow-lg border border-emerald-400/40 flex items-center gap-1.5 text-xs font-black transition-all active:scale-95 cursor-pointer"
-                  title="삼성 헬스 스타일 생태 카드 공유"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-white" />
-                  <span>생태 카드</span>
-                </button>
-                {onUpdateSpecimen && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="px-3 py-2 rounded-full bg-stone-900/85 hover:bg-stone-900 text-white backdrop-blur-md shadow-lg border border-white/30 flex items-center gap-1.5 text-xs font-black transition-all active:scale-95 cursor-pointer"
-                    title="표본 정보 수정"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-                    <span>수정</span>
-                  </button>
-                )}
-              </div>
+              <div className="pointer-events-auto flex items-center gap-2" />
+              <div className="pointer-events-auto flex items-center gap-2" />
             </div>
 
-            {/* Score Mode Theme Switcher Bar (Overlayed on Photo) */}
+            {/* Score Mode Zoom Button Bar (Overlayed on Photo) */}
             <AnimatePresence>
               {isPhotoReviewMode && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-16 left-3 right-3 z-30 flex items-center justify-between gap-2 pointer-events-auto"
+                  className="absolute top-16 right-3 z-30 flex items-center justify-end pointer-events-auto"
                 >
-                  {/* Edition Theme Switcher */}
-                  <div className="flex items-center gap-1 bg-black/75 backdrop-blur-md p-1 rounded-full border border-white/20 shadow-lg text-xs overflow-x-auto scrollbar-none">
-                    {visualThemesList.map((item) => {
-                      const isActive = visualTheme === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setVisualTheme(item.id);
-                          }}
-                          className={`px-2.5 py-1 rounded-full font-bold transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer active:scale-95 ${
-                            isActive
-                              ? 'bg-amber-400 text-stone-950 font-black shadow-xs'
-                              : 'text-stone-300 hover:text-white'
-                          }`}
-                        >
-                          <span>{item.icon}</span>
-                          <span className="text-[10px]">{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
                   {/* Zoom Original Image Button (Full-Screen Lightbox Modal) */}
                   <button
                     type="button"
@@ -1437,7 +1447,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                       e.stopPropagation();
                       setIsZoomModalOpen(true);
                     }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/75 hover:bg-black/90 backdrop-blur-md text-white text-xs font-extrabold border border-white/20 shadow-lg transition-all active:scale-95 cursor-pointer shrink-0"
+                    className="flex items-center gap-1 px-3.5 py-2 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-md text-white text-xs font-extrabold border border-white/20 shadow-lg transition-all active:scale-95 cursor-pointer shrink-0"
                     title="새 창에서 크게 보기"
                   >
                     <Maximize2 className="w-3.5 h-3.5 text-amber-300" />
@@ -1449,37 +1459,70 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
             {/* 1:1 Aspect Ratio Main Image Display Frame */}
             <div
-              onClick={() => setIsPhotoReviewMode(!isPhotoReviewMode)}
+              onClick={() => {
+                if (isLivePlaying) {
+                  handleToggleLivePhoto({ stopPropagation: () => {} } as any);
+                } else {
+                  setShowImageControls((prev) => !prev);
+                }
+              }}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="relative w-full aspect-square bg-stone-950 flex items-center justify-center cursor-pointer overflow-hidden group"
+              className="relative w-full aspect-square bg-stone-950 flex items-center justify-center cursor-pointer overflow-hidden group select-none"
             >
-              {/* Floating LIVE MOTION Badge on Photo Frame */}
-              <div className="absolute top-3 left-3 z-30 pointer-events-auto">
-                <button
-                  type="button"
-                  onClick={handleToggleLivePhoto}
-                  className={`px-3 py-1.5 rounded-full text-xs font-black shadow-lg backdrop-blur-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border ${
-                    isLivePlaying
-                      ? 'bg-rose-600 text-white border-rose-300 ring-2 ring-rose-500/40 animate-pulse'
-                      : 'bg-black/60 hover:bg-black/80 text-white border-white/20'
-                  }`}
-                  title={isLivePlaying ? '생태 라이브 모션 일시정지' : '생태 라이브 모션 재생'}
-                >
-                  <div className="relative flex items-center justify-center">
-                    <span className={`w-2 h-2 rounded-full ${isLivePlaying ? 'bg-white animate-ping' : 'bg-rose-500'}`} />
-                    <span className={`absolute w-2 h-2 rounded-full ${isLivePlaying ? 'bg-white' : 'bg-rose-500'}`} />
-                  </div>
-                  <span className="font-mono tracking-wider font-extrabold text-[11px]">
-                    {isLivePlaying ? `LIVE ${liveSecondsLeft.toFixed(1)}s` : 'LIVE'}
-                  </span>
-                </button>
-              </div>
+              {/* Floating Monochromatic LIVE Motion Pill (Hidden when image controls are open) */}
+              {!showImageControls && (
+                <div className="absolute top-3 left-3 z-30 pointer-events-auto">
+                  <motion.button
+                    layout
+                    transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.8 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleLivePhoto(e);
+                    }}
+                    className={`h-8 px-3 rounded-full text-xs font-bold font-geist shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer border select-none ${
+                      isLivePlaying
+                        ? 'bg-white text-black border-white'
+                        : 'bg-black/80 hover:bg-black text-white border-white/20 backdrop-blur-md'
+                    }`}
+                    title={isLivePlaying ? '라이브 모션 정지' : '생태 라이브 모션 재생'}
+                  >
+                    <AnimatePresence mode="wait">
+                      {isLivePlaying ? (
+                        <motion.div
+                          key="live-active"
+                          initial={{ opacity: 0, filter: 'blur(3px)' }}
+                          animate={{ opacity: 1, filter: 'blur(0px)' }}
+                          exit={{ opacity: 0, filter: 'blur(2px)' }}
+                          transition={{ duration: 0.14 }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
+                          <span className="font-geist-mono text-[10px] font-bold tracking-wider">LIVE ON</span>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="live-idle"
+                          initial={{ opacity: 0, filter: 'blur(3px)' }}
+                          animate={{ opacity: 1, filter: 'blur(0px)' }}
+                          exit={{ opacity: 0, filter: 'blur(2px)' }}
+                          transition={{ duration: 0.14 }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <Play className="w-2.5 h-2.5 fill-white text-white ml-0.5" strokeWidth={2} />
+                          <span className="font-geist-mono text-[10px] font-bold tracking-wider">LIVE</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
+              )}
 
-              {/* Active Live Motion Playing Aura Overlay */}
+              {/* Minimal Clean Monochrome Border during Live Playback (No glow/gradient) */}
               {isLivePlaying && (
-                <div className="absolute inset-0 pointer-events-none border-4 border-rose-500/70 shadow-[inset_0_0_30px_rgba(244,63,94,0.5)] z-20 animate-pulse" />
+                <div className="absolute inset-0 pointer-events-none border border-white/40 z-20" />
               )}
 
               <AnimatePresence mode="wait">
@@ -1638,80 +1681,129 @@ export const DetailView: React.FC<DetailViewProps> = ({
                 )}
               </AnimatePresence>
 
-              {/* Unified Gallery-Style Photo Carousel & Representative Photo Control */}
-              {displayObservations && displayObservations.length > 1 && (
-                <div
-                  className="absolute bottom-3 left-0 right-0 z-30 pointer-events-auto flex flex-col items-center gap-1.5 px-3"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Representative Photo Action / Status Pill */}
-                  <div>
-                    {!isRepresentativeCover ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSetAsRepresentativeCover();
-                        }}
-                        className="px-3.5 py-1 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 text-[11px] font-black shadow-lg border border-amber-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md"
-                        title="현재 보고 있는 사진을 도감 대표 사진으로 지정"
-                      >
-                        <Crown className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
-                        <span>대표 사진으로 설정</span>
-                      </button>
-                    ) : (
-                      <div className="px-3 py-1 rounded-full bg-stone-900/85 text-amber-300 text-[11px] font-bold border border-amber-400/40 shadow-md flex items-center gap-1.5 backdrop-blur-md">
-                        <Crown className="w-3.5 h-3.5 fill-amber-300 stroke-none" />
-                        <span>대표 사진</span>
+              {/* Image Controls Overlay: Representative Badge, Image Indicator & Share Button */}
+              <AnimatePresence>
+                {showImageControls && !isLivePlaying && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-between p-3"
+                  >
+                    {/* Top Overlay Bar: Representative Status & Action */}
+                    <div className="flex items-center justify-between pointer-events-auto">
+                      <div />
+                      <div>
+                        {isRepresentativeCover ? (
+                          <div className="px-3 py-1.5 rounded-full bg-stone-900/90 text-amber-300 text-xs font-black border border-amber-400/50 shadow-2xl flex items-center gap-1.5 backdrop-blur-md">
+                            <Crown className="w-3.5 h-3.5 fill-amber-300 stroke-none" />
+                            <span>대표 사진</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSetAsRepresentativeCover();
+                            }}
+                            className="px-3.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black shadow-2xl border border-amber-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+                            title="현재 보고 있는 사진을 도감 대표 사진으로 지정"
+                          >
+                            <Crown className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
+                            <span>대표 사진으로 설정</span>
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Clean Horizontal Thumbnail Strip */}
-                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/60 backdrop-blur-md border border-white/20 shadow-2xl max-w-full overflow-x-auto scrollbar-none">
-                    {displayObservations.map((obs, idx) => {
-                      const isSelected = selectedObservationIndex === idx;
-                      const isRepPhoto = obs.photoUrl === specimen.originalImage;
-                      return (
-                        <button
-                          key={`unified-thumb-${obs.id || idx}`}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedObservationIndex(idx);
-                          }}
-                          className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 transition-all cursor-pointer shadow-md border ${
-                            isSelected
-                              ? 'ring-2 ring-white border-transparent opacity-100 scale-105 shadow-xl'
-                              : 'border-white/20 bg-stone-900/60 opacity-65 hover:opacity-100'
-                          }`}
-                          title={`사진 #${idx + 1}`}
-                        >
-                          <img
-                            src={obs.photoUrl || specimen.originalImage || ''}
-                            alt=""
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                          {/* Crown badge on thumbnail if it is representative photo */}
-                          {isRepPhoto && (
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetAsRepresentativeCover(idx);
-                              }}
-                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-amber-400 text-stone-950 shadow-md ring-1 ring-amber-300"
-                              title="도감 대표 사진"
-                            >
-                              <Crown className="w-2.5 h-2.5 fill-stone-950 stroke-none" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                    {/* Bottom Overlay Bar: Thumbnails, Indicator & Share Button */}
+                    <div
+                      className="pointer-events-auto flex flex-col items-center gap-2 bg-gradient-to-t from-black/85 via-black/45 to-transparent -mx-3 -mb-3 p-3 pt-6 rounded-b-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Clean Horizontal Thumbnail Strip if multiple photos */}
+                      {displayObservations && displayObservations.length > 1 && (
+                        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/60 backdrop-blur-md border border-white/20 shadow-2xl max-w-full overflow-x-auto scrollbar-none">
+                          {displayObservations.map((obs, idx) => {
+                            const isSelected = selectedObservationIndex === idx;
+                            const isRepPhoto = obs.photoUrl === specimen.originalImage;
+                            return (
+                              <button
+                                key={`unified-thumb-${obs.id || idx}`}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedObservationIndex(idx);
+                                }}
+                                className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shrink-0 transition-all cursor-pointer shadow-md border ${
+                                  isSelected
+                                    ? 'ring-2 ring-white border-transparent opacity-100 scale-105 shadow-xl'
+                                    : 'border-white/20 bg-stone-900/60 opacity-65 hover:opacity-100'
+                                }`}
+                                title={`사진 #${idx + 1}`}
+                              >
+                                <img
+                                  src={obs.photoUrl || specimen.originalImage || ''}
+                                  alt=""
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                                {isRepPhoto && (
+                                  <div
+                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-amber-400 text-stone-950 shadow-md ring-1 ring-amber-300"
+                                    title="도감 대표 사진"
+                                  >
+                                    <Crown className="w-2 h-2 fill-stone-950 stroke-none" />
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Main Indicator & Share Button Row */}
+                      <div className="w-full flex items-center justify-between">
+                        {/* Image Indicator Pill */}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-mono font-bold shadow-xl">
+                          <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>
+                            {displayObservations.length}
+                          </span>
+                        </div>
+
+                        {/* Action buttons: Zoom & Share */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsZoomModalOpen(true);
+                            }}
+                            className="p-2 rounded-full bg-black/75 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 shadow-xl transition-all active:scale-95 cursor-pointer"
+                            title="새 창에서 크게 보기"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5 text-amber-300" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsShareBottomSheetOpen(true);
+                            }}
+                            className="px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs shadow-xl border border-emerald-300 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer backdrop-blur-md"
+                            title="공식 로고 이미지 공유 바텀시트 열기"
+                          >
+                            <Share2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>공유</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -1763,8 +1855,13 @@ export const DetailView: React.FC<DetailViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <h2 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight break-words">
-                      {specimen.koreanName}
+                    <h2 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight break-words flex items-baseline gap-2 flex-wrap">
+                      <span>{getSpeciesPrimaryName(specimen, userStats?.language)}</span>
+                      {((userStats?.language || 'ko') !== 'en') && userStats?.showEnglishNameWithLocal !== false && (
+                        <span className="text-base sm:text-xl font-bold text-stone-500 font-sans tracking-normal">
+                          ({getSpeciesEnglishName(specimen)})
+                        </span>
+                      )}
                     </h2>
                     {onUpdateSpecimen && (
                       <button
@@ -1889,8 +1986,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
                         <Crown className={`w-2.5 h-2.5 ${isRepPhoto ? 'fill-stone-950 stroke-none' : ''}`} />
                       </button>
 
-                      {/* Delete photo button (Only when more than 1 photo exists) */}
-                      {displayObservations.length > 1 && (
+                      {/* Delete photo button (Only when more than 1 photo exists and it's not a sample photo) */}
+                      {displayObservations.length > 1 && !obs.id.startsWith('sample-') && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1923,39 +2020,6 @@ export const DetailView: React.FC<DetailViewProps> = ({
               </div>
             </div>
 
-            {/* Mode Switcher Tabs: [생태 백과 도감] vs [구도 및 사진 검토 분석] */}
-            <div className="flex items-center p-1 bg-stone-100 rounded-2xl border border-stone-200">
-              <button
-                type="button"
-                onClick={() => setIsPhotoReviewMode(false)}
-                className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  !isPhotoReviewMode
-                    ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-                <span>생태 백과 도감</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPhotoReviewMode(true)}
-                className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  isPhotoReviewMode
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <Eye className="w-3.5 h-3.5" />
-                <span>구도 및 사진 검토 분석</span>
-              </button>
-            </div>
-
-            {/* ========================================================
-                [구도 및 사진 검토 분석] 
-                도넛 차트 + 레이더 차트 + 세부 지표 + 전문가 한줄평
-                ======================================================== */}
             {isPhotoReviewMode ? (
               <div className="space-y-3.5 pt-1 select-none">
                 {/* Header: Photo Capture & Composition Summary */}
@@ -2002,6 +2066,47 @@ export const DetailView: React.FC<DetailViewProps> = ({
                     <span className="text-[10px] text-stone-400 block font-sans">포착 종합 지수</span>
                   </div>
                 </div>
+
+                {/* 실전 필드노트: 형질동정 & 촬영팁 내용 (포착 화면에 표시) */}
+                {(ecoDetail?.keyIdentification || ecoDetail?.bestObservationTip) && (
+                  <div className="bg-white rounded-2xl p-4 border border-stone-200/90 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-stone-150 pb-2">
+                      <div className="flex items-center gap-1.5 font-black text-stone-900 text-xs">
+                        <span>📓</span>
+                        <span>실전 필드노트 (형질동정 & 촬영팁)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        포착 가이드
+                      </span>
+                    </div>
+
+                    {ecoDetail?.keyIdentification && (
+                      <div className="bg-amber-50/70 border-l-4 border-l-amber-500 border border-amber-200/70 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                            <span>🔍 핵심 구별 포인트 (형질동정)</span>
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-stone-800 font-medium">
+                          {ecoDetail.keyIdentification}
+                        </p>
+                      </div>
+                    )}
+
+                    {ecoDetail?.bestObservationTip && ecoDetail.bestObservationTip.trim().length > 0 && (
+                      <div className="bg-emerald-50/60 border-l-4 border-l-emerald-600 border border-emerald-200/70 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                            <span>📸 현장 관찰 & 촬영 팁</span>
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-stone-800 font-medium">
+                          {ecoDetail.bestObservationTip}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Main Graph Grid */}
                 {(() => {
@@ -3143,6 +3248,132 @@ export const DetailView: React.FC<DetailViewProps> = ({
                         </div>
                       )}
 
+                      {/* 출현 시기 & 12개월 관찰 빈도 (iNaturalist Live Phenology Histogram) - 아코디언 상단에 위치 */}
+                      <div className="bg-white rounded-2xl border border-stone-200/90 p-4 shadow-2xs space-y-2">
+                        {(() => {
+                          const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+                          const rawCounts: number[] = monthNames.map((_, idx) => (inatHistogram && inatHistogram[idx + 1] !== undefined ? inatHistogram[idx + 1] : 0));
+                          const totalObs = rawCounts.reduce((sum, c) => sum + c, 0);
+                          const maxCount = Math.max(...rawCounts, 0);
+                          const hasRealHist = inatHistogram && totalObs > 0;
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                                  <span className="text-stone-500 font-medium text-[11px]">📅 출현 시기:</span>
+                                  <span className="text-emerald-800 font-black">
+                                    {ecoDetail?.seasonality || '사계절 관찰 가능'}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-stone-500 font-medium">
+                                  {hasRealHist ? `글로벌 ${totalObs.toLocaleString()}건` : (isLoadingInat ? '집계 중...' : '기록 대기')}
+                                </span>
+                              </div>
+
+                              {/* 12-Month Micro Sparkline with Expanded Tap Targets */}
+                              <div className="relative pt-6 pb-1 px-1 bg-stone-50 rounded-xl border border-stone-200/70 select-none">
+                                <div className="grid grid-cols-12 gap-1 items-end h-12">
+                                  {rawCounts.map((rawCount, idx) => {
+                                    const percentage = maxCount > 0 ? (rawCount / maxCount) : 0;
+                                    const isPeak = rawCount === maxCount && rawCount > 0;
+                                    const isSelected = chartTooltip?.idx === idx;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        aria-label={`${idx + 1}월 관찰 ${rawCount}회`}
+                                        onClick={() => setChartTooltip(prev => prev?.idx === idx ? null : { idx, count: rawCount })}
+                                        className="flex flex-col items-center h-full justify-end relative group cursor-pointer focus:outline-none p-0.5 rounded hover:bg-stone-200/50 transition-colors"
+                                      >
+                                        {/* Floating Tooltip Bubble */}
+                                        {isSelected && (
+                                          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none whitespace-nowrap transition-transform duration-150">
+                                            <div className="px-1.5 py-0.5 rounded bg-stone-900 text-white text-[10px] font-mono font-black shadow-lg flex items-center gap-1 border border-stone-800">
+                                              <span>{idx + 1}월</span>
+                                              <span className="text-emerald-400">{rawCount.toLocaleString()}회</span>
+                                            </div>
+                                            <div className="w-1.5 h-1.5 bg-stone-900 rotate-45 mx-auto -mt-1" />
+                                          </div>
+                                        )}
+                                        <div
+                                          className={`w-full rounded-xs transition-all duration-200 ${
+                                            isSelected
+                                              ? 'bg-stone-900 ring-2 ring-stone-900/30'
+                                              : isPeak
+                                              ? 'bg-emerald-600 ring-1 ring-emerald-500'
+                                              : percentage >= 0.5
+                                              ? 'bg-emerald-500'
+                                              : percentage > 0.1
+                                              ? 'bg-emerald-400'
+                                              : rawCount > 0
+                                              ? 'bg-emerald-300'
+                                              : 'bg-stone-200'
+                                          }`}
+                                          style={{ height: `${Math.max(4, percentage * 36)}px` }}
+                                        />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* 12-Month Labels (Also Clickable) */}
+                              <div className="grid grid-cols-12 gap-1 text-center font-mono text-[9px]">
+                                {monthNames.map((_, idx) => {
+                                  const rawCount = rawCounts[idx];
+                                  const isPeak = hasRealHist && rawCount === maxCount && maxCount > 0;
+                                  const isSelected = chartTooltip?.idx === idx;
+                                  return (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={() => setChartTooltip(prev => prev?.idx === idx ? null : { idx, count: rawCount })}
+                                      className={`py-0.5 rounded transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-stone-900 text-white font-black'
+                                          : isPeak
+                                          ? 'text-emerald-800 font-bold bg-emerald-50'
+                                          : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'
+                                      }`}
+                                    >
+                                      {idx + 1}월
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Monthly Detail Banner */}
+                              {chartTooltip !== null ? (
+                                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-stone-100 border border-stone-200/80 text-[11px] text-stone-700">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
+                                    <span className="font-bold text-stone-900">{chartTooltip.idx + 1}월 관찰 빈도:</span>
+                                    <span className="font-mono font-black text-emerald-800">{chartTooltip.count.toLocaleString()}건</span>
+                                    {totalObs > 0 && (
+                                      <span className="text-stone-500 text-[10px] font-mono">
+                                        ({((chartTooltip.count / totalObs) * 100).toFixed(1)}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setChartTooltip(null)}
+                                    className="text-[10px] text-stone-400 hover:text-stone-900 font-medium underline cursor-pointer ml-2 shrink-0"
+                                  >
+                                    닫기
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-stone-400 text-center font-mono py-0.5">
+                                  월별 막대 또는 월 라벨을 누르면 상세 횟수가 표시됩니다
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+
                       {/* --- API 연동 기반 백과사전 아코디언 (Accordion Items) - 데이터가 존재하는 항목만 조건부 렌더링 --- */}
                       <div className="space-y-2.5 pt-1">
                         {/* 1. 생김새 아코디언 (appearanceText가 유효한 내용일 때만 렌더링) */}
@@ -3153,16 +3384,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('appearance')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>👁️</span>
-                                  <span>외형 특징</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  외형 식별 형질
                                 </span>
-                                {appearanceBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200/60">
-                                    #{badge}
-                                  </span>
-                                ))}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.appearance ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3176,7 +3401,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                 </p>
                                 <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
                                   <span className="flex items-center gap-1 font-medium">
-                                    <span className="text-emerald-700 font-semibold">🏛️ 출처:</span>
+                                    <span className="text-stone-900 font-semibold">출처:</span>
                                     <span className="text-stone-700">{API_SOURCES.appearance.fullLabel}</span>
                                   </span>
                                   <span className="text-[10px] font-mono text-stone-400 shrink-0">GBIF · iNat</span>
@@ -3194,16 +3419,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('habitat')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>🏡</span>
-                                  <span>서식 환경</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  서식 환경 및 분포
                                 </span>
-                                {habitatBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
-                                    #{badge}
-                                  </span>
-                                ))}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.habitat ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3217,7 +3436,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                 </p>
                                 <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
                                   <span className="flex items-center gap-1 font-medium">
-                                    <span className="text-emerald-700 font-semibold">🏛️ 출처:</span>
+                                    <span className="text-stone-900 font-semibold">출처:</span>
                                     <span className="text-stone-700">{API_SOURCES.habitat.fullLabel}</span>
                                   </span>
                                   <span className="text-[10px] font-mono text-stone-400 shrink-0">iNat Obs</span>
@@ -3235,16 +3454,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('ecology')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>🥗</span>
-                                  <span>섭식 및 생태 습성</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  섭식 및 생태 습성
                                 </span>
-                                {ecologyBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200/60">
-                                    #{badge}
-                                  </span>
-                                ))}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.ecology ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3300,87 +3513,29 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               )}
                             </div>
 
-                            {/* Player Controls: Big Clear Play/Pause, Stop, Time, and Equalizer */}
-                            <div className="flex items-center gap-3 bg-stone-50 p-2.5 rounded-lg border border-stone-200/70">
-                              {/* Integrated Play / Pause Toggle Button */}
-                              <button
-                                type="button"
-                                onClick={isPlayingAudio ? handlePauseAudio : handlePlayAudio}
-                                className="w-9 h-9 rounded-full bg-stone-900 hover:bg-stone-800 text-white flex items-center justify-center shrink-0 shadow-sm active:scale-95 transition-transform cursor-pointer"
-                                title={isPlayingAudio ? "일시정지 (Pause)" : "재생 (Play)"}
-                              >
-                                {isPlayingAudio ? (
-                                  <Pause className="w-4 h-4 fill-white" />
-                                ) : (
-                                  <Play className="w-4 h-4 fill-white ml-0.5" />
-                                )}
-                              </button>
-
-                              {/* Stop Button (Reset to 00:00) */}
-                              <button
-                                type="button"
-                                onClick={handleStopAudio}
-                                disabled={!isPlayingAudio && audioCurrentTime === 0}
-                                className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 flex items-center justify-center shrink-0 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all cursor-pointer"
-                                title="정지 및 처음으로 (Stop)"
-                              >
-                                <Square className="w-3 h-3 fill-stone-700" />
-                              </button>
-
-                              {/* Progress Slider and Time Indicator */}
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center justify-between text-[10px] font-mono text-stone-500">
-                                  <span>
-                                    {Math.floor(audioCurrentTime / 60).toString().padStart(2, '0')}:
-                                    {Math.floor(audioCurrentTime % 60).toString().padStart(2, '0')}
-                                  </span>
-                                  <span>
-                                    {audioDuration > 0
-                                      ? `${Math.floor(audioDuration / 60).toString().padStart(2, '0')}:${Math.floor(audioDuration % 60).toString().padStart(2, '0')}`
-                                      : '00:30'}
-                                  </span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max={audioDuration || 30}
-                                  value={audioCurrentTime}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    setAudioCurrentTime(val);
-                                    if (audioRef.current) {
-                                      audioRef.current.currentTime = val;
-                                    }
-                                  }}
-                                  className="w-full h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-stone-900"
-                                />
-                              </div>
-
-                              {/* Soundwave Bars Animation */}
-                              <div className="flex items-end gap-0.5 h-4 shrink-0 px-1">
-                                {[0.4, 0.9, 0.6, 1.0, 0.5].map((val, i) => (
-                                  <div
-                                    key={i}
-                                    className={`w-0.5 rounded-full bg-stone-700 transition-all duration-150 ${
-                                      isPlayingAudio ? 'animate-pulse' : 'opacity-25'
-                                    }`}
-                                    style={{
-                                      height: isPlayingAudio ? `${Math.max(25, val * 100)}%` : '25%',
-                                      animationDelay: `${i * 100}ms`
-                                    }}
-                                  />
-                                ))}
-                              </div>
-
-                              {/* Mute toggle button */}
-                              <button
-                                type="button"
-                                onClick={toggleMute}
-                                className="p-1.5 rounded-md hover:bg-stone-200/60 text-stone-600 transition-colors shrink-0"
-                                title={isMuted ? '음소거 해제' : '음소거'}
-                              >
-                                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-stone-400" /> : <Volume2 className="w-3.5 h-3.5" />}
-                              </button>
+                            {/* Dribbble-Grade Morphing Play Button & Audio Waveform Scrubber */}
+                            <div className="pt-0.5">
+                              <MorphingAudioPlayer
+                                audioUrl={audioData?.url}
+                                audioTitle={audioData?.title}
+                                sourceLabel={audioData?.source}
+                                audioRef={audioRef}
+                                isPlaying={isPlayingAudio}
+                                currentTime={audioCurrentTime}
+                                duration={audioDuration}
+                                isMuted={isMuted}
+                                onPlay={handlePlayAudio}
+                                onPause={handlePauseAudio}
+                                onStop={handleStopAudio}
+                                onSeek={(time) => {
+                                  setAudioCurrentTime(time);
+                                  if (audioRef.current) {
+                                    audioRef.current.currentTime = time;
+                                  }
+                                }}
+                                onToggleMute={toggleMute}
+                                specimenName={specimen.koreanName}
+                              />
                             </div>
 
                             {/* Supplementary WebAudio Synth option button */}
@@ -3449,16 +3604,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('etymology')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>📖</span>
-                                  <span>이름 유래</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  학명 및 국명 어원
                                 </span>
-                                {etymologyBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200/60">
-                                    #{badge}
-                                  </span>
-                                ))}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.etymology ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3472,7 +3621,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                 </p>
                                 <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
                                   <span className="flex items-center gap-1 font-medium">
-                                    <span className="text-emerald-700 font-semibold">🏛️ 출처:</span>
+                                    <span className="text-stone-900 font-semibold">출처:</span>
                                     <span className="text-stone-700">{API_SOURCES.etymology.fullLabel}</span>
                                   </span>
                                   <span className="text-[10px] font-mono text-stone-400 shrink-0">GBIF Backbone</span>
@@ -3490,22 +3639,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('funFact')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>📌</span>
-                                  <span>보전 상태</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  생태 보전 등급
                                 </span>
-                                {globalProfile.tierMeta && (
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                                    globalProfile.iucnCategory === 'CR' ? 'bg-rose-50 text-rose-900 border-rose-200' :
-                                    globalProfile.iucnCategory === 'EN' ? 'bg-orange-50 text-orange-900 border-orange-200' :
-                                    globalProfile.iucnCategory === 'VU' ? 'bg-amber-50 text-amber-900 border-amber-200' :
-                                    globalProfile.iucnCategory === 'NT' ? 'bg-lime-50 text-lime-900 border-lime-200' :
-                                    'bg-emerald-50 text-emerald-900 border-emerald-200'
-                                  }`}>
-                                    #{globalProfile.tierMeta.code}
-                                  </span>
-                                )}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.funFact ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3521,7 +3658,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
                                 )}
                                 <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
                                   <span className="flex items-center gap-1 font-medium">
-                                    <span className="text-amber-700 font-semibold">🏛️ 출처:</span>
+                                    <span className="text-stone-900 font-semibold">출처:</span>
                                     <span className="text-stone-700">{isFungi ? '국립산림과학원 산림생태계 안전 가이드라인' : API_SOURCES.conservation.fullLabel}</span>
                                   </span>
                                   <span className="text-[10px] font-mono text-stone-400 shrink-0">{isFungi ? 'Forest Fungi Safe Guide' : 'IUCN Red List'}</span>
@@ -3539,16 +3676,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
                               onClick={() => toggleCategory('breeding')}
                               className="w-full px-3.5 py-3 flex items-center justify-between text-left hover:bg-stone-50/80 transition-colors cursor-pointer gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                                <span className="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5 shrink-0">
-                                  <span>🐣</span>
-                                  <span>번식 및 생활사</span>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-stone-900 tracking-tight uppercase font-geist">
+                                  번식 및 생활사
                                 </span>
-                                {breedingBadges.slice(0, 4).map((badge, idx) => (
-                                  <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 border border-stone-200/60">
-                                    #{badge}
-                                  </span>
-                                ))}
                               </div>
                               <span className="text-stone-400 p-1 shrink-0">
                                 {expandedCategories.breeding ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -3593,180 +3724,16 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
                   return (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-                      {/* Left: 현장 탐사 필드노트 가이드 (col-span-6) - 최대한 간결하고 핵심적인 UI */}
+                      {/* Left: Morphing Field Note Specification Matrix (Single continuous shape, touch to expand specs with micro-overshoot spring) */}
                       {hasFieldNotes && (
-                        <div className="lg:col-span-6 bg-white rounded-3xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs space-y-3.5 flex flex-col justify-between">
-                          <div className="space-y-3">
-                            {/* 헤더 */}
-                            <div className="flex items-center justify-between border-b border-stone-150 pb-2.5">
-                              <div className="flex items-center gap-2">
-                                <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-xs font-black shrink-0 border border-amber-200">
-                                  📓
-                                </span>
-                                <div>
-                                  <h3 className="text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5">
-                                    실전 필드노트
-                                  </h3>
-                                  <p className="text-[10.5px] text-stone-500 font-medium">
-                                    핵심 동정 포인트 & 현장 관찰 가이드
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 shrink-0">
-                                핵심 요약
-                              </span>
-                            </div>
-                            
-                            {/* 1. 핵심 구별 포인트 (Key Diagnostic Characters) - 돋보이는 엠버 콜아웃 */}
-                            {ecoDetail?.keyIdentification && (
-                              <div className="bg-amber-50/70 border-l-4 border-l-amber-500 border border-amber-200/70 rounded-xl p-3 space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                                    <span>🔍 핵심 구별 포인트</span>
-                                  </span>
-                                  <span className="text-[9.5px] font-mono font-bold text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded">
-                                    형질 동정
-                                  </span>
-                                </div>
-                                <p className="text-xs sm:text-[13px] leading-relaxed text-stone-800 font-medium">
-                                  {ecoDetail.keyIdentification}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* 2. 현장 관찰 & 촬영 팁 (Best Observation Tip) - 상쾌한 에메랄드 콜아웃 */}
-                            {ecoDetail?.bestObservationTip && ecoDetail.bestObservationTip.trim().length > 0 && (
-                              <div className="bg-emerald-50/60 border-l-4 border-l-emerald-600 border border-emerald-200/70 rounded-xl p-3 space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                                    <span>📸 현장 관찰 & 촬영 팁</span>
-                                  </span>
-                                  {ecoDetail?.categoryFocus && (
-                                    <span className="text-[9.5px] font-bold text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-200/80">
-                                      {ecoDetail.categoryFocus}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs sm:text-[13px] leading-relaxed text-stone-800 font-medium">
-                                  {ecoDetail.bestObservationTip}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* 3. 출현 시기 & 12개월 관찰 빈도 (iNaturalist Live Phenology Histogram) */}
-                            <div className="bg-stone-50/90 border border-stone-200/80 rounded-xl p-3 space-y-2">
-                              {(() => {
-                                const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-                                const rawCounts: number[] = monthNames.map((_, idx) => (inatHistogram && inatHistogram[idx + 1] !== undefined ? inatHistogram[idx + 1] : 0));
-                                const totalObs = rawCounts.reduce((sum, c) => sum + c, 0);
-                                const maxCount = Math.max(...rawCounts, 0);
-                                const hasRealHist = inatHistogram && totalObs > 0;
-
-                                return (
-                                  <>
-                                    <div className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center gap-1.5 font-bold text-stone-900">
-                                        <span className="text-stone-500 font-medium text-[11px]">📅 출현 시기:</span>
-                                        <span className="text-emerald-800 font-black">
-                                          {ecoDetail?.seasonality || '사계절 관찰 가능'}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] font-mono text-stone-500 font-medium">
-                                        {hasRealHist ? `글로벌 ${totalObs.toLocaleString()}건` : (isLoadingInat ? '집계 중...' : '기록 대기')}
-                                      </span>
-                                    </div>
-
-                                    {/* 12-Month Micro Sparkline */}
-                                    <div className="grid grid-cols-12 gap-1 items-end h-10 px-1.5 py-1 bg-white rounded-lg border border-stone-200/60">
-                                      {rawCounts.map((rawCount, idx) => {
-                                        const percentage = maxCount > 0 ? (rawCount / maxCount) : 0;
-                                        const isPeak = rawCount === maxCount && rawCount > 0;
-                                        return (
-                                          <div key={idx} className="flex flex-col items-center h-full justify-end group relative" title={`${monthNames[idx]}: ${rawCount.toLocaleString()}건`}>
-                                            <div
-                                              className={`w-full rounded-xs transition-all duration-300 ${
-                                                isPeak
-                                                  ? 'bg-emerald-700 ring-1 ring-emerald-500'
-                                                  : percentage >= 0.5
-                                                  ? 'bg-emerald-500'
-                                                  : percentage > 0.1
-                                                  ? 'bg-emerald-300'
-                                                  : rawCount > 0
-                                                  ? 'bg-emerald-200'
-                                                  : 'bg-stone-200'
-                                              }`}
-                                              style={{ height: `${Math.max(4, percentage * 28)}px` }}
-                                            />
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-
-                                    <div className="grid grid-cols-12 gap-1 text-center font-mono text-[8px] text-stone-400">
-                                      {monthNames.map((_, idx) => {
-                                        const isPeak = hasRealHist && rawCounts[idx] === maxCount && maxCount > 0;
-                                        return (
-                                          <span key={idx} className={isPeak ? 'text-emerald-800 font-black' : ''}>
-                                            {idx + 1}월
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  </>
-                                );
-                              })()}
-                            </div>
-
-                            {/* 4 & 5. 서식처 & 장비/에티켓 (컴팩트 2열 그리드) */}
-                            {(() => {
-                              const hasHabitat = !!(ecoDetail?.habitat?.trim() || specimen.habitatType?.trim());
-                              const hasGear = !!(ecoDetail?.photoGearTip?.trim());
-                              const hasEtiquette = !!(ecoDetail?.fieldEtiquette?.trim());
-                              const hasGearOrEtiquette = hasGear || hasEtiquette;
-
-                              if (!hasHabitat && !hasGearOrEtiquette) return null;
-
-                              return (
-                                <div className={`grid grid-cols-1 ${hasHabitat && hasGearOrEtiquette ? 'sm:grid-cols-2' : ''} gap-2`}>
-                                  {hasHabitat && (
-                                    <div className="bg-stone-50/80 border border-stone-200/70 rounded-xl p-2.5 space-y-0.5">
-                                      <span className="text-[11px] font-bold text-stone-900 flex items-center gap-1">
-                                        <span>🌿 선호 서식처</span>
-                                      </span>
-                                      <p className="text-[11px] text-stone-700 font-medium leading-relaxed">
-                                        {ecoDetail?.habitat?.trim() || specimen.habitatType}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {hasGearOrEtiquette && (
-                                    <div className="bg-stone-50/80 border border-stone-200/70 rounded-xl p-2.5 space-y-0.5">
-                                      <span className="text-[11px] font-bold text-stone-900 flex items-center gap-1">
-                                        <span>🎒 장비 & 에티켓</span>
-                                      </span>
-                                      <div className="text-[11px] text-stone-700 font-medium leading-relaxed space-y-0.5">
-                                        {hasGear && (
-                                          <p><strong className="text-stone-900">장비:</strong> {ecoDetail!.photoGearTip}</p>
-                                        )}
-                                        {hasEtiquette && (
-                                          <p><strong className="text-stone-900">에티켓:</strong> {ecoDetail!.fieldEtiquette}</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* 단일 통합 공인 데이터 출처 푸터 */}
-                          <div className="pt-2.5 border-t border-stone-200/70 flex items-center justify-between text-[10.5px] text-stone-500">
-                            <span className="flex items-center gap-1 font-medium">
-                              <span className="text-emerald-700 font-semibold">🏛️ 공인 데이터:</span>
-                              <span className="text-stone-600">NIBR · iNat · NIE · GBIF</span>
-                            </span>
-                            <span className="text-[9.5px] font-mono text-stone-400 shrink-0">실시간 연동</span>
-                          </div>
+                        <div className="lg:col-span-6 flex flex-col justify-start">
+                          <MorphingFieldNote
+                            ecoDetail={ecoDetail}
+                            specimenName={specimen.koreanName}
+                            scientificName={specimen.scientificName}
+                            habitatType={specimen.habitatType}
+                            isFungi={isFungi}
+                          />
                         </div>
                       )}
 
@@ -3960,22 +3927,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
             </div>
           </div>
 
-          {/* Floating Actions: Samsung Health Eco Card & AI Naturalist */}
-          <div className="fixed bottom-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none max-w-lg mx-auto">
-            <div className="pointer-events-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  if (onOpenExportCard) onOpenExportCard(specimen);
-                  else setIsLocalExportOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-emerald-700/95 hover:bg-emerald-600 text-white shadow-xl border border-white/20 backdrop-blur-md transition-all active:scale-95 cursor-pointer text-xs font-black"
-                title="삼성 헬스 생태 카드 공유"
-              >
-                <Share2 className="w-3.5 h-3.5 text-white" />
-                <span>삼성 헬스 카드</span>
-              </button>
-            </div>
+          {/* Floating Actions: AI Naturalist */}
+          <div className="fixed bottom-4 left-4 right-4 z-40 flex items-center justify-end pointer-events-none max-w-lg mx-auto">
             <div className="pointer-events-auto">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -4003,7 +3956,7 @@ export const DetailView: React.FC<DetailViewProps> = ({
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-[120] bg-stone-950/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6 overflow-hidden select-none"
           >
-            {/* Top Bar: Title & X Close Button */}
+            {/* Top Bar: Title, Share, & X Close Button */}
             <div className="flex items-center justify-between text-white pb-3 border-b border-stone-800">
               <div className="flex items-center gap-2">
                 <Maximize2 className="w-5 h-5 text-amber-400" />
@@ -4012,14 +3965,24 @@ export const DetailView: React.FC<DetailViewProps> = ({
                   <p className="text-[10px] text-stone-400 font-mono">새창 크게보기 모드 · 관찰사진 #{selectedObservationIndex + 1}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsZoomModalOpen(false)}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
-                title="닫기"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenExportCard?.(specimen)}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                  title="공유"
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsZoomModalOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                  title="닫기"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {/* Middle Canvas Stage: Enlarged Image Frame with Theme Applied */}
@@ -4166,14 +4129,28 @@ export const DetailView: React.FC<DetailViewProps> = ({
         )}
       </AnimatePresence>
 
-      {isEditModalOpen && onUpdateSpecimen && (
+      {isEditModalOpen && (
         <EditSpecimenModal
           specimen={specimen}
           activeObsIndex={selectedObservationIndex}
           onClose={() => setIsEditModalOpen(false)}
           onSave={(updated) => {
-            onUpdateSpecimen(updated);
+            if (onUpdateSpecimen) onUpdateSpecimen(updated);
             setIsEditModalOpen(false);
+          }}
+          onDeleteSpecimen={(specimenId) => {
+            setIsEditModalOpen(false);
+            if (onDeleteSpecimen) onDeleteSpecimen(specimenId);
+            onClose();
+          }}
+          onDeleteObservation={(specimenId, obsIdx) => {
+            setIsEditModalOpen(false);
+            if (onDeleteObservation) {
+              onDeleteObservation(specimenId, obsIdx);
+              if (selectedObservationIndex >= (specimen.observations?.length || 1) - 1) {
+                setSelectedObservationIndex(0);
+              }
+            }
           }}
         />
       )}
@@ -4239,6 +4216,260 @@ export const DetailView: React.FC<DetailViewProps> = ({
         onClose={() => setIsInfoModalOpen(false)}
         data={infoModalData}
       />
+
+      {/* Share Bottom Sheet (공식 로고 브랜딩 원본 이미지 공유 바텀시트) */}
+      <AnimatePresence>
+        {isShareBottomSheetOpen && (
+          <div
+            className="fixed inset-0 z-[115] bg-stone-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setIsShareBottomSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-stone-900 text-white rounded-t-[32px] sm:rounded-3xl max-w-md w-full max-h-[92vh] flex flex-col shadow-2xl border-t sm:border border-white/10 overflow-hidden relative"
+            >
+              {/* Drag Handle */}
+              <div className="w-12 h-1.5 bg-stone-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+              {/* Bottom Sheet Header */}
+              <div className="px-5 py-3 flex items-center justify-between border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <Share2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white">공식 생태 이미지 공유</h3>
+                    <p className="text-[10px] text-stone-400">
+                      모아로그 공식 로고 브랜딩과 한줄평이 포함된 원본 이미지
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShareBottomSheetOpen(false)}
+                  className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-300 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Format Selector Pills */}
+              <div className="px-5 pt-3 pb-1 shrink-0">
+                <div className="grid grid-cols-3 gap-1.5 bg-black/50 p-1 rounded-2xl border border-white/5">
+                  {[
+                    { id: 'official_branded', label: '📸 공식 로고 원본' },
+                    { id: 'certificate', label: '📇 생태 인증서' },
+                    { id: 'sns_square', label: '📱 SNS 정방형' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setShareBottomSheetCardType(tab.id as any)}
+                      className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                        shareBottomSheetCardType === tab.id
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scrollable Preview Body */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-3.5 scrollbar-thin">
+                {/* 1. Official Logo Watermarked Original Photo Card Preview */}
+                <div
+                  id="moalog-share-card-container"
+                  className="w-full rounded-2xl overflow-hidden bg-stone-950 border border-white/15 shadow-2xl relative flex flex-col justify-between"
+                >
+                  {/* Image Display Frame */}
+                  <div className="relative w-full aspect-[4/3] overflow-hidden bg-black flex items-center justify-center">
+                    <img
+                      src={currentObsPhoto}
+                      alt={specimen.koreanName}
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Official MOALOG Logo Watermark (Top Bar) */}
+                    <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-3 flex items-center justify-between text-white pointer-events-none">
+                      <div className="flex items-center gap-1.5 drop-shadow-md">
+                        <span className="text-sm">🌿</span>
+                        <div className="flex flex-col">
+                          <span className="font-mono font-black text-[10px] tracking-wider text-emerald-400 uppercase">
+                            MOALOG ARCHIVE
+                          </span>
+                          <span className="text-[8px] text-stone-300 font-sans tracking-tight">
+                            대한민국 생태 아카이브
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20 text-[9px] font-mono font-bold text-amber-300">
+                        No.{specimen.number || '01'} · VERIFIED
+                      </div>
+                    </div>
+
+                    {/* Image Center Official Badge for Certificate / SNS mode */}
+                    {shareBottomSheetCardType === 'certificate' && (
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-widest shadow-2xl pointer-events-none">
+                        ★ OFFICIAL CERTIFIED SPECIMEN ★
+                      </div>
+                    )}
+
+                    {/* Lower Image Gradient with Specimen Identification */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent p-3.5 pt-6 flex flex-col justify-end text-white pointer-events-none">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <h4 className="text-base font-black tracking-tight text-white drop-shadow-sm">
+                          {getSpeciesPrimaryName(specimen, userStats?.language)}
+                        </h4>
+                        {(userStats?.language || 'ko') !== 'en' &&
+                          userStats?.showEnglishNameWithLocal !== false && (
+                            <span className="text-xs font-bold text-stone-400 font-sans">
+                              ({getSpeciesEnglishName(specimen)})
+                            </span>
+                          )}
+                        <span className="text-[11px] font-serif italic text-amber-200/90 ml-auto">
+                          {specimen.scientificName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-stone-300 font-mono mt-1 pt-1 border-t border-white/10">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-emerald-400" />
+                          <span>{activeObs?.location || specimen.habitatType || '야외 서식지'}</span>
+                        </span>
+                        <span>{activeObs?.date || '2026.08.14'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 하단 한줄평 (One-Line Review Section) */}
+                  <div className="p-3 bg-stone-900 border-t border-white/10 flex items-start gap-2.5">
+                    <Quote className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider block">
+                          생태 관찰 한줄평
+                        </span>
+                        <span className="text-[8px] font-mono text-stone-500">
+                          관찰자 기록
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-100 font-medium italic mt-0.5 leading-relaxed break-words">
+                        "{customOneLineReview ||
+                          specimen.observations?.[selectedObservationIndex]?.notes ||
+                          '도심 속 자연 서식지에서 발견한 생태 표본 기록입니다.'}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 한줄평 직접 수정/입력 입력창 */}
+                <div className="bg-stone-950/70 p-3 rounded-2xl border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-stone-300 flex items-center gap-1.5">
+                      <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>공유용 한줄평 직접 수정</span>
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-mono">
+                      {(customOneLineReview || specimen.observations?.[selectedObservationIndex]?.notes || '').length}/70
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={
+                      customOneLineReview !== ''
+                        ? customOneLineReview
+                        : specimen.observations?.[selectedObservationIndex]?.notes || ''
+                    }
+                    onChange={(e) => setCustomOneLineReview(e.target.value)}
+                    maxLength={70}
+                    placeholder="공유 이미지에 표시할 생태 한줄평을 입력하세요"
+                    className="w-full bg-stone-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 bg-stone-950 border-t border-white/10 flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shareText = `[MOALOG 모아로그 생태 아카이브]\n${getSpeciesPrimaryName(
+                      specimen,
+                      userStats?.language
+                    )} (${specimen.scientificName})\n관찰 한줄평: "${
+                      customOneLineReview ||
+                      specimen.observations?.[selectedObservationIndex]?.notes ||
+                      '도심 속 자연 서식지에서 발견한 생태 표본 기록입니다.'
+                    }"\n서식지: ${activeObs?.location || '야외 생태계'}\n링크: ${window.location.href}`;
+
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(shareText);
+                    }
+                    setShareBottomSheetToast('공식 생태 이미지 정보 및 링크가 복사되었습니다!');
+                    setTimeout(() => setShareBottomSheetToast(null), 2500);
+                  }}
+                  className="flex-1 py-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-1.5 border border-white/5 active:scale-95 cursor-pointer"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>정보 복사</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shareTitle = `[MOALOG] ${specimen.koreanName}`;
+                    const shareText = `모아로그 공식 인증 생태 표본: ${specimen.koreanName}\n한줄평: "${
+                      customOneLineReview ||
+                      specimen.observations?.[selectedObservationIndex]?.notes ||
+                      '생태 표본 기록'
+                    }"`;
+
+                    if (navigator.share) {
+                      navigator
+                        .share({
+                          title: shareTitle,
+                          text: shareText,
+                          url: window.location.href,
+                        })
+                        .catch(() => {});
+                    } else if (navigator.clipboard) {
+                      navigator.clipboard.writeText(`${shareTitle}\n${shareText}\n${window.location.href}`);
+                    }
+                    setShareBottomSheetToast('공식 로고 브랜딩 이미지가 저장 및 공유되었습니다!');
+                    setTimeout(() => setShareBottomSheetToast(null), 2500);
+                  }}
+                  className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 active:scale-95 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>공식 이미지 저장 & 공유</span>
+                </button>
+              </div>
+
+              {/* Toast Notification inside Bottom Sheet */}
+              <AnimatePresence>
+                {shareBottomSheetToast && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 15 }}
+                    className="absolute bottom-20 inset-x-4 bg-emerald-500 text-stone-950 font-black text-xs py-2 px-3 rounded-xl shadow-2xl flex items-center justify-center gap-1.5 text-center z-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{shareBottomSheetToast}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Samsung Health Style Eco Card Modal */}
       <ExportCardModal
