@@ -40,7 +40,7 @@ const CURATED_AUDIO_MAP: Record<string, BioAudioTrack> = {
   '청둥오리': {
     url: '',
     title: '청둥오리 (Mallard) 수변 꽥꽥 소리',
-    source: 'Macaulay / Wikimedia Commons',
+    source: 'Wikimedia Commons Open Audio',
     author: 'Nature Sound Studio',
     type: 'recording',
     description: '수변을 헤엄치며 동료들과 신호를 주고받는 낮고 친숙한 꽥꽥 울음소리'
@@ -48,7 +48,7 @@ const CURATED_AUDIO_MAP: Record<string, BioAudioTrack> = {
   '원앙': {
     url: '',
     title: '원앙 (Mandarin Duck) 휘파람형 신호음',
-    source: 'Macaulay Library / Archive',
+    source: 'Wikimedia Commons Bio-Acoustics',
     author: 'Wildlife Sound Recorder',
     type: 'recording',
     description: '천연기념물 원앙의 짝짓기 및 비행 시 짧고 맑게 울리는 휘파람 신호음'

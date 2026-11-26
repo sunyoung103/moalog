@@ -6,6 +6,7 @@ import { API_SOURCES } from '../utils/apiSources';
 interface EcoDexGaugeCardProps {
   specimen: Specimen;
   ecoDetail?: SpeciesEcologyDetail;
+  hasConservationData?: boolean;
   photoArtScoreDetail?: {
     framingDetail: string;
     lightingDetail: string;
@@ -16,6 +17,7 @@ interface EcoDexGaugeCardProps {
 export const EcoDexGaugeCard: React.FC<EcoDexGaugeCardProps> = ({
   specimen,
   ecoDetail,
+  hasConservationData = false,
 }) => {
   if (!ecoDetail) {
     return null;
@@ -103,7 +105,7 @@ export const EcoDexGaugeCard: React.FC<EcoDexGaugeCardProps> = ({
               <div className="flex items-center gap-1.5">
                 <h5 className="text-xs font-black text-stone-900">생태 형질 지수 레벨</h5>
               </div>
-              <span className="text-[10px] text-stone-500 font-medium">GBIF 및 IUCN Red List 표준 특성 데이터 기반</span>
+              <span className="text-[10px] text-stone-500 font-medium">GBIF (CC BY 4.0) 및 NIBR 국가생물종목록 데이터 기반</span>
             </div>
           </div>
           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -131,29 +133,31 @@ export const EcoDexGaugeCard: React.FC<EcoDexGaugeCardProps> = ({
           ))}
         </div>
 
-        {/* IUCN & GBIF Bio-Status Verification Footer Badge */}
-        <div className="bg-stone-50 p-3 rounded-xl border border-stone-200/80 space-y-1.5 mt-2">
-          <div className="flex items-center justify-between text-[11px] font-bold text-stone-800">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              <span>글로벌 생물다양성 보전 평가:</span>
-            </span>
-            <span className="text-emerald-800 font-mono">
-              {statusText || '관심대상 (Least Concern, LC)'}
-            </span>
+        {/* Domestic Conservation Status Verification Footer Badge (shown ONLY when verified domestic/open data exists) */}
+        {hasConservationData && statusText && statusText.trim().length > 0 && (
+          <div className="bg-stone-50 p-3 rounded-xl border border-stone-200/80 space-y-1.5 mt-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-stone-800 gap-2">
+              <span className="flex items-center gap-1.5 shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                <span>보전 상태 평가:</span>
+              </span>
+              <span className="text-emerald-800 font-mono truncate">
+                {statusText}
+              </span>
+            </div>
+            <p className="text-[10px] text-stone-500 leading-relaxed font-medium">
+              환경부 한국의 멸종위기종 및 국립생물자원관(NIBR) 공개 기준을 반영했습니다.
+            </p>
           </div>
-          <p className="text-[10px] text-stone-500 leading-relaxed font-medium">
-            야생 서식지 적응 수준 및 글로벌 GBIF 수집 분포를 통합 산출한 생태 형질 인덱스입니다.
-          </p>
-        </div>
+        )}
 
         {/* Dynamic Source Attribution at Bottom of Gauge Card */}
-        <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500">
-          <span className="flex items-center gap-1 font-medium">
-            <span className="text-emerald-700 font-semibold">🏛️ 출처:</span>
-            <span className="text-stone-700">{API_SOURCES.ecoDex.fullLabel}</span>
+        <div className="pt-2 border-t border-stone-200/70 flex items-center justify-between text-[11px] text-stone-500 gap-2">
+          <span className="flex items-center gap-1 font-medium truncate">
+            <span className="text-emerald-700 font-semibold shrink-0">출처:</span>
+            <span className="text-stone-700 truncate">GBIF Backbone (CC BY 4.0) · 국가생물종목록</span>
           </span>
-          <span className="text-[10px] font-mono text-stone-400 shrink-0">GBIF · IUCN Global</span>
+          <span className="text-[10px] font-mono text-stone-400 shrink-0">CC BY 4.0</span>
         </div>
       </div>
     </div>

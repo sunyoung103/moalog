@@ -1,13 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { calculateStreakDays, countVisitedHabitats } from '../data/badges';
-
-import { ArrowUpDown, ChevronDown, Check, ChevronRight, Camera, BookOpen, X, Download, ChevronLeft, Clock, Trash2, Compass, Feather, Leaf, Cat, Bug, BarChart3, Droplets, Fish, Sparkles, Search, Lock } from 'lucide-react';
+import {
+  ArrowUpDown,
+  ChevronDown,
+  Check,
+  Sticker,
+  ImageIcon,
+  ChevronRight,
+  HelpCircle,
+  Camera,
+  BookOpen,
+  Flame,
+  MapPin,
+  Volume2,
+  X,
+  Download,
+  ChevronLeft,
+  Clock,
+  Share2,
+  Trash2,
+  Compass,
+  Feather,
+  Leaf,
+  Cat,
+  Bug,
+  BarChart3,
+  Sun,
+  Droplets,
+  Fish,
+  Sparkles,
+  Search,
+  Lock,
+  Settings,
+} from 'lucide-react';
 import { Specimen, UserStats, SpecimenCategory, NaturalistPersona, UserAccount } from '../types';
 import { SPECIES_ECOLOGY_ENCYCLOPEDIA, NATURALIST_PERSONAS, HOTSPOT_DATA } from '../data/hotspots';
 import { ReportView } from './ReportView';
 import { ExportCardModal } from './ExportCardModal';
-import { GestureArchiveCollection } from './GestureArchiveCollection';
+import {
+  GestureArchiveCollection,
+  getCategoryDisplayLabel,
+  resolveSpecimenOrder,
+} from './GestureArchiveCollection';
 import { formatSpeciesDisplayName, getSpeciesEnglishName, getSpeciesPrimaryName } from '../utils/speciesNameHelper';
 
 const personaToCategory: Record<string, string> = {
@@ -32,6 +66,7 @@ interface ArchiveViewProps {
   specimens: Specimen[];
   pendingSpecimens: Specimen[];
   searchQuery: string;
+  onSearchChange?: (q: string) => void;
   onSelectSpecimen: (sp: Specimen) => void;
   onDeleteMultipleSpecimens?: (ids: string[]) => void;
   onOpenLens: () => void;
@@ -45,12 +80,14 @@ interface ArchiveViewProps {
   onOpenSubscriptionModal?: () => void;
   userAccount?: UserAccount;
   onOpenLoginModal?: () => void;
+  onDetailCategoryChange?: (isOpen: boolean) => void;
 }
 
 export function ArchiveView({
   specimens,
   pendingSpecimens,
   searchQuery,
+  onSearchChange,
   onSelectSpecimen,
   onDeleteMultipleSpecimens,
   onOpenLens,
@@ -64,6 +101,7 @@ export function ArchiveView({
   onOpenSubscriptionModal,
   userAccount,
   onOpenLoginModal,
+  onDetailCategoryChange,
 }: ArchiveViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'collection' | 'report'>('collection');
   const [selectedCategory, setSelectedCategory] = useState<SpecimenCategory>(() => {
@@ -83,7 +121,10 @@ export function ArchiveView({
   }, [userStats?.persona]);
   const [sortMode, setSortMode] = useState<'dex_number' | 'latest' | 'oldest' | 'korean_alpha' | 'distance' | 'taxonomy'>('dex_number');
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-  const [displayMode, setDisplayMode] = useState<'gesture' | 'sticker' | 'photo'>('gesture');
+  const [displayMode, setDisplayMode] = useState<'gallery' | 'sticker'>('gallery');
+  const [detailCategory, setDetailCategory] = useState<SpecimenCategory | null>(null);
+  const [detailOrderTab, setDetailOrderTab] = useState<string>('all');
+  const [isDetailSearchOpen, setIsDetailSearchOpen] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isMultiDeleteConfirmOpen, setIsMultiDeleteConfirmOpen] = useState(false);
@@ -95,6 +136,16 @@ export function ArchiveView({
   const [shareCopyToast, setShareCopyToast] = useState<string | null>(null);
   const [expandedSpeciesId, setExpandedSpeciesId] = useState<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  useEffect(() => {
+    onDetailCategoryChange?.(detailCategory !== null);
+  }, [detailCategory, onDetailCategoryChange]);
+
+  useEffect(() => {
+    if (activeSubTab !== 'collection' && detailCategory !== null) {
+      setDetailCategory(null);
+    }
+  }, [activeSubTab, detailCategory]);
 
   const longPressTimeout = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -299,6 +350,7 @@ export function ArchiveView({
   }, []);
 
   const safeSpecimens = specimens || [];
+  const safePendingSpecimens = pendingSpecimens || [];
   // 글로벌 생물다양성 표준 색인 벤치마크 (500종 기준)
   const totalPossibleSpecies = 500;
   const userCollectedList = safeSpecimens.filter((s) => s.isCollected && !s.isPending);
@@ -306,21 +358,21 @@ export function ArchiveView({
     ? Math.round((userCollectedList.length / totalPossibleSpecies) * 100)
     : 0;
 
+  const activeCategoryScope = detailCategory ?? selectedCategory;
+
   const filteredCollectedList = safeSpecimens.filter((sp) => {
-    // 예시(ex-)는 미수집이어도 도감에 보여 줍니다. 무료 칸 집계(userCollectedList)에는 들어가지 않습니다.
-    const isExample = sp.id.startsWith('ex-');
-    if (!isExample && (!sp.isCollected || sp.isPending)) return false;
+    if (!sp.isCollected || sp.isPending) return false;
 
     if (filterTaxonomy && !sp.taxonomyPath?.includes(filterTaxonomy) && sp.family !== filterTaxonomy) {
       return false;
     }
 
-    if (selectedCategory !== 'all') {
-      if (selectedCategory === 'invertebrates') {
+    if (activeCategoryScope !== 'all') {
+      if (activeCategoryScope === 'invertebrates') {
         if (sp.category !== 'arachnids' && sp.category !== 'mollusks' && sp.category !== 'crustaceans') return false;
-      } else if (selectedCategory === 'herptiles') {
+      } else if (activeCategoryScope === 'herptiles') {
         if (sp.category !== 'amphibians' && sp.category !== 'reptiles') return false;
-      } else if (sp.category !== selectedCategory) {
+      } else if (sp.category !== activeCategoryScope) {
         return false;
       }
     }
@@ -342,6 +394,14 @@ export function ArchiveView({
     return true;
   });
 
+  const detailOrderTabs = detailCategory
+    ? Array.from(
+        new Set(
+          filteredCollectedList.map((sp) => resolveSpecimenOrder(sp).orderName)
+        )
+      )
+    : [];
+
   const currentPersona = NATURALIST_PERSONAS[userStats?.persona || 'general'] || NATURALIST_PERSONAS.general;
   const personaRecommendedCats = currentPersona?.recommendedCategories || [];
 
@@ -355,6 +415,8 @@ export function ArchiveView({
     });
   } else if (sortMode === 'latest') {
     sortedList.sort((a, b) => {
+      const countDiff = (b.observations?.length || 1) - (a.observations?.length || 1);
+      if (countDiff !== 0) return countDiff;
       const dateA = a.observations?.[0]?.date ? new Date(`${a.observations[0].date} ${a.observations[0].time || '00:00'}`).getTime() : 0;
       const dateB = b.observations?.[0]?.date ? new Date(`${b.observations[0].date} ${b.observations[0].time || '00:00'}`).getTime() : 0;
       return dateB - dateA;
@@ -420,69 +482,274 @@ export function ArchiveView({
   const showCategoryTabs = activeSubTab === 'collection' && !filterTaxonomy;
 
   return (
-    <div className="px-3.5 py-3.5 pb-24" id="archive-view-container">
-      {/* Sub-tabs Toggle Bar: 나의 도감 / 리포트 */}
-      <div className="flex galaxy-glass-card p-1 rounded-2xl mb-4">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('collection')}
-          className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeSubTab === 'collection'
-              ? 'bg-stone-900 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900'
-          }`}
-        >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>나의 도감</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('report')}
-          className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeSubTab === 'report'
-              ? 'bg-stone-900 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900'
-          }`}
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          <span>리포트</span>
-        </button>
-      </div>
+    <div className="bg-[#fbfbfb] pb-24" id="archive-view-container">
+      {detailCategory ? (
+        /* ================= [DETAIL SUB-VIEW] 자세히 > 카테고리 세부 분류 화면 ================= */
+        <div className="max-w-lg mx-auto">
+          {/* Top Header: <  |  카테고리명  |  Search + Settings */}
+          <header className="sticky top-0 z-30 bg-[#fbfbfb]/95 backdrop-blur-xs px-4 pt-3 pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailCategory(null);
+                  setDetailOrderTab('all');
+                  setIsDetailSearchOpen(false);
+                }}
+                className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center hover:bg-[#f4f5f4] transition-colors cursor-pointer shrink-0 shadow-2xs"
+                aria-label="뒤로"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-      <div>
+              <h2 className="text-[17px] font-bold text-[#202320] truncate">
+                {getCategoryDisplayLabel(detailCategory)}
+              </h2>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isDetailSearchOpen && searchQuery) onSearchChange?.('');
+                    setIsDetailSearchOpen((v) => !v);
+                  }}
+                  className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors cursor-pointer ${
+                    isDetailSearchOpen || searchQuery
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-[#202320] border-[#e6e9e5] hover:bg-[#f4f5f4]'
+                  }`}
+                  aria-label="카테고리 내 검색"
+                >
+                  {isDetailSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenMyPage}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center hover:bg-[#f4f5f4] transition-colors cursor-pointer"
+                  aria-label="설정"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {isDetailSearchOpen && (
+              <div className="mt-2.5">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c948a]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange?.(e.target.value)}
+                    placeholder={`${getCategoryDisplayLabel(detailCategory)} 내 생물 검색...`}
+                    className="w-full h-10 pl-10 pr-9 text-[13px] bg-white rounded-xl focus:outline-none text-[#202320] placeholder:text-[#8c948a] border border-[#e6e9e5] focus:border-black transition-colors"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => onSearchChange?.('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8c948a] hover:text-[#202320] cursor-pointer"
+                      aria-label="검색어 지우기"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </header>
+
+          {/* Sub-Order Text Tabs: 전체 | 우제목 | 식육목 | 설치목 ... */}
+          <div className="px-4 pt-2 pb-1 flex items-center gap-5 overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setDetailOrderTab('all')}
+              className={`text-[15px] whitespace-nowrap transition-colors cursor-pointer py-1 ${
+                detailOrderTab === 'all'
+                  ? 'text-[#202320] font-bold'
+                  : 'text-[#8c948a] font-semibold hover:text-[#555c54]'
+              }`}
+            >
+              전체
+            </button>
+            {detailOrderTabs.map((orderName) => {
+              const isActive = detailOrderTab === orderName;
+              return (
+                <button
+                  key={orderName}
+                  type="button"
+                  onClick={() => setDetailOrderTab(orderName)}
+                  className={`text-[15px] whitespace-nowrap transition-colors cursor-pointer py-1 ${
+                    isActive
+                      ? 'text-[#202320] font-bold'
+                      : 'text-[#8c948a] font-semibold hover:text-[#555c54]'
+                  }`}
+                >
+                  {orderName}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-4 pt-2.5 space-y-4">
+            {/* Sort Dropdown Left + 카드 | 스티커 Toggle Right */}
+            <div className="flex items-center justify-between relative">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f4f5f4] hover:bg-[#e6e9e5] text-[13px] font-semibold text-[#202320] transition-colors cursor-pointer"
+                >
+                  <span>
+                    {sortMode === 'dex_number' && '번호순'}
+                    {sortMode === 'latest' && '포착횟수'}
+                    {sortMode === 'korean_alpha' && '가나다순'}
+                    {sortMode === 'distance' && '거리순'}
+                    {sortMode === 'taxonomy' && '분류별'}
+                  </span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-[#626961] transition-transform ${
+                      isSortMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {isSortMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setIsSortMenuOpen(false)} />
+                    <div className="absolute left-0 top-full mt-1.5 w-52 bg-white rounded-2xl shadow-lg py-1.5 z-40 border border-[#e6e9e5]">
+                      <div className="px-3 py-1.5 border-b border-[#e6e9e5] text-[11px] text-[#8c948a] font-semibold">
+                        도감 정렬 순서
+                      </div>
+                      {[
+                        { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
+                        { id: 'latest', label: '포착횟수', desc: '가장 많이 포착한 순서' },
+                        { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
+                        { id: 'taxonomy', label: '분류별', desc: '계통(과/문)별 정렬' },
+                        { id: 'distance', label: '거리순', desc: '내 관찰 위치 기준' },
+                      ].map((item) => {
+                        const isSelected = sortMode === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setSortMode(item.id as any);
+                              setIsSortMenuOpen(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs hover:bg-[#f4f5f4] cursor-pointer ${
+                              isSelected ? 'text-[#202320] font-bold' : 'text-[#626961]'
+                            }`}
+                          >
+                            <div>
+                              <p className="leading-tight">{item.label}</p>
+                              <p className="text-[10px] text-[#8c948a] mt-0.5">{item.desc}</p>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[#202320] shrink-0 ml-1" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="inline-flex bg-[#f4f5f4] p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('gallery')}
+                  className={`px-3 py-1 rounded-lg text-[13px] transition-all cursor-pointer ${
+                    displayMode === 'gallery'
+                      ? 'bg-white text-[#202320] font-bold shadow-2xs'
+                      : 'text-[#8c948a] font-semibold'
+                  }`}
+                >
+                  카드
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('sticker')}
+                  className={`px-3 py-1 rounded-lg text-[13px] transition-all cursor-pointer ${
+                    displayMode === 'sticker'
+                      ? 'bg-white text-[#202320] font-bold shadow-2xs'
+                      : 'text-[#8c948a] font-semibold'
+                  }`}
+                >
+                  스티커
+                </button>
+              </div>
+            </div>
+
+            <GestureArchiveCollection
+              specimens={sortedList}
+              onSelectSpecimen={onSelectSpecimen}
+              userStats={userStats}
+              selectedCategory={detailCategory}
+              onOpenSubscriptionModal={onOpenSubscriptionModal}
+              viewMode={displayMode}
+              onViewModeChange={setDisplayMode}
+              groupingMode="order"
+              selectedOrderFilter={detailOrderTab}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* C-01 Underline Sub-tabs: 나의 도감 | 리포트 */}
+          <div className="flex border-b border-[#e6e9e5] bg-white px-4">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('collection')}
+              className={`flex-1 py-3 text-[15px] transition-colors relative cursor-pointer ${
+                activeSubTab === 'collection'
+                  ? 'text-[#202320] font-bold'
+                  : 'text-[#8c948a] font-semibold hover:text-[#626961]'
+              }`}
+            >
+              <span>나의 도감</span>
+              {activeSubTab === 'collection' && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#202320] rounded-full" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('report')}
+              className={`flex-1 py-3 text-[15px] transition-colors relative cursor-pointer ${
+                activeSubTab === 'report'
+                  ? 'text-[#202320] font-bold'
+                  : 'text-[#8c948a] font-semibold hover:text-[#626961]'
+              }`}
+            >
+              <span>리포트</span>
+              {activeSubTab === 'report' && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#202320] rounded-full" />
+              )}
+            </button>
+          </div>
+
+          <div className="px-4 pt-3.5">
         {activeSubTab === 'collection' ? (
           <div className="space-y-4">
-            {/* FLOW 1-5 STEP 4 & FLOW P-3 STEP 1 / STEP 3 / GUEST Banner */}
+            {/* FLOW P-3 STEP 1 / STEP 3 Banners */}
             {!userStats.isProUser && userCollectedList.length > 10 ? (
-              /* FLOW P-3 STEP 3: 구독이 끝난 뒤 배너 */
-              <div className="bg-[#FFF5F2] rounded-3xl p-4 border border-rose-200 shadow-2xs space-y-1.5">
+              <div className="bg-[#fff4ef] rounded-[20px] p-4 border border-[#ff5100]/25 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
-                  <h4 className="text-xs font-black text-rose-950">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff5100] shrink-0" />
+                  <h4 className="text-[13px] font-bold text-[#202320]">
                     구독이 끝났어요 · 모은 {userCollectedList.length}종은 평생 그대로
                   </h4>
                 </div>
-                <p className="text-[11px] text-stone-600 leading-relaxed font-medium">
-                  새 생물 등록은 무료 기준(10칸)이라 지금은 잠겨 있어요.<br />
-                  이미 모은 생물 다시 찍기는 계속 가능
+                <p className="text-xs text-[#626961] leading-relaxed">
+                  새 생물 등록은 무료 기준(10칸)이라 지금은 잠겨 있어요. 이미 모은 생물 다시 찍기는 계속 가능해요.
                 </p>
-                {onOpenSubscriptionModal && (
-                  <button
-                    type="button"
-                    onClick={onOpenSubscriptionModal}
-                    className="mt-2 w-full py-2.5 bg-stone-950 hover:bg-stone-900 text-white font-black text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-                  >
-                    다시 구독
-                  </button>
-                )}
               </div>
-            ) : !userStats.isProUser ? (
-              /* FLOW P-3 STEP 1: 무료 도감 1 / 10칸 배너 */
-              <div className="bg-stone-900 text-white rounded-3xl p-4 shadow-sm border border-stone-800 space-y-2">
+            ) : !userStats.isProUser && userCollectedList.length >= 7 && userCollectedList.length <= 10 ? (
+              <div className="bg-white rounded-[20px] p-4 border border-[#e6e9e5] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white">무료 도감</span>
-                    <span className="text-xs font-mono font-bold text-[#d4ee38]">
+                    <span className="text-[13px] font-bold text-[#202320]">무료 도감</span>
+                    <span className="text-[13px] font-bold text-[#6d8911] tabular-nums">
                       {userCollectedList.length} / 10칸
                     </span>
                   </div>
@@ -491,141 +758,251 @@ export function ArchiveView({
                       type="button"
                       id="btn-archive-banner-upgrade"
                       onClick={onOpenSubscriptionModal}
-                      className="px-3 py-1 bg-[#d4ee38] hover:bg-[#c2de25] text-stone-950 font-black text-[10px] rounded-full shadow-2xs transition-colors cursor-pointer"
+                      className="px-3 py-1 bg-[#c4eb43] hover:bg-[#b5df32] text-[#202320] font-bold text-[11px] rounded-full transition-colors cursor-pointer"
                     >
                       이용권
                     </button>
                   )}
                 </div>
 
-                {/* 사용한 칸만 채워서 보여줍니다 (빈 자리 슬롯은 표시하지 않음) */}
-                <div className="h-2 rounded-full bg-stone-700 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#d4ee38] transition-all"
-                    style={{ width: `${Math.min(100, (userCollectedList.length / 10) * 100)}%` }}
-                  />
+                <div className="grid grid-cols-10 gap-1">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 rounded-full transition-all ${
+                        i < userCollectedList.length ? 'bg-[#c4eb43]' : 'bg-[#f4f5f4]'
+                      }`}
+                    />
+                  ))}
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-stone-400 font-medium pt-0.5">
-                  <span className={userCollectedList.length >= 8 ? 'text-amber-400 font-bold' : ''}>
-                    {userCollectedList.length >= 8 && userCollectedList.length < 10 ? `${10 - userCollectedList.length}칸 남았어요` : `${Math.max(0, 10 - userCollectedList.length)}칸 남음`}
-                  </span>
+                <div className="flex items-center justify-between text-[11px] text-[#8c948a] font-medium">
+                  <span>{Math.max(0, 10 - userCollectedList.length)}칸 남음</span>
                   {userCollectedList.length >= 10 && (
-                    <span className="text-amber-400 font-bold">칸이 가득 찼어요</span>
+                    <span className="text-[#ff5100] font-bold">칸이 가득 찼어요</span>
                   )}
                 </div>
               </div>
             ) : null}
 
             {userCollectedList.length === 0 && (!pendingSpecimens || pendingSpecimens.length === 0) ? (
-              <div className="py-16 flex flex-col items-center justify-center text-center px-6 bg-white rounded-3xl shadow-xs border border-stone-200/60">
-                <div className="w-16 h-16 rounded-2xl bg-stone-900 text-white flex items-center justify-center mb-4 text-2xl font-black shadow-md">
+              <div className="py-16 flex flex-col items-center justify-center text-center px-6 bg-white rounded-[20px] border border-[#e6e9e5]">
+                <div className="w-14 h-14 rounded-2xl bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] flex items-center justify-center mb-4 text-xl font-bold">
                   ✦
                 </div>
-                <h3 className="text-base font-black text-stone-900 mb-2">아직 기록된 자연 도감이 없습니다</h3>
-                <p className="text-xs text-stone-600 mb-6 leading-relaxed max-w-[240px]">
+                <h3 className="text-[17px] font-bold text-[#202320] mb-1.5">아직 기록된 자연 도감이 없습니다</h3>
+                <p className="text-[13px] text-[#626961] mb-6 leading-relaxed max-w-[240px]">
                   {!userAccount?.isLoggedIn
-                    ? '소셜 계정으로 로그인하면 무료 도감 10칸이 자동 생성됩니다!'
-                    : '카메라로 우리 주변의 생물을 포착하고 나만의 생태 백과사전을 완성해보세요!'}
+                    ? '계정에 로그인하면 무료 도감 10칸이 바로 생성돼요'
+                    : '카메라로 주변의 생물을 포착하고 나만의 도감을 채워 보세요'}
                 </p>
                 {!userAccount?.isLoggedIn ? (
                   <button
                     onClick={onOpenLoginModal}
-                    className="py-3 px-6 bg-[#d4ee38] text-stone-950 text-xs font-black rounded-2xl shadow-md hover:bg-[#c2de25] transition-all inline-flex items-center gap-2 active:scale-95 cursor-pointer"
+                    className="h-12 px-6 bg-black hover:bg-[#202320] text-white text-sm font-bold rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer"
                   >
                     <span>로그인하고 10칸 받기</span>
                   </button>
                 ) : (
                   <button
                     onClick={onOpenLens}
-                    className="py-3 px-6 bg-stone-900 text-white text-sm font-black rounded-2xl shadow-md hover:bg-stone-800 transition-all inline-flex items-center gap-2 active:scale-95 cursor-pointer"
+                    className="h-12 px-6 bg-black hover:bg-[#202320] text-white text-sm font-bold rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer"
                   >
-                    <Camera className="w-4 h-4 text-white" />
+                    <Camera className="w-4 h-4 text-[#c4eb43]" />
                     <span>렌즈로 첫 생물 포착하기</span>
                   </button>
                 )}
               </div>
             ) : null}
+
             {filterTaxonomy ? (
-              /* Taxonomy Breadcrumb Header */
-              <div className="bg-white p-3 rounded-2xl flex items-center justify-between shadow-2xs border border-stone-200/80">
-                <div className="flex items-center gap-1.5 text-xs text-stone-700">
-                  <span className="font-extrabold text-stone-900">{filterTaxonomy}</span>
+              <div className="bg-white p-3.5 rounded-2xl flex items-center justify-between border border-[#e6e9e5]">
+                <div className="flex items-center gap-1.5 text-xs text-[#626961]">
+                  <span className="font-bold text-[#202320]">{filterTaxonomy}</span>
                   <span>필터링 중</span>
                 </div>
                 <button
                   onClick={onClearTaxonomyFilter}
-                  className="text-[10px] text-stone-700 hover:text-stone-900 font-extrabold bg-stone-100 px-2.5 py-1 rounded-lg shadow-2xs"
+                  className="text-xs text-[#202320] font-bold bg-[#f4f5f4] hover:bg-[#e6e9e5] px-2.5 py-1 rounded-lg cursor-pointer"
                 >
                   필터 해제
                 </button>
               </div>
             ) : null}
 
-            {showCategoryTabs && (
-              <div className="sticky top-[45px] z-20 bg-stone-100/90 backdrop-blur-md -mx-3.5 px-3.5 py-2 flex items-center gap-1.5 border-b border-stone-200/60">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (tabsRef.current) tabsRef.current.scrollBy({ left: -160, behavior: 'smooth' });
-                  }}
-                  className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-stone-700 hover:bg-stone-100 shadow-2xs shrink-0 cursor-pointer border border-stone-200/80 active:scale-95 transition-all"
-                  title="왼쪽 스크롤"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
+            {/* C-01 Top Controls Row: Sort Dropdown Left + 카드|스티커 Toggle Right */}
+            {isMultiSelectMode ? (
+              <div className="flex items-center justify-between px-3 py-2.5 bg-black text-white rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsMultiSelectMode(false);
+                      setSelectedIds([]);
+                    }}
+                    className="text-xs font-bold text-[#a5aca4] hover:text-white bg-white/10 px-2.5 py-1.5 rounded-xl cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <span className="text-xs font-bold tabular-nums">{selectedIds.length}개 선택됨</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      if (selectedIds.length === filteredCollectedList.length) {
+                        setSelectedIds([]);
+                      } else {
+                        setSelectedIds(filteredCollectedList.map((s) => s.id));
+                      }
+                    }}
+                    className="text-xs font-bold text-white bg-white/10 px-2.5 py-1.5 rounded-xl cursor-pointer"
+                  >
+                    {selectedIds.length === filteredCollectedList.length && filteredCollectedList.length > 0
+                      ? '해제'
+                      : '전체'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedIds.length > 0) setIsMultiDeleteConfirmOpen(true);
+                    }}
+                    disabled={selectedIds.length === 0}
+                    className="p-1.5 rounded-xl text-white bg-[#ff5100] disabled:opacity-40 cursor-pointer flex items-center justify-center"
+                    title="선택 기록 삭제"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between relative">
+                {/* Left: Sort Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f4f5f4] hover:bg-[#e6e9e5] text-[13px] font-semibold text-[#202320] transition-colors cursor-pointer"
+                  >
+                    <span>
+                      {sortMode === 'dex_number' && '번호순'}
+                      {sortMode === 'latest' && '포착횟수'}
+                      {sortMode === 'korean_alpha' && '가나다순'}
+                      {sortMode === 'distance' && '거리순'}
+                      {sortMode === 'taxonomy' && '분류별'}
+                    </span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-[#626961] transition-transform ${
+                        isSortMenuOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
 
-                <div 
-                  ref={tabsRef}
-                  onWheel={(e) => {
-                    if (tabsRef.current && e.deltaY !== 0) {
-                      tabsRef.current.scrollLeft += e.deltaY;
-                    }
-                  }}
-                  onMouseDown={handleTabsMouseDown}
-                  onMouseMove={handleTabsMouseMove}
-                  onMouseUp={handleTabsMouseUpOrLeave}
-                  onMouseLeave={handleTabsMouseUpOrLeave}
-                  className="flex gap-2 overflow-x-auto scrollbar-none items-center touch-pan-x py-0.5 flex-1 select-none"
-                >
-                  {availableCategories.map((cat) => {
-                    const Icon = cat.icon;
-                    const isActive = selectedCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={(e) => {
-                          if (hasDraggedTabs.current) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return;
-                          }
-                          setSelectedCategory(cat.id as SpecimenCategory);
-                        }}
-                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                          isActive
-                            ? 'wabi-3d-btn bg-stone-900 text-white font-black shadow-md border border-stone-800'
-                            : 'wabi-glass-card bg-white/80 text-stone-700 hover:text-stone-950 font-bold border border-white/80'
-                        }`}
-                      >
-                        {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-stone-600'}`} />}
-                        <span>{cat.label}</span>
-                      </button>
-                    );
-                  })}
+                  {isSortMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setIsSortMenuOpen(false)} />
+                      <div className="absolute left-0 top-full mt-1.5 w-52 bg-white rounded-2xl shadow-lg py-1.5 z-40 border border-[#e6e9e5]">
+                        <div className="px-3 py-1.5 border-b border-[#e6e9e5] text-[11px] text-[#8c948a] font-semibold">
+                          도감 정렬 순서
+                        </div>
+                        {[
+                          { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
+                          { id: 'latest', label: '포착횟수 · 최신', desc: '최근 관찰 순서' },
+                          { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
+                          { id: 'taxonomy', label: '분류별', desc: '계통(과/문)별 정렬' },
+                          { id: 'distance', label: '거리순', desc: '내 관찰 위치 기준' },
+                        ].map((item) => {
+                          const isSelected = sortMode === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                setSortMode(item.id as any);
+                                setIsSortMenuOpen(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs hover:bg-[#f4f5f4] cursor-pointer ${
+                                isSelected ? 'text-[#202320] font-bold' : 'text-[#626961]'
+                              }`}
+                            >
+                              <div>
+                                <p className="leading-tight">{item.label}</p>
+                                <p className="text-[10px] text-[#8c948a] mt-0.5">{item.desc}</p>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-[#202320] shrink-0 ml-1" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (tabsRef.current) tabsRef.current.scrollBy({ left: 160, behavior: 'smooth' });
-                  }}
-                  className="flex items-center justify-center w-7 h-7 rounded-xl bg-white text-stone-700 hover:bg-stone-100 shadow-2xs shrink-0 cursor-pointer border border-stone-200/80 active:scale-95 transition-all"
-                  title="오른쪽 스크롤"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {/* Right: 카드 | 스티커 Segmented Toggle */}
+                <div className="inline-flex bg-[#f4f5f4] p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setDisplayMode('gallery')}
+                    className={`px-3 py-1 rounded-lg text-[13px] transition-all cursor-pointer ${
+                      displayMode === 'gallery'
+                        ? 'bg-white text-[#202320] font-bold shadow-2xs'
+                        : 'text-[#8c948a] font-semibold'
+                    }`}
+                  >
+                    카드
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDisplayMode('sticker')}
+                    className={`px-3 py-1 rounded-lg text-[13px] transition-all cursor-pointer ${
+                      displayMode === 'sticker'
+                        ? 'bg-white text-[#202320] font-bold shadow-2xs'
+                        : 'text-[#8c948a] font-semibold'
+                    }`}
+                  >
+                    스티커
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* C-01 Category Filter Pills */}
+            {showCategoryTabs && (
+              <div
+                ref={tabsRef}
+                onWheel={(e) => {
+                  if (tabsRef.current && e.deltaY !== 0) {
+                    tabsRef.current.scrollLeft += e.deltaY;
+                  }
+                }}
+                onMouseDown={handleTabsMouseDown}
+                onMouseMove={handleTabsMouseMove}
+                onMouseUp={handleTabsMouseUpOrLeave}
+                onMouseLeave={handleTabsMouseUpOrLeave}
+                className="flex gap-2 overflow-x-auto scrollbar-none items-center touch-pan-x py-0.5 select-none -mx-4 px-4"
+              >
+                {availableCategories.map((cat) => {
+                  const isActive = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={(e) => {
+                        if (hasDraggedTabs.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          return;
+                        }
+                        setSelectedCategory(cat.id as SpecimenCategory);
+                      }}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-black text-white font-bold'
+                          : 'bg-white text-[#202320] font-semibold border border-[#e6e9e5] hover:border-[#d2d7d1]'
+                      }`}
+                    >
+                      {cat.id !== 'all' && <span>{getCategoryIcon(cat.id)}</span>}
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -647,7 +1024,7 @@ export function ArchiveView({
                       key={sp.id}
                       type="button"
                       onClick={() => onSelectSpecimen(sp)}
-                      className="shrink-0 flex items-center gap-2 bg-white p-1.5 pr-3 rounded-xl text-left transition-all active:scale-[0.98] cursor-pointer"
+                      className="shrink-0 flex items-center gap-2 bg-white p-1.5 pr-3 rounded-xl text-left transition-all hover:scale-102"
                     >
                       <div className="w-8 h-8 rounded-lg bg-stone-100 overflow-hidden shrink-0 p-0.5">
                         <img
@@ -668,149 +1045,37 @@ export function ArchiveView({
               </div>
             )}
 
-            {/* Layout & Compact System Sort Controls & Multi-Select Header */}
-            {isMultiSelectMode ? (
-              <div className="flex items-center justify-between px-2.5 py-2 relative wabi-glass-dark bg-stone-900 text-white rounded-2xl shadow-lg">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setIsMultiSelectMode(false);
-                      setSelectedIds([]);
-                    }}
-                    className="text-xs font-bold text-stone-300 hover:text-white bg-stone-800 px-2.5 py-1.5 rounded-xl transition-colors border border-stone-700"
-                  >
-                    취소
-                  </button>
-                  <span className="text-xs font-bold text-stone-100 font-mono">
-                    {selectedIds.length}개 선택됨
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => {
-                      if (selectedIds.length === filteredCollectedList.length) {
-                        setSelectedIds([]);
-                      } else {
-                        setSelectedIds(filteredCollectedList.map(s => s.id));
-                      }
-                    }}
-                    className="text-xs font-bold text-stone-200 hover:text-white bg-stone-800 px-2.5 py-1.5 rounded-xl transition-colors border border-stone-700"
-                  >
-                    {selectedIds.length === filteredCollectedList.length && filteredCollectedList.length > 0 ? '해제' : '전체'}
-                  </button>
-
-
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => {
-                      if (selectedIds.length > 0) {
-                        setIsMultiDeleteConfirmOpen(true);
-                      }
-                    }}
-                    disabled={selectedIds.length === 0}
-                    className="p-1.5 rounded-xl text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 transition-colors flex items-center justify-center"
-                    title="선택 기록 삭제"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between px-1 relative">
-                {/* System Sort Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                    className="wabi-glass-bubble flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 text-xs font-bold text-stone-800 transition-all active:scale-95 border border-white/80"
-                  >
-                    <ArrowUpDown className="w-3 h-3 text-stone-500" />
-                    <span>
-                      {sortMode === 'dex_number' && '번호순'}
-                      {sortMode === 'latest' && '최신순'}
-                      {sortMode === 'korean_alpha' && '가나다순'}
-                      {sortMode === 'distance' && '거리순'}
-                      {sortMode === 'taxonomy' && '분류별'}
-                    </span>
-                    <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Compact System Sort Dropdown List */}
-                  {isSortMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-30"
-                        onClick={() => setIsSortMenuOpen(false)}
-                      />
-                      <div className="absolute left-0 top-full mt-1.5 w-56 wabi-glass-card bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl py-1.5 z-40 animate-fadeIn border border-white/80">
-                        <div className="px-3 py-1.5 border-b border-stone-100 text-[10px] font-mono text-stone-400 font-bold uppercase tracking-wider flex items-center justify-between">
-                          <span>도감 정렬 순서</span>
-                        </div>
-                        {[
-                          { id: 'dex_number', label: '번호순', desc: '고유 도감 번호순' },
-                          { id: 'latest', label: '최신순', desc: '최근 관찰 순서' },
-                          { id: 'korean_alpha', label: '가나다순', desc: '국문명 오름차순' },
-                          { id: 'taxonomy', label: '분류별', desc: '계통(과/문)별 정렬' },
-                          { id: 'distance', label: '거리순', desc: '내 관찰 위치 기준 거리순' },
-                        ].map((item) => {
-                          const isSelected = sortMode === item.id;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => {
-                                setSortMode(item.id as any);
-                                setIsSortMenuOpen(false);
-                              }}
-                              className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-colors hover:bg-stone-50/80 ${
-                                isSelected ? 'bg-stone-100/90 text-stone-900 font-bold' : 'text-stone-600'
-                              }`}
-                            >
-                              <div>
-                                <p className="leading-tight">{item.label}</p>
-                                <p className="text-[9px] text-stone-400 mt-0.5">{item.desc}</p>
-                              </div>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 ml-1" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-stone-500 font-mono">
-                    {filteredCollectedList.length}건 관찰됨
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Specimen Grid / Gesture Collection */}
-            {filteredCollectedList && filteredCollectedList.length > 0 ? (
+            {/* Specimen Grid / Gesture Collection (Always category-level grouping in main view; tapping 자세히 opens detail view) */}
+            {sortedList && sortedList.length > 0 ? (
               <GestureArchiveCollection
-                specimens={filteredCollectedList}
+                specimens={sortedList}
                 onSelectSpecimen={onSelectSpecimen}
                 userStats={userStats}
                 selectedCategory={selectedCategory}
                 onOpenSubscriptionModal={onOpenSubscriptionModal}
+                viewMode={displayMode}
+                onViewModeChange={setDisplayMode}
+                onSelectCategory={setSelectedCategory}
+                groupingMode="category"
+                onOpenCategoryDetail={(cat) => {
+                  setDetailOrderTab('all');
+                  setDetailCategory(cat);
+                }}
               />
             ) : (
-              <div className="rounded-3xl p-6 mt-4 text-center border border-stone-200/80 bg-white shadow-xs font-geist">
-                <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-3 text-stone-600">
-                  <Search className="w-5 h-5 stroke-[1.75]" />
+              <div className="rounded-[20px] p-6 mt-4 text-center border border-[#e6e9e5] bg-white">
+                <div className="w-12 h-12 rounded-2xl bg-[#f4f5f4] flex items-center justify-center mx-auto mb-3 text-[#626961]">
+                  <Search className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-bold text-stone-900 mb-1 tracking-tight">
+                <h4 className="text-[15px] font-bold text-[#202320] mb-1">
                   {searchQuery ? `'${searchQuery}' 검색 결과` : '새로운 생태 기록 탐사'}
                 </h4>
-                <p className="text-xs text-stone-500 mb-4 max-w-xs mx-auto">
+                <p className="text-xs text-[#626961] mb-4 max-w-xs mx-auto">
                   {searchQuery
-                    ? '일치하는 표본이 없습니다. 아래 추천 생물이나 전체 도감에서 찾아보세요.'
-                    : '다양한 계절 생물들을 탐사하고 렌즈로 직접 포착해 도감을 완성해보세요.'}
+                    ? '일치하는 표본이 없어요. 아래 추천 생물이나 전체 도감에서 찾아보세요.'
+                    : '다양한 생물을 탐사하고 렌즈로 포착해 도감을 채워 보세요.'}
                 </p>
 
-                {/* Discovery sample quick pills */}
                 <div className="flex flex-wrap items-center justify-center gap-1.5 mb-5 max-w-md mx-auto">
                   {['느타리버섯', '무당거미', '명주달팽이', '참가재', '왕벚나무', '소나무', '무당벌레'].map((sample) => (
                     <button
@@ -818,12 +1083,12 @@ export function ArchiveView({
                       type="button"
                       onClick={() => {
                         setSelectedCategory('all');
-                        const matched = safeSpecimens.find(s => s.koreanName.includes(sample));
+                        const matched = safeSpecimens.find((s) => s.koreanName.includes(sample));
                         if (matched) onSelectSpecimen(matched);
                       }}
-                      className="text-[11px] font-mono font-medium px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200/60 active:scale-95 transition-all"
+                      className="text-xs font-semibold px-3 py-1 rounded-full bg-[#f4f5f4] hover:bg-[#e6e9e5] text-[#202320] transition-colors cursor-pointer"
                     >
-                      <span>{sample}</span>
+                      {sample}
                     </button>
                   ))}
                 </div>
@@ -831,68 +1096,70 @@ export function ArchiveView({
                 <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedCategory('all');
-                    }}
-                    className="wabi-3d-btn px-4 py-2 rounded-xl text-xs font-bold bg-stone-900 text-white hover:bg-stone-800 transition-all active:scale-95 shadow-sm"
+                    onClick={() => setSelectedCategory('all')}
+                    className="h-11 px-4 rounded-xl text-xs font-bold bg-black text-white hover:bg-[#202320] transition-colors cursor-pointer"
                   >
                     전체 도감 보기
                   </button>
                   <button
                     type="button"
                     onClick={onOpenLens}
-                    className="wabi-glass-bubble px-4 py-2 rounded-xl text-xs font-bold bg-white/90 text-stone-800 hover:bg-white border border-stone-200 active:scale-95 transition-all flex items-center gap-1.5"
+                    className="h-11 px-4 rounded-xl text-xs font-bold bg-white text-[#202320] border border-[#e6e9e5] hover:bg-[#f4f5f4] transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Camera className="w-3.5 h-3.5 text-stone-600" />
+                    <Camera className="w-3.5 h-3.5 text-[#626961]" />
                     <span>생태 렌즈 촬영</span>
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Naturalist Status Summary Journal - Galaxy Glass Style */}
-            <div className="mt-6 galaxy-glass-card rounded-[26px] p-4 mb-4">
+            {/* Naturalist Status Summary Journal */}
+            <div className="mt-6 bg-white border border-[#e6e9e5] rounded-[20px] p-4 mb-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-stone-700" />
-                  <h3 className="text-xs font-bold text-stone-900">생태 관찰 요약</h3>
+                  <BookOpen className="w-4 h-4 text-[#202320]" />
+                  <h3 className="text-sm font-bold text-[#202320]">생태 관찰 요약</h3>
                 </div>
-                <span className="text-[11px] font-mono font-bold text-stone-600">
-                  도감 {collectionPercentage}% 완성 ({userCollectedList.length}/{totalPossibleSpecies}종)
+                <span className="text-xs font-semibold text-[#626961] tabular-nums">
+                  {collectionPercentage}% ({userCollectedList.length}/{totalPossibleSpecies}종)
                 </span>
               </div>
 
-              {/* 3 Metric Pods */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
-                  <span className="block text-[10px] text-stone-500 font-medium">총 포착</span>
+                <div className="bg-[#f4f5f4] p-2.5 rounded-xl text-center">
+                  <span className="block text-[11px] text-[#626961] font-medium">총 포착</span>
                   <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{userCollectedList.length}</span>
-                    <span className="text-[10px] text-stone-500">종</span>
+                    <span className="text-base font-bold text-[#202320] tabular-nums leading-none">
+                      {userCollectedList.length}
+                    </span>
+                    <span className="text-[11px] text-[#626961]">종</span>
                   </div>
                 </div>
 
-                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
-                  <span className="block text-[10px] text-stone-500 font-medium">방문 서식지</span>
+                <div className="bg-[#f4f5f4] p-2.5 rounded-xl text-center">
+                  <span className="block text-[11px] text-[#626961] font-medium">방문 서식지</span>
                   <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{countVisitedHabitats(specimens)}</span>
-                    <span className="text-[10px] text-stone-500">곳</span>
+                    <span className="text-base font-bold text-[#202320] tabular-nums leading-none">
+                      {userStats.exploredHabitats?.length || 0}
+                    </span>
+                    <span className="text-[11px] text-[#626961]">곳</span>
                   </div>
                 </div>
 
-                <div className="galaxy-glass-subtle p-2.5 rounded-xl text-center">
-                  <span className="block text-[10px] text-stone-500 font-medium">연속 관찰</span>
+                <div className="bg-[#f4f5f4] p-2.5 rounded-xl text-center">
+                  <span className="block text-[11px] text-[#626961] font-medium">연속 관찰</span>
                   <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                    <span className="text-base font-extrabold text-stone-900 font-mono leading-none">{calculateStreakDays(specimens)}</span>
-                    <span className="text-[10px] text-stone-500">일</span>
+                    <span className="text-base font-bold text-[#202320] tabular-nums leading-none">
+                      {userStats.streakDays}
+                    </span>
+                    <span className="text-[11px] text-[#626961]">일</span>
                   </div>
                 </div>
               </div>
 
-              {/* Slim Progress Bar */}
-              <div className="w-full bg-stone-200/60 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-[#f4f5f4] h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-stone-900 h-full rounded-full transition-all duration-500"
+                  className="bg-[#c4eb43] h-full rounded-full transition-all duration-500"
                   style={{ width: `${collectionPercentage}%` }}
                 />
               </div>
@@ -903,6 +1170,7 @@ export function ArchiveView({
           <ReportView
             specimens={specimens}
             userStats={userStats}
+            userAccount={userAccount}
             onUpdatePersona={onUpdatePersona || (() => {})}
             onSelectSpecimen={onSelectSpecimen}
             onOpenLens={onOpenLens}
@@ -915,7 +1183,9 @@ export function ArchiveView({
             }}
           />
         )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Custom Multi-Delete Confirmation Modal */}
       <AnimatePresence>
@@ -1128,29 +1398,30 @@ export function ArchiveView({
         specimen={exportTargetSpecimen}
         specimens={specimens}
         userStats={userStats}
+        userAccount={userAccount}
         initialMode={exportCardInitialMode}
       />
 
       {/* FLOW P-3 STEP 3: Fixed lock bar when 10-slot limit is reached in free mode */}
       {!userStats.isProUser && userCollectedList.length >= 10 && (
-        <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto bg-stone-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-stone-800 flex items-center justify-between animate-slideUp">
+        <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto bg-black text-white rounded-[20px] p-3.5 shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-stone-800 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-[#c4eb43] shrink-0">
               <Lock className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+              <div className="text-[13px] font-bold text-white flex items-center gap-1.5">
                 <span>새 생물 등록 잠김</span>
-                <span className="text-[10px] text-stone-400">· {userCollectedList.length} / 10칸</span>
+                <span className="text-[11px] text-[#a5aca4] tabular-nums">· {userCollectedList.length} / 10칸</span>
               </div>
-              <p className="text-[10px] text-stone-400">다시 구독하면 바로 풀려요</p>
+              <p className="text-[11px] text-[#a5aca4]">다시 구독하면 바로 풀려요</p>
             </div>
           </div>
           {onOpenSubscriptionModal && (
             <button
               type="button"
               onClick={onOpenSubscriptionModal}
-              className="px-3.5 py-2 bg-[#d4ee38] hover:bg-[#c2de25] text-stone-950 font-black text-xs rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              className="px-3.5 py-2 bg-[#c4eb43] hover:bg-[#b5df32] text-[#202320] font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0"
             >
               다시 구독
             </button>

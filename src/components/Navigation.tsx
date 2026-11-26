@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Camera, Compass } from 'lucide-react';
+import { BookOpen, Camera, Map } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface NavigationProps {
@@ -19,64 +19,63 @@ export const Navigation: React.FC<NavigationProps> = ({
     <nav
       id="global-bottom-navigation"
       aria-label="하단 네비게이션"
-      className="fixed bottom-3 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#e6e9e5] select-none"
     >
-      <div className="pointer-events-auto flex items-center gap-1.5 bg-stone-900 text-stone-300 shadow-xl rounded-full px-2.5 py-1.5 transition-all">
-        {/* Tab 1: 내 도감 (Archive) */}
+      <div className="max-w-lg mx-auto h-[68px] px-10 flex items-center justify-between relative">
+        {/* Tab 1: 도감 */}
         <button
           id="nav-tab-archive"
           type="button"
           onClick={() => onSelectTab('archive')}
-          className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-            currentTab === 'archive'
-              ? 'bg-white text-stone-950 font-black shadow-xs'
-              : 'text-stone-300 hover:text-white hover:bg-white/10'
+          className={`relative flex flex-col items-center justify-center gap-1 min-w-[56px] min-h-[44px] transition-colors cursor-pointer ${
+            currentTab === 'archive' ? 'text-[#202320]' : 'text-[#8c948a] hover:text-[#555c54]'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
-          <span className="tracking-tight text-[11px]">내 도감</span>
+          <BookOpen
+            className="w-5 h-5"
+            strokeWidth={currentTab === 'archive' ? 2.2 : 1.75}
+          />
+          <span className="text-[11px] font-semibold tracking-tight leading-none whitespace-nowrap">
+            도감
+          </span>
           {(hasNewStickerNotice || pendingCount > 0) && (
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full ring-2 ring-stone-900"
+              className="absolute top-1.5 right-2.5 w-2 h-2 bg-[#ff5100] rounded-full ring-2 ring-white"
             />
           )}
         </button>
 
-        {/* Tab 2: 렌즈 (Lens / Shutter) */}
+        {/* Tab 2: Center protruding black Camera CTA */}
         <button
           id="nav-tab-lens"
           type="button"
           onClick={() => onSelectTab('lens')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-            currentTab === 'lens'
-              ? 'btn-point-gradient text-stone-950 font-black shadow-xs'
-              : 'text-stone-300 hover:text-white hover:bg-white/10'
-          }`}
+          aria-label="포착 렌즈"
+          className="relative -mt-7 w-14 h-14 rounded-full bg-black hover:bg-[#202320] text-white shadow-[0_6px_18px_rgba(0,0,0,0.24)] ring-4 ring-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer shrink-0"
         >
-          <div className="relative flex items-center justify-center">
-            <Camera className="w-4 h-4" />
-          </div>
-          <span className="tracking-tight text-[11px]">포착 렌즈</span>
+          <Camera className="w-6 h-6 stroke-[2]" />
         </button>
 
-        {/* Tab 3: 탐험 맵 (Map) */}
+        {/* Tab 3: 탐험 맵 */}
         <button
           id="nav-tab-map"
           type="button"
           onClick={() => onSelectTab('map')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-            currentTab === 'map'
-              ? 'bg-white text-stone-950 font-black shadow-xs'
-              : 'text-stone-300 hover:text-white hover:bg-white/10'
+          className={`relative flex flex-col items-center justify-center gap-1 min-w-[56px] min-h-[44px] transition-colors cursor-pointer ${
+            currentTab === 'map' ? 'text-[#202320]' : 'text-[#8c948a] hover:text-[#555c54]'
           }`}
         >
-          <Compass className="w-4 h-4" />
-          <span className="tracking-tight text-[11px]">탐험 맵</span>
+          <Map
+            className="w-5 h-5"
+            strokeWidth={currentTab === 'map' ? 2.2 : 1.75}
+          />
+          <span className="text-[11px] font-semibold tracking-tight leading-none whitespace-nowrap">
+            탐험 맵
+          </span>
         </button>
       </div>
     </nav>
   );
 };
-

@@ -219,7 +219,7 @@ export const MorphingFieldNote: React.FC<MorphingFieldNoteProps> = ({
               {/* Quiet Footer Note */}
               <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-[10px] font-mono text-stone-500">
                 <span>VERIFIED WILDLIFE DATA MATRIX</span>
-                <span>GBIF · IUCN · KOBIS</span>
+                <span>GBIF (CC BY 4.0) · NIBR · KOBIS</span>
               </div>
             </motion.div>
           )}

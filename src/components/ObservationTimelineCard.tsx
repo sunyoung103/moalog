@@ -240,7 +240,7 @@ export const ObservationTimelineCard: React.FC<ObservationTimelineCardProps> = (
                     {/* Thumbnail Image Frame */}
                     <div className="sm:col-span-1 relative aspect-square rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group-hover:border-stone-300 transition-all shadow-2xs">
                       <img
-                        src={obs.photoUrl || specimen.originalImage || specimen.stickerImage || ''}
+                        src={obs.photoUrl || specimen.originalImage || specimen.stickerImage || undefined}
                         alt={`${specimen.koreanName} 관찰`}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -301,7 +301,7 @@ export const ObservationTimelineCard: React.FC<ObservationTimelineCardProps> = (
               >
                 <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-stone-800 bg-stone-900">
                   <img
-                    src={obs.photoUrl || specimen.originalImage || ''}
+                    src={obs.photoUrl || specimen.originalImage || undefined}
                     alt=""
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"

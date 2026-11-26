@@ -35,173 +35,287 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", app: "Moalog", timestamp: new Date().toISOString() });
 });
 
-// AI Species Identification endpoint
+// Stage 1: Fast Biological Identification (Gen Bio) endpoint
+app.post("/api/gen-bio-identify", async (req, res) => {
+  const { imageBase64, mimeType = "image/jpeg", hint = "", isLowQuality = false } = req.body || {};
+  const genBioUrl = process.env.GEN_BIO_API_URL?.trim();
+  const genBioKey = process.env.GEN_BIO_API_KEY?.trim();
+
+  if (!genBioUrl) {
+    return res.json({
+      success: true,
+      configured: false,
+      engine: "gen-bio-unconfigured",
+      shouldEscalateToGemini: true,
+      reason: "gen_bio_not_configured",
+    });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (genBioKey) {
+      headers["Authorization"] = `Bearer ${genBioKey}`;
+      headers["X-API-Key"] = genBioKey;
+    }
+
+    const upstream = await fetch(genBioUrl, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({ imageBase64, mimeType, hint }),
+    });
+    clearTimeout(timer);
+
+    if (!upstream.ok) {
+      return res.json({
+        success: true,
+        configured: true,
+        engine: "gen-bio",
+        shouldEscalateToGemini: true,
+        reason: `gen_bio_http_${upstream.status}`,
+      });
+    }
+
+    const payload = await upstream.json();
+    const raw = payload?.data || payload || {};
+    const confidence = typeof raw.confidence === "number" ? Math.round(raw.confidence) : 0;
+    const isHuman = Boolean(raw.isHuman);
+    const hasOrganism = raw.hasOrganism !== undefined ? Boolean(raw.hasOrganism) : Boolean(raw.koreanName || raw.scientificName);
+
+    const shouldEscalateToGemini =
+      !isHuman &&
+      (Boolean(isLowQuality) || !hasOrganism || confidence < 80 || !raw.koreanName);
+
+    return res.json({
+      success: true,
+      configured: true,
+      engine: "gen-bio",
+      shouldEscalateToGemini,
+      data: {
+        isHuman,
+        hasOrganism,
+        koreanName: raw.koreanName || raw.commonName || "",
+        scientificName: raw.scientificName || "",
+        category: raw.category || "plants",
+        confidence,
+        family: raw.family || "",
+        genus: raw.genus || "",
+        taxonomyPath: Array.isArray(raw.taxonomyPath) ? raw.taxonomyPath : [],
+        traitChips: Array.isArray(raw.traitChips) ? raw.traitChips : [],
+        habitatType: raw.habitatType || "도시/공원",
+        wikiSummary: raw.wikiSummary || "",
+        candidates: Array.isArray(raw.candidates) ? raw.candidates : [],
+      },
+    });
+  } catch (err: any) {
+    return res.json({
+      success: true,
+      configured: true,
+      engine: "gen-bio",
+      shouldEscalateToGemini: true,
+      reason: err?.name === "AbortError" ? "gen_bio_timeout" : "gen_bio_network_error",
+    });
+  }
+});
+
+// Stage 2 (and deep fallback): Gemini Multimodal Species Identification endpoint
 app.post("/api/identify", async (req, res) => {
   try {
-    const { imageBase64, mimeType = "image/jpeg", hint = "", lat, lng, timestamp, persona = "general" } = req.body;
+    const {
+      imageBase64,
+      photoUrl,
+      mimeType = "image/jpeg",
+      hint = "",
+      stage1Guess,
+      imageQualityIssues = [],
+      focusCropNote = "",
+      lat,
+      lng,
+      timestamp,
+      persona = "general",
+    } = req.body || {};
 
     const ai = getGemini();
     if (!ai) {
-      // Return structured fallback if no API key provided
-      return res.json({
-        success: true,
-        isFallback: true,
-        data: getFallbackIdentification(hint),
+      return res.status(503).json({
+        success: false,
+        errorCode: "GEMINI_NOT_CONFIGURED",
+        error: "Gemini API 키가 설정되지 않았습니다. Settings > Secrets에서 GEMINI_API_KEY를 확인해 주세요.",
       });
+    }
+
+    let cleanBase64 = "";
+    let finalMime = mimeType || "image/jpeg";
+    if (typeof imageBase64 === "string" && imageBase64.trim()) {
+      cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+    } else if (typeof photoUrl === "string" && photoUrl.startsWith("http")) {
+      try {
+        const imgFetch = await fetch(photoUrl);
+        if (imgFetch.ok) {
+          const buf = await imgFetch.arrayBuffer();
+          cleanBase64 = Buffer.from(buf).toString("base64");
+          const ct = imgFetch.headers.get("content-type");
+          if (ct && ct.startsWith("image/")) finalMime = ct;
+        }
+      } catch (e) {
+        console.warn("Could not fetch photoUrl for Gemini identify:", e);
+      }
     }
 
     let personaContext = "";
     if (persona === "birder") {
-      personaContext = "사용자는 탐조(새) 전문가입니다. 조류의 경우 날개깃(Primary/Secondary), 부리 형태, 울음소리 패턴 등 조류학적 전문 용어를 활용해 특징을 서술해주세요.";
+      personaContext = "사용자는 탐조(새) 전문가입니다. 조류의 경우 날개깃, 부리 형태 등 조류학적 특징을 간결히 서술하세요.";
     } else if (persona === "botanist") {
-      personaContext = "사용자는 식물학자입니다. 잎차례, 꽃차례, 관다발 구조, 생식 기관 등 식물학적 형태 형질에 집중하여 전문적으로 서술해주세요.";
+      personaContext = "사용자는 식물학자입니다. 잎차례, 꽃차례 등 식물학적 형태 형질을 중심으로 서술하세요.";
     } else if (persona === "mammalogist") {
-      personaContext = "사용자는 포유류 전문가입니다. 발자국, 배설물 흔적, 골격 특징, 식성 및 행동 생태학적 관점에서 서술해주세요.";
+      personaContext = "사용자는 포유류 전문가입니다. 털 무늬, 골격 및 행동 특징 중심으로 서술하세요.";
     } else if (persona === "entomologist") {
-      personaContext = "사용자는 곤충학자입니다. 날개맥 구조, 더듬이 형태, 변태 과정(완전/불완전), 기주식물 등 곤충학적 전문 지식을 바탕으로 서술해주세요.";
+      personaContext = "사용자는 곤충학자입니다. 날개맥, 더듬이 등 곤충학적 특징 중심으로 서술하세요.";
     }
 
     const systemPrompt = `당신은 대한민국 및 글로벌 생태계 전문 생물학자이자 분류학 전문가입니다.
-사용자가 촬영한 생물 사진과 (주어질 경우) 위치, 시간 정보를 분석하여 다음 JSON 형식으로 정확한 분류학 및 생태 정보를 반환하세요.
-**분류군(category) 명시 원칙:** 반드시 다음 중 가장 적합한 카테고리를 선택하세요:
-- 'plants' (식물/초본/목본)
-- 'insects' (곤충류/나비/벌/딱정벌레/잠자리)
-- 'birds' (조류/새)
-- 'fungi' (버섯/곰팡이/자실체/지의류)
-- 'arachnids' (거미/전갈)
-- 'mollusks' (달팽이/연체동물)
-- 'crustaceans' (게/새우/갑각류)
-- 'mammals' (포유류/동물)
-- 'amphibians' (개구리/두꺼비/도롱뇽)
-- 'reptiles' (뱀/도마뱀/거북)
-- 'fishes' (어류/물고기)
+사용자가 촬영한 사진(흐리거나 저해상도/일부 가려짐일 수 있음)과 위치·1차 판별 단서를 정밀 분석하여 JSON 형식으로 반환하세요.
 
-절대로 이유없이 기타로 분류하지 말고, 사진 속 생물의 정확한 생물군을 위 11개 유효 태그 중 선택하세요.
+[안전 및 대상 검증 규칙]
+1. 사진의 주 피사체가 사람(인물, 셀카, 얼굴)이라면 isHuman: true, hasOrganism: false, confidence: 0으로 반환하세요.
+2. 자연 생물(식물, 곤충, 조류, 균류, 동물 등)이 보이지 않거나 빈 풍경/사물/인식 불가 상태라면 hasOrganism: false, confidence: 0~25로 반환하세요.
+3. 생물이 흐리거나 작더라도 식별 가능하면 최선 후보와 confidence(0~99), 그리고 헷갈리기 쉬운 유사 후보 2~3개(candidates)를 신뢰도(%)와 함께 제공하세요.
+4. category는 반드시 다음 11개 중 하나여야 합니다: 'plants' | 'insects' | 'birds' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'mammals' | 'amphibians' | 'reptiles' | 'fishes'
 
-${personaContext}
+${personaContext}`;
 
-반환할 JSON 구조:
-1. koreanName: 한국어 통용 종명 (예: 서양민들레, 직박구리, 광대버섯, 무당벌레)
-2. scientificName: 학명 (이탤릭체 라틴어, 예: Taraxacum officinale)
-3. category: 'plants' | 'birds' | 'insects' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'mammals' | 'amphibians' | 'reptiles' | 'fishes' 중 하나
-4. confidence: 0~99 사이의 정수 일치율 퍼센트 (불확실할수록 낮게 설정)
-5. family: '과' 명칭 (예: 국화과 Asteraceae, 광대버섯과 Amanitaceae)
-6. genus: '속' 명칭 (예: 민들레속 Taraxacum)
-7. taxonomyPath: ['식물계', '속씨식물문', '쌍떡잎식물강', '국화목', '국화과', '민들레속', '서양민들레'] 와 같은 7단계 분류 트리 배열
-8. traitChips: 핵심 생태 및 개체 특징 3~4개
-9. habitatType: '도시/공원' | '산림/숲' | '습지/하천' | '초지/들판' | '연안/바다' 중 하나
-10. wikiSummary: 위키백과 스타일의 정확하고 정갈한 2~3줄 생태 요약
-11. wikiUrl: 한국어 위키백과 URL
-12. seasonalTip: 현재 관찰 시기에 대한 짧은 팁
-13. detectedHabitatName: 서식지 명칭
-14. environmentalCharacteristics: 환경적 특징
-15. candidates: 후보 생물 배열 (각 항목에 category 포함)`;
-
-    let contents: any;
-    let promptText = "사진 속 생물의 종명, 학명, 분류 체계, 생태 특징을 정밀 분석해주세요.";
-    if (hint) promptText += ` 힌트: ${hint}`;
-    if (lat && lng) promptText += `\n촬영 위치 좌표: 위도 ${lat}, 경도 ${lng}. 해당 좌표의 지역 서식지 명칭과 환경 특성을 추출해주세요.`;
-    if (timestamp) promptText += `\n촬영 일시: ${timestamp}`;
-
-    if (imageBase64) {
-      // Remove data URL prefix if present
-      const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, "");
-      contents = {
-        parts: [
-          {
-            inlineData: {
-              data: cleanBase64,
-              mimeType: mimeType || "image/jpeg",
-            },
-          },
-          {
-            text: promptText,
-          },
-        ],
-      };
-    } else {
-      contents = `생물 분석 요청: ${promptText}`;
+    let promptText = "사진 속 생물의 종명(koreanName), 학명(scientificName), 분류 체계, 유사 후보군(candidates)을 정밀 분석해 주세요.";
+    if (stage1Guess && stage1Guess.koreanName) {
+      promptText += `\n[1차 Gen Bio 판별 결과]: ${stage1Guess.koreanName} (${stage1Guess.scientificName || ""}, 신뢰도 ${stage1Guess.confidence ?? 0}%). 사진 품질 이슈나 불확실성이 있어 2차 정밀 검증을 요청했습니다.`;
+    }
+    if (Array.isArray(imageQualityIssues) && imageQualityIssues.length > 0) {
+      promptText += `\n[감지된 이미지 품질 이슈]: ${imageQualityIssues.join(", ")}. 흔들림·저조도·저해상도를 보정해 형태 단서를 읽어 주세요.`;
+    }
+    if (focusCropNote) {
+      promptText += `\n[사용자 지정 영역]: ${focusCropNote}`;
+    }
+    if (hint && hint !== "촬영 사진") {
+      promptText += `\n참고 힌트: ${hint}`;
+    }
+    if (lat && lng) {
+      promptText += `\n촬영 위치 좌표: 위도 ${lat}, 경도 ${lng}.`;
+    }
+    if (timestamp) {
+      promptText += `\n촬영 일시: ${timestamp}`;
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: contents,
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            koreanName: { type: Type.STRING },
-            scientificName: { type: Type.STRING },
-            category: { type: Type.STRING },
-            confidence: { type: Type.INTEGER },
-            family: { type: Type.STRING },
-            genus: { type: Type.STRING },
-            taxonomyPath: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            traitChips: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            habitatType: { type: Type.STRING },
-            wikiSummary: { type: Type.STRING },
-            wikiUrl: { type: Type.STRING },
-            seasonalTip: { type: Type.STRING },
-            detectedHabitatName: { type: Type.STRING, nullable: true },
-            environmentalCharacteristics: { type: Type.STRING, nullable: true },
-            candidates: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  koreanName: { type: Type.STRING },
-                  scientificName: { type: Type.STRING },
-                  confidence: { type: Type.INTEGER },
-                  family: { type: Type.STRING },
-                  genus: { type: Type.STRING },
-                  category: { type: Type.STRING }
-                },
-                required: ["koreanName", "scientificName", "confidence", "family"]
-              }
-            }
-          },
-          required: [
-            "koreanName",
-            "scientificName",
-            "category",
-            "confidence",
-            "family",
-            "genus",
-            "taxonomyPath",
-            "traitChips",
-            "habitatType",
-            "wikiSummary",
+    const contents = cleanBase64
+      ? {
+          parts: [
+            { inlineData: { data: cleanBase64, mimeType: finalMime } },
+            { text: promptText },
           ],
+        }
+      : `생물 분석 요청: ${promptText}`;
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini identify timed out")), 24000)
+    );
+
+    const response = (await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              isHuman: { type: Type.BOOLEAN },
+              hasOrganism: { type: Type.BOOLEAN },
+              koreanName: { type: Type.STRING },
+              scientificName: { type: Type.STRING },
+              category: { type: Type.STRING },
+              confidence: { type: Type.INTEGER },
+              family: { type: Type.STRING },
+              genus: { type: Type.STRING },
+              taxonomyPath: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              traitChips: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              habitatType: { type: Type.STRING },
+              wikiSummary: { type: Type.STRING },
+              wikiUrl: { type: Type.STRING },
+              seasonalTip: { type: Type.STRING },
+              detectedHabitatName: { type: Type.STRING, nullable: true },
+              environmentalCharacteristics: { type: Type.STRING, nullable: true },
+              candidates: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    koreanName: { type: Type.STRING },
+                    scientificName: { type: Type.STRING },
+                    confidence: { type: Type.INTEGER },
+                    family: { type: Type.STRING },
+                    genus: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                  },
+                  required: ["koreanName", "scientificName", "confidence", "family", "category"],
+                },
+              },
+            },
+            required: [
+              "isHuman",
+              "hasOrganism",
+              "koreanName",
+              "scientificName",
+              "category",
+              "confidence",
+              "family",
+              "genus",
+              "taxonomyPath",
+              "traitChips",
+              "habitatType",
+              "wikiSummary",
+            ],
+          },
         },
-      },
-    });
+      }),
+      timeoutPromise,
+    ])) as any;
 
     const parsed = JSON.parse(response.text || "{}");
-    res.json({
+    return res.json({
       success: true,
+      engine: "gemini-4-hydrogen",
       data: parsed,
     });
   } catch (error: any) {
-    const isQuota = error?.status === "RESOURCE_EXHAUSTED" || error?.message?.includes("429") || error?.message?.includes("quota");
-    if (isQuota) {
-      console.warn("Gemini identify quota/rate limit handled gracefully with authentic local identification dataset.");
-    } else {
-      console.warn("Gemini identify fallback invoked:", error?.message || error);
-    }
-    // Graceful fallback so user never gets blocked
-    const fallbackData = getFallbackIdentification(req.body.hint || "서양민들레");
-    res.json({
+    console.warn("[Gemini Identify] upstream error handled gracefully with local fallback:", error?.message || error);
+    const fallback = getFallbackIdentification(req.body.hint || "서양민들레");
+    return res.json({
       success: true,
       isFallback: true,
-      data: fallbackData,
+      engine: "fallback-dataset",
+      data: {
+        isHuman: false,
+        hasOrganism: true,
+        koreanName: fallback.koreanName,
+        scientificName: fallback.scientificName,
+        category: fallback.category,
+        confidence: fallback.confidence,
+        family: fallback.family,
+        genus: fallback.genus,
+        taxonomyPath: fallback.taxonomyPath,
+        traitChips: fallback.traitChips,
+        habitatType: fallback.habitatType,
+        wikiSummary: fallback.wikiSummary,
+        wikiUrl: fallback.wikiUrl,
+        seasonalTip: fallback.seasonalTip,
+      },
     });
   }
 });
@@ -411,7 +525,7 @@ app.post("/api/analyze-photo-art", async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+      model: "gemini-4-hydrogen",
       contents: contents,
       config: {
         systemInstruction: systemPrompt,
@@ -543,7 +657,7 @@ app.post("/api/ecology-details", async (req, res) => {
     }
 
     const systemPrompt = `당신은 대한민국 국립생물자원관(NIBR) 및 세계생물다양성정보기구(GBIF) 기준의 생물생태학 전문 수석 연구원입니다.
-생물종 이름, 학명, 카테고리 분류군에 맞춰 생태 백과 도감의 모든 세부 요소(관찰 및 촬영 팁, 장비 추천, 탐사 에티켓, 핵심 식별 포인트, 생태 주기, 카테고리별 특화 정보)를 정밀 분석하여 JSON 형식으로 반환하세요.`;
+생물종 이름, 학명, 카테고리 분류군에 맞춰 생태 백과 도감의 모든 세부 요소(관찰 및 촬영 팁, 장비 추천, 탐사 에티켓, 핵심 식별 포인트, 생태 주기, 카테고리별 특화 정보)를 정밀 분석하여 JSON 형식으로 반환하세요. 사실 근거 없는 문장 금지.`;
 
     const promptText = `생물종 [${koreanName}] (학명: ${scientificName}, 분류군: ${category}, 과: ${family}, TaxonID: ${effectiveTaxonId})의 실전 탐사 백과 데이터를 NIBR 기준에 맞춰 세밀하게 JSON으로 도출해주세요. 특히 'keyIdentification' 필드는 모호한 주관적 인상이나 단순 목격담을 배제하고, [${category}] 분류군의 학술적이고 고유한 '형태 형질(Morphological Traits)'을 전문 생물학 용어위주로 명확히 서술하세요. 'taxonId' 필드에는 "${effectiveTaxonId}", 'scientificName' 필드에는 "${scientificName}"을 정확하게 포함해야 합니다.`;
 
@@ -554,7 +668,7 @@ app.post("/api/ecology-details", async (req, res) => {
 
     const apiCallPromise = (async () => {
       return await ai.models.generateContent({
-        model: "gemini-3.8-flash",
+        model: "gemini-4-hydrogen",
         contents: promptText,
         config: {
           systemInstruction: systemPrompt,
@@ -653,6 +767,117 @@ app.post("/api/ecology-details", async (req, res) => {
   }
 });
 
+// Privacy-preserving Species AI Chat endpoint (척척박사)
+// §0-3: Only receives non-personal biological species fields + user question; blocks under-14 users; never fabricates on failure.
+app.post("/api/species-chat", async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (body.isUnder14 === true) {
+      return res.status(403).json({
+        success: false,
+        error: "만 14세 미만 계정은 AI 척척박사 대화를 이용할 수 없습니다.",
+      });
+    }
+
+    const question = typeof body.question === "string" ? body.question.trim().slice(0, 500) : "";
+    if (!question) {
+      return res.status(400).json({
+        success: false,
+        error: "질문 내용이 비어 있습니다.",
+      });
+    }
+
+    const allowedSpecies = {
+      koreanName: typeof body.koreanName === "string" ? body.koreanName.slice(0, 120) : "",
+      scientificName: typeof body.scientificName === "string" ? body.scientificName.slice(0, 120) : "",
+      englishName: typeof body.englishName === "string" ? body.englishName.slice(0, 120) : "",
+      category: typeof body.category === "string" ? body.category.slice(0, 40) : "",
+      family: typeof body.family === "string" ? body.family.slice(0, 120) : "",
+      habitatType: typeof body.habitatType === "string" ? body.habitatType.slice(0, 120) : "",
+      habitat: typeof body.habitat === "string" ? body.habitat.slice(0, 400) : "",
+      seasonality: typeof body.seasonality === "string" ? body.seasonality.slice(0, 200) : "",
+      keyIdentification: typeof body.keyIdentification === "string" ? body.keyIdentification.slice(0, 500) : "",
+      tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 12) : [],
+      status: typeof body.status === "string" ? body.status.slice(0, 120) : "",
+    };
+
+    const history = Array.isArray(body.history)
+      ? body.history
+          .filter((h: any) => h && (h.sender === "user" || h.sender === "ai") && typeof h.text === "string")
+          .slice(-6)
+          .map((h: any) => `${h.sender === "user" ? "사용자" : "척척박사"}: ${h.text.slice(0, 400)}`)
+          .join("\n")
+      : "";
+
+    const ai = getGemini();
+    if (!ai) {
+      return res.status(503).json({
+        success: false,
+        error: "AI 서비스 연결을 확인하지 못했습니다.",
+      });
+    }
+
+    const systemInstruction = `당신은 모아로그(Moalog)의 자연 생태 도감 해설가 '척척박사'입니다.
+다음 규칙을 반드시 지키세요:
+1. 사실 근거 없는 문장 금지. 확인되지 않은 학술 등급(IUCN 등), 보호종 여부, 섭식/독성 정보를 지어내지 마세요.
+2. 전달된 종 정보 범위와 검증된 일반 자연사 지식만을 바탕으로 한국어로 친절하고 간결하게(3~5문장) 답하세요.
+3. 야생 생물 채집·접촉·먹이를 주는 행위는 권장하지 말고 안전거리 유지 관찰을 안내하세요.
+4. 확실하지 않은 세부 사실은 "도감 출처와 현장 관찰을 함께 확인해 주세요"라고 분명히 밝히세요.`;
+
+    const speciesContext = [
+      `종명: ${allowedSpecies.koreanName || "미상"}`,
+      allowedSpecies.scientificName ? `학명: ${allowedSpecies.scientificName}` : "",
+      allowedSpecies.englishName ? `영명: ${allowedSpecies.englishName}` : "",
+      allowedSpecies.category ? `분류군: ${allowedSpecies.category}` : "",
+      allowedSpecies.family ? `과: ${allowedSpecies.family}` : "",
+      allowedSpecies.habitatType ? `서식 유형: ${allowedSpecies.habitatType}` : "",
+      allowedSpecies.habitat ? `서식 환경: ${allowedSpecies.habitat}` : "",
+      allowedSpecies.seasonality ? `출현 시기: ${allowedSpecies.seasonality}` : "",
+      allowedSpecies.keyIdentification ? `외형 특징: ${allowedSpecies.keyIdentification}` : "",
+      allowedSpecies.tags.length > 0 ? `특징 키워드: ${allowedSpecies.tags.join(", ")}` : "",
+      allowedSpecies.status ? `상태: ${allowedSpecies.status}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const prompt = `${speciesContext}\n${history ? `\n[이전 대화]\n${history}\n` : ""}\n[질문]\n${question}`;
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini chat timed out")), 12000)
+    );
+
+    const response = (await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents: prompt,
+        config: {
+          systemInstruction,
+        },
+      }),
+      timeoutPromise,
+    ])) as any;
+
+    const answer = typeof response?.text === "string" ? response.text.trim() : "";
+    if (!answer) {
+      return res.status(502).json({
+        success: false,
+        error: "AI 응답이 비어 있습니다.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      answer,
+    });
+  } catch (error: any) {
+    console.warn("[Species Chat] Gemini error:", error?.message || error);
+    return res.status(502).json({
+      success: false,
+      error: "일시적으로 척척박사 응답을 가져오지 못했습니다.",
+    });
+  }
+});
+
 function getFallbackEcologyDetail(
   koreanName: string,
   category: string,
@@ -734,7 +959,7 @@ function getFallbackEcologyDetail(
         family: family || "송이과 (Tricholomataceae)",
         order: "주름버섯목 (Agaricales)",
         size: "갓 지름 8~20cm, 자루 길이 10~20cm",
-        status: "취약(VU) • IUCN 적색목록 산림보호종",
+        status: "취약(VU) • 국가생물적색자료집 산림보호종",
         categoryFocus: "생태 지위: 소나무 잔뿌리와의 절대적 외생균근 공생",
         keyIdentification: "두꺼운 육질의 밤갈색 섬유상 인편 갓, 갓 안쪽의 백색 주름살, 자루에 갈색 솜털 모양의 턱받이가 있으며 독특하고 짙은 솔향이 납니다.",
         callOrSound: "무음 (농후하고 청량한 특유의 송이 솔향)",
@@ -746,7 +971,7 @@ function getFallbackEcologyDetail(
         photoGearTip: "단초점 표준 렌즈(50mm f/1.8), 편광 필터, 소형 반사판",
         fieldEtiquette: "산림 소유자의 허가 없는 무단 채취는 산림보호법상 금지되며, 균환(Fairy ring) 보전을 위해 균사체 자리를 밟지 않습니다.",
         seasonality: "가을 (9월~10월 백로~추석 무렵)",
-        tags: ["대표균류", "송이향", "소나무공생", "IUCN취약종", "외생균근"],
+        tags: ["대표균류", "송이향", "소나무공생", "산림보호취약종", "외생균근"],
       };
     }
 
@@ -913,7 +1138,7 @@ function getFallbackEcologyDetail(
         habitat: "환경부 겨울철 조류 동시센서스 & 전국자연환경조사",
         dietAndBehavior: "Lynx Edicions Handbook of the Birds of the World (HBW)",
         etymology: "한국조류학회 명명학 및 표준국어대사전",
-        conservation: "IUCN Red List of Threatened Species (LC)"
+        conservation: "국가생물다양성정보공유체계 (NIBR · LC)"
       }
     };
   }
@@ -964,7 +1189,7 @@ function getFallbackEcologyDetail(
       family: family || "이구아나과 (Iguanidae)",
       order: "뱀목 (Squamata)",
       size: "몸길이 약 60~130cm",
-      status: "취약종(VU) • IUCN 적색목록",
+      status: "",
       categoryFocus: "해양 잠수 및 해조류 섭식 파충류",
       keyIdentification: "검은빛이나 암갈색의 단단한 비늘을 지녔으며, 코선(비강)을 통해 체내 과도한 염분을 뿜어내는 염분 분비샘이 발달했습니다. 독니나 독샘은 없습니다.",
       callOrSound: "코로 염분을 분사할 때 내는 '쉭-' 하는 호흡음",
@@ -978,12 +1203,11 @@ function getFallbackEcologyDetail(
       seasonality: "연중 관찰 가능",
       tags: ["해양파충류", "해조류섭식", "염분분비선", "갈라파고스고유종", "일광욕"],
       sources: {
-        taxonomy: "GBIF • IUCN Red List",
+        taxonomy: "GBIF Backbone (CC BY 4.0) • The Reptile Database",
         appearance: "Charles Darwin Foundation",
         habitat: "Galapagos National Park Administration",
         dietAndBehavior: "Marine Ecology Progress Series",
-        etymology: "국립생물자원관 및 IUCN",
-        conservation: "IUCN Red List (Vulnerable)"
+        etymology: "국립생물자원관(NIBR) 국가생물종목록"
       }
     };
   }
@@ -1034,7 +1258,7 @@ function getFallbackEcologyDetail(
       family: "청개구리과 (Hylidae)",
       order: "무미목 (Anura)",
       size: "몸길이 5~7cm",
-      status: "관심대상 (IUCN LC) • 중남미 열대우림 지표종",
+      status: "",
       categoryFocus: "생태 관찰: 섬광 채색(Flash coloration)과 발가락 흡반",
       keyIdentification: "선명한 붉은 눈동자에 수직 동공, 형광 연두색 등, 파란 옆구리와 주황색 발가락 흡반을 지녔습니다.",
       callOrSound: "낮고 굵은 '턱- 턱-' 또는 '척- 척-' 단속적인 울음소리",
@@ -1048,12 +1272,11 @@ function getFallbackEcologyDetail(
       seasonality: "사계절 (우기철 번식 절정)",
       tags: ["붉은눈", "섬광채색", "열대우림", "나무개구리", "글로벌"],
       sources: {
-        taxonomy: "국립생물자원관(NIBR) • Amphibian Species of the World",
-        appearance: "IUCN Amphibian Specialist Group 도감",
+        taxonomy: "GBIF Backbone (CC BY 4.0) • Amphibian Species of the World",
+        appearance: "AmphibiaWeb 글로벌 양서류 도감",
         habitat: "중남미 열대우림 생태조사 연구망",
         dietAndBehavior: "Herpetologica 생태 연구문헌",
-        etymology: "글로벌 양서류 명명 표준 및 형태학 도감",
-        conservation: "IUCN Red List (Least Concern)"
+        etymology: "글로벌 양서류 명명 표준 및 형태학 도감"
       }
     };
   }
@@ -1395,7 +1618,7 @@ function getFallbackEcologyDetail(
           habitat: "도시생태계 수변공원 서식조사",
           dietAndBehavior: "국립수산과학원 관상어 연구자료",
           etymology: "한국전통생물도감 & 국립국어원",
-          conservation: "IUCN Red List (LC)"
+          conservation: "국가생물다양성정보공유체계 (NIBR · LC)"
         }
       };
     }
@@ -1706,8 +1929,8 @@ function getFallbackEcologyDetail(
     seasonality: "",
     tags: [],
     sources: {
-      taxonomy: "GBIF / iNaturalist",
-      conservation: "IUCN Red List"
+      taxonomy: "GBIF (CC BY 4.0) / iNaturalist",
+      conservation: "국립생물자원관(NIBR) · 환경부"
     }
   };
 }

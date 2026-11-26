@@ -189,3 +189,30 @@ export function formatSpeciesDisplayName(
 
   return primaryName;
 }
+
+export function getSpeciesTaxonomyCategoryLabel(category?: string): string {
+  switch (category) {
+    case 'birds':
+      return '조류';
+    case 'plants':
+      return '식물';
+    case 'mammals':
+      return '포유류';
+    case 'insects':
+      return '곤충';
+    case 'reptiles':
+    case 'amphibians':
+      return '양서·파충류';
+    case 'fishes':
+      return '어류';
+    case 'fungi':
+      return '균류';
+    case 'arachnids':
+    case 'mollusks':
+    case 'crustaceans':
+      return '무척추동물';
+    default:
+      return '기타';
+  }
+}
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Settings2, X, Crown } from 'lucide-react';
+import { Search, Settings, X, Crown } from 'lucide-react';
 import { UserStats } from '../types';
 
 interface HeaderProps {
@@ -12,7 +12,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  collectedCount,
   searchQuery,
   onSearchChange,
   onOpenMyPage,
@@ -24,47 +23,55 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       id="app-global-header"
-      className="sticky top-0 z-30 bg-[#F5F5F7]/90 backdrop-blur-md px-4 py-2.5 transition-all select-none border-b border-stone-200/60"
+      className="sticky top-0 z-30 bg-[#fbfbfb]/95 backdrop-blur-xs px-4 pt-3 pb-2 transition-all select-none"
     >
-      <div className="max-w-lg mx-auto flex items-center justify-between">
-        {/* Left: Moalog logo */}
-        <div className="flex items-center gap-2">
-          <h1
-            id="header-main-title"
-            className="text-base font-black tracking-tight text-stone-950 flex items-center gap-1.5"
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-            <span>Moalog</span>
-          </h1>
-          <span className="text-[11px] font-mono text-stone-900 font-extrabold bg-white px-2 py-0.5 rounded-md shadow-2xs">
-            {collectedCount}종
-          </span>
-        </div>
+      <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
+        {/* Left: Clean Moalog wordmark */}
+        <h1
+          id="header-main-title"
+          className="text-[22px] font-bold tracking-tight text-[#202320] whitespace-nowrap shrink-0 leading-none"
+        >
+          Moalog
+        </h1>
 
-        {/* Right: + Upgrade button, Search, Settings */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right: Upgrade pill + Search circle + Settings circle */}
+        <div className="flex items-center gap-2 shrink-0">
           {!userStats.isProUser ? (
             <button
               id="btn-header-upgrade"
               type="button"
               onClick={onOpenSubscriptionModal}
-              className="flex items-center gap-1 text-[10px] bg-stone-900 hover:bg-stone-800 text-white font-extrabold px-2.5 py-1 rounded-full shadow-2xs transition-colors cursor-pointer"
+              className="h-9 px-3.5 rounded-full bg-white hover:bg-[#f4fbdd] border border-[#c4eb43] text-[#202320] text-[13px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               title="이용권 업그레이드"
             >
-              <span>+ Upgrade</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+                className="text-[#202320] shrink-0"
+              >
+                <path
+                  d="M12 2L14.2 9.8L22 12L14.2 14.2L12 22L9.8 14.2L2 12L9.8 9.8L12 2Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Upgrade</span>
             </button>
           ) : (
             <button
               id="btn-header-pro-badge"
               type="button"
               onClick={onOpenSubscriptionModal}
-              className="flex items-center gap-1 text-[9px] bg-stone-900 text-amber-300 font-extrabold px-2 py-0.5 rounded-full shadow-2xs font-mono transition-colors cursor-pointer"
+              className="h-9 px-3.5 rounded-full bg-black text-[#c4eb43] text-[12px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               title="PRO 이용 중"
             >
-              <Crown className="w-2.5 h-2.5 fill-current text-amber-400" />
+              <Crown className="w-3.5 h-3.5 fill-current" />
               <span>PRO</span>
             </button>
           )}
+
           <button
             id="btn-header-search-toggle"
             type="button"
@@ -74,51 +81,52 @@ export const Header: React.FC<HeaderProps> = ({
               }
               setIsSearchOpen(!isSearchOpen);
             }}
-            className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+            className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors cursor-pointer shrink-0 ${
               isSearchOpen || searchQuery
-                ? 'bg-stone-900 text-white shadow-2xs'
-                : 'text-stone-700 hover:text-stone-950 bg-white shadow-2xs hover:bg-stone-50'
+                ? 'bg-black text-white border-black'
+                : 'bg-white text-[#202320] border-[#e6e9e5] hover:bg-[#f4f5f4]'
             }`}
             aria-label="생물 검색"
             title="생물 검색"
           >
-            {isSearchOpen ? <X className="w-3.5 h-3.5" /> : <Search className="w-3.5 h-3.5" />}
+            {isSearchOpen ? <X className="w-4 h-4 stroke-[1.8]" /> : <Search className="w-4 h-4 stroke-[1.8]" />}
           </button>
 
           <button
             id="btn-header-open-settings"
             type="button"
             onClick={onOpenMyPage}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-stone-700 hover:text-stone-950 bg-white shadow-2xs hover:bg-stone-50 transition-colors"
-            title="설정 및 통계"
-            aria-label="설정 및 도감 설정"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-[#202320] border border-[#e6e9e5] hover:bg-[#f4f5f4] transition-colors cursor-pointer shrink-0"
+            title="설정"
+            aria-label="설정"
           >
-            <Settings2 className="w-3.5 h-3.5" />
+            <Settings className="w-4 h-4 stroke-[1.8]" />
           </button>
         </div>
       </div>
 
       {/* Expandable Search Bar */}
       {isSearchOpen && (
-        <div className="max-w-lg mx-auto mt-2 animate-fadeIn">
+        <div className="max-w-lg mx-auto mt-2.5 animate-fadeIn">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c948a]" />
             <input
               id="input-specimen-search"
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="생물명, 과, 서식지 검색..."
-              className="w-full pl-8 pr-7 py-2 text-xs bg-white rounded-xl focus:outline-none text-stone-900 placeholder:text-stone-400 shadow-2xs border border-stone-200/80"
+              className="w-full h-10 pl-10 pr-9 text-[13px] bg-white rounded-xl focus:outline-none text-[#202320] placeholder:text-[#8c948a] border border-[#e6e9e5] focus:border-black transition-colors"
               autoFocus
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => onSearchChange('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8c948a] hover:text-[#202320] cursor-pointer"
+                aria-label="검색어 지우기"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>

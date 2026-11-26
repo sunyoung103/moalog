@@ -1,6 +1,15 @@
 export type SpecimenCategory = 'all' | 'plants' | 'birds' | 'insects' | 'mammals' | 'reptiles' | 'amphibians' | 'fishes' | 'fungi' | 'arachnids' | 'mollusks' | 'crustaceans' | 'others';
 
-export type NaturalistPersona = 'general' | 'botanist' | 'birder' | 'mammalogist' | 'entomologist' | 'herpetologist' | 'ichthyologist' | 'mycologist';
+export type NaturalistPersona =
+  | 'general'
+  | 'botanist'
+  | 'entomologist'
+  | 'birder'
+  | 'mammalogist'
+  | 'mycologist'
+  | 'herpetologist'
+  | 'ichthyologist'
+  | 'invertebrates';
 
 export type AuthProvider = 'google' | 'kakao' | 'apple' | 'email' | 'guest';
 
@@ -9,9 +18,19 @@ export interface UserAccount {
   id?: string; // 계정별 저장 데이터 키 (게스트는 없음)
   email?: string;
   name: string;
+  nickname?: string;
+  nicknameUpdatedAt?: string;
   provider: AuthProvider;
   profileImage?: string;
   connectedAt?: string;
+  ageGroup?: 'adult_or_teen14' | 'under14';
+  isUnder14?: boolean;
+  guardianConsentPending?: boolean;
+  guardianConsent?: {
+    guardianName: string;
+    guardianEmail: string;
+    consentedAt: string;
+  };
 }
 
 export interface LoginOptions {
@@ -93,6 +112,16 @@ export interface Observation {
   focusPoint?: { x: number; y: number }; // Relative percentage (0-100) target point on photo
   focusAfMode?: 'Auto Multi-AF' | 'Spot Tap-AF' | 'Macro Focus' | 'Center Eye-AF';
   isCapturedWithLens?: boolean; // True if captured via real-time Lens (camera), false if imported from album
+  photoScore?: number;
+  photoGrade?: 'S' | 'A' | 'B' | 'C' | 'D' | 'F';
+  aiOneLineReview?: string;
+  identificationMeta?: {
+    stage1Engine: string;
+    stage2Engine?: string;
+    escalatedToGemini: boolean;
+    escalationReasons?: string[];
+    imageQualityScore?: number;
+  };
   analysisMetadata?: {
     imageClarityScore: number; // 0-100
     isTargetInFocus: boolean;
@@ -123,6 +152,7 @@ export interface Specimen {
   genus: string;  // e.g. "민들레속 (Taraxacum)"
   isCollected: boolean;
   isPending?: boolean;
+  isLive?: boolean;
   candidates?: Candidate[];
   stickerImage?: string; // Cutout transparent PNG/SVG with white border style
   originalImage?: string; // Full-bleed original photograph
@@ -197,9 +227,25 @@ export interface UserStats {
   photoQuality: 'original' | 'optimized';
   unitSystem: 'metric' | 'imperial';
   viewJournalMode: boolean; // Focus on narrative observation rather than completion %
-  persona?: NaturalistPersona; // e.g. 'general', 'birder', 'botanist', 'mammalogist', 'entomologist'
+  persona?: NaturalistPersona; // 온보딩에서 정한 탐험가 유형
+  preferredLocations?: string[]; // 온보딩 장소 선택
+  visitFrequency?: string; // 온보딩 방문 빈도
+  purposes?: string[]; // 온보딩 기록 목적
   exp: number; // 호환용 저장값(표시 미사용). EXP는 획득 뱃지 expReward 합계로 계산
   badges: string[];
+  selectedTitleId?: string;
+  questAlertsEnabled?: boolean;
+  badgeHistoryPublic?: boolean;
+  hideFromRanking?: boolean;
+  mapSettings?: {
+    defaultVisibility?: 'public' | 'nearby' | 'private';
+    hideExactLocation?: boolean;
+    notifyComment?: boolean;
+    notifyLike?: boolean;
+    notifyReply?: boolean;
+    notifyNearby?: boolean;
+    notifyBadge?: boolean;
+  };
   language?: SupportedLanguage; // 'ko' | 'en' | 'zh' | 'ja' | 'fr' | 'es' | 'de'
   showEnglishNameWithLocal?: boolean; // When non-English is chosen, show English name alongside
 }
@@ -223,13 +269,17 @@ export const EXPLORER_TITLES = {
       insects: { title: '곤충 탐험가', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
       mammalogist: { title: '포유류 탐험가', color: 'text-[#C76C2C]', hex: '#C76C2C' },
       mammals: { title: '포유류 탐험가', color: 'text-[#C76C2C]', hex: '#C76C2C' },
-      herpetologist: { title: '양서파충류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
-      reptiles: { title: '파충류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
-      amphibians: { title: '양서류 탐험가', color: 'text-[#00A199]', hex: '#00A199' },
-      ichthyologist: { title: '어류 탐험가', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
-      fishes: { title: '어류 탐험가', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
-      mycologist: { title: '균류 탐험가', color: 'text-[#EF4452]', hex: '#EF4452' },
-      fungi: { title: '균류 탐험가', color: 'text-[#EF4452]', hex: '#EF4452' },
+      herpetologist: { title: '양서·파충류 탐험가', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      reptiles: { title: '파충류 탐험가', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      amphibians: { title: '양서류 탐험가', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      ichthyologist: { title: '어류 탐험가', color: 'text-[#2f5fd0]', hex: '#2f5fd0' },
+      fishes: { title: '어류 탐험가', color: 'text-[#2f5fd0]', hex: '#2f5fd0' },
+      mycologist: { title: '균류 탐험가', color: 'text-[#7a5646]', hex: '#7a5646' },
+      fungi: { title: '균류 탐험가', color: 'text-[#7a5646]', hex: '#7a5646' },
+      invertebrates: { title: '무척추동물 탐험가', color: 'text-[#e8896a]', hex: '#e8896a' },
+      arachnids: { title: '무척추동물 탐험가', color: 'text-[#e8896a]', hex: '#e8896a' },
+      mollusks: { title: '무척추동물 탐험가', color: 'text-[#e8896a]', hex: '#e8896a' },
+      crustaceans: { title: '무척추동물 탐험가', color: 'text-[#e8896a]', hex: '#e8896a' },
     }
   },
   en: {
@@ -242,22 +292,114 @@ export const EXPLORER_TITLES = {
     ],
     personas: {
       general: { title: 'General Explorer', color: 'text-stone-900', hex: '#18181B' },
-      botanist: { title: 'Plant Explorer', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
-      plants: { title: 'Plant Explorer', color: 'text-[#6B9F0A]', hex: '#6B9F0A' },
-      birder: { title: 'Bird Explorer', color: 'text-[#778AA6]', hex: '#778AA6' },
-      birds: { title: 'Bird Explorer', color: 'text-[#778AA6]', hex: '#778AA6' },
-      entomologist: { title: 'Insect Explorer', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
-      insects: { title: 'Insect Explorer', color: 'text-[#DFAD3E]', hex: '#DFAD3E' },
-      mammalogist: { title: 'Mammal Explorer', color: 'text-[#C76C2C]', hex: '#C76C2C' },
-      mammals: { title: 'Mammal Explorer', color: 'text-[#C76C2C]', hex: '#C76C2C' },
-      herpetologist: { title: 'Herptile Explorer', color: 'text-[#00A199]', hex: '#00A199' },
-      reptiles: { title: 'Reptile Explorer', color: 'text-[#00A199]', hex: '#00A199' },
-      amphibians: { title: 'Amphibian Explorer', color: 'text-[#00A199]', hex: '#00A199' },
-      ichthyologist: { title: 'Fish Explorer', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
-      fishes: { title: 'Fish Explorer', color: 'text-[#1E6EF4]', hex: '#1E6EF4' },
-      mycologist: { title: 'Fungi Explorer', color: 'text-[#EF4452]', hex: '#EF4452' },
-      fungi: { title: 'Fungi Explorer', color: 'text-[#EF4452]', hex: '#EF4452' },
+      botanist: { title: 'Plant Explorer', color: 'text-[#5fa800]', hex: '#5fa800' },
+      plants: { title: 'Plant Explorer', color: 'text-[#5fa800]', hex: '#5fa800' },
+      birder: { title: 'Bird Explorer', color: 'text-[#6f9bd6]', hex: '#6f9bd6' },
+      birds: { title: 'Bird Explorer', color: 'text-[#6f9bd6]', hex: '#6f9bd6' },
+      entomologist: { title: 'Insect Explorer', color: 'text-[#f2b705]', hex: '#f2b705' },
+      insects: { title: 'Insect Explorer', color: 'text-[#f2b705]', hex: '#f2b705' },
+      mammalogist: { title: 'Mammal Explorer', color: 'text-[#c8702a]', hex: '#c8702a' },
+      mammals: { title: 'Mammal Explorer', color: 'text-[#c8702a]', hex: '#c8702a' },
+      herpetologist: { title: 'Herptile Explorer', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      reptiles: { title: 'Reptile Explorer', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      amphibians: { title: 'Amphibian Explorer', color: 'text-[#1fa38a]', hex: '#1fa38a' },
+      ichthyologist: { title: 'Fish Explorer', color: 'text-[#2f5fd0]', hex: '#2f5fd0' },
+      fishes: { title: 'Fish Explorer', color: 'text-[#2f5fd0]', hex: '#2f5fd0' },
+      mycologist: { title: 'Fungi Explorer', color: 'text-[#7a5646]', hex: '#7a5646' },
+      fungi: { title: 'Fungi Explorer', color: 'text-[#7a5646]', hex: '#7a5646' },
+      invertebrates: { title: 'Invertebrate Explorer', color: 'text-[#e8896a]', hex: '#e8896a' },
+      arachnids: { title: 'Invertebrate Explorer', color: 'text-[#e8896a]', hex: '#e8896a' },
+      mollusks: { title: 'Invertebrate Explorer', color: 'text-[#e8896a]', hex: '#e8896a' },
+      crustaceans: { title: 'Invertebrate Explorer', color: 'text-[#e8896a]', hex: '#e8896a' },
     }
   }
 };
 
+export type MemoReportReason =
+  | '스팸 · 광고'
+  | '부적절한 내용'
+  | '위험한 위치 노출'
+  | '사진 도용'
+  | '기타';
+
+export type MemoVisibility = 'public' | 'nearby' | 'private';
+
+export interface ExplorerProfile {
+  id: string;
+  name: string;
+  handle: string;
+  titleBadge: string;
+  bio: string;
+  avatarColor: string;
+  avatarEmoji: string;
+  memoCount: number;
+  followersCount: number;
+  speciesCount: number;
+  favoriteRegion: string;
+  joinedAt: string;
+}
+
+export interface CommunityComment {
+  id: string;
+  memoId: string;
+  authorId: string;
+  authorName: string;
+  authorEmoji: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommunityMemo {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorTitle: string;
+  authorEmoji: string;
+  speciesKoreanName: string;
+  speciesScientificName: string;
+  category: Specimen['category'];
+  specimenId?: string;
+  photoUrl: string;
+  memoText: string;
+  placeName: string;
+  regionLabel: string;
+  lat: number;
+  lng: number;
+  isProtectedSpecies: boolean;
+  exifStripped: boolean;
+  visibility?: MemoVisibility;
+  createdAt: string;
+  likesCount: number;
+  likedByMe?: boolean;
+  comments: CommunityComment[];
+}
+
+export interface MapNotification {
+  id: string;
+  type: 'like' | 'comment' | 'nearby' | 'safety';
+  title: string;
+  body: string;
+  createdAt: string;
+  isRead: boolean;
+  targetMemoId?: string;
+}
+
+export interface PublicSpecimenEntry {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorTitle: string;
+  authorEmoji: string;
+  speciesKoreanName: string;
+  speciesScientificName: string;
+  category: Specimen['category'];
+  photoUrl: string;
+  observedDate: string;
+  regionLabel: string;
+  habitatType: string;
+  weather?: string;
+  temperature?: string;
+  fieldNote: string;
+  traitChips?: string[];
+  isProtectedSpecies?: boolean;
+}

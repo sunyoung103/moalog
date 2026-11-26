@@ -868,7 +868,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['균계', '담자균문', '주름버섯강', '주름버섯목', '송이과', '송이속', '송이버섯'],
-    traitChips: ['균류', '최고급 식용버섯', '솔향', '적송 공생', 'IUCN 취약종(VU)'],
+    traitChips: ['균류', '최고급 식용버섯', '솔향', '적송 공생', '보전등급 취약종(VU)'],
     habitatType: '산림/숲',
     colorPalette: ['#78350F', '#92400E', '#B45309', '#D97706', '#FEF3C7'],
     locationCoord: {
@@ -1149,7 +1149,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1598439210625-5067c578f3f6?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1598439210625-5067c578f3f6?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '조강', '펭귄목', '펭귄과', '황제펭귄속', '황제펭귄'],
-    traitChips: ['남극 대륙 고유종', '현존 최대 펭귄', '극저온 허들링', '심해 잠수사', 'IUCN 준위협(NT)'],
+    traitChips: ['남극 대륙 고유종', '현존 최대 펭귄', '극저온 허들링', '심해 잠수사', '남극 생태 지표종'],
     habitatType: '고산지대/설원',
     colorPalette: ['#09090B', '#F59E0B', '#FEF08A', '#E2E8F0', '#0284C7'],
     locationCoord: {
@@ -1281,7 +1281,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '포유강', '식육목', '곰과', '판다속', '자이언트판다'],
-    traitChips: ['중국 고유종', '대나무 99% 식성', '가짜 엄지(종자골)', 'IUCN 취약종(VU)', '평화의 상징'],
+    traitChips: ['중국 고유종', '대나무 99% 식성', '가짜 엄지(종자골)', '쓰촨성 고산 대나무림', '평화의 상징'],
     habitatType: '산림/숲',
     colorPalette: ['#18181B', '#FFFFFF', '#27272A', '#047857', '#F4F4F5'],
     locationCoord: {
@@ -1314,7 +1314,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1534188753412-3e26d0d618d6?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1534188753412-3e26d0d618d6?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '포유강', '식육목', '고양잇과', '표범속', '사자'],
-    traitChips: ['사바나 최상위 포식자', '프라이드(무리) 생활', '수컷의 검은 갈기', '협동 사냥', 'IUCN 취약(VU)'],
+    traitChips: ['사바나 최상위 포식자', '프라이드(무리) 생활', '수컷의 검은 갈기', '협동 사냥', '초원 생태계 핵심종'],
     habitatType: '열대우림/사바나',
     colorPalette: ['#B45309', '#D97706', '#78350F', '#1C1917', '#FEF3C7'],
     locationCoord: {
@@ -1380,7 +1380,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1574063413132-355dbfd83e25?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1574063413132-355dbfd83e25?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '포유강', '영장목', '여우원숭이과', '여우원숭이속', '호랑이꼬리여우원숭이'],
-    traitChips: ['마다가스카르 고유종', '흑백 고리무늬 꼬리', '일광욕 요가 자세', '모계 사회', 'IUCN 위기(EN)'],
+    traitChips: ['마다가스카르 고유종', '흑백 고리무늬 꼬리', '일광욕 요가 자세', '모계 사회', '건조림 영장류'],
     habitatType: '산림/숲',
     colorPalette: ['#18181B', '#E4E4E7', '#A1A1AA', '#EA580C', '#FEF3C7'],
     locationCoord: {
@@ -1479,7 +1479,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1508817628294-5a453fa0b8fb?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1508817628294-5a453fa0b8fb?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '파충강', '뱀목', '이구아나과', '바다이구아나속', '바다이구아나'],
-    traitChips: ['갈라파고스 고유종', '유일한 해양 파충류 이구아나', '해조류 섭식', '소금 분사 콧구멍', 'IUCN 취약(VU)'],
+    traitChips: ['갈라파고스 고유종', '유일한 해양 파충류 이구아나', '해조류 섭식', '소금 분사 콧구멍', '용암 해안 서식'],
     habitatType: '하천/습지',
     colorPalette: ['#1C1917', '#44403C', '#DC2626', '#059669', '#E7E5E4'],
     locationCoord: {
@@ -1611,7 +1611,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1544551763-77ef2d0cf967?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1544551763-77ef2d0cf967?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '연골어강', '수염상어목', '고래상어과', '고래상어속', '고래상어'],
-    traitChips: ['지구상 최대 어류 (18m)', '온순한 여과 섭식', '체표 점박이 지문 패턴', '플랑크톤 식성', 'IUCN 멸종위기(EN)'],
+    traitChips: ['지구상 최대 어류 (18m)', '온순한 여과 섭식', '체표 점박이 지문 패턴', '플랑크톤 식성', '열대 외양 회유종'],
     habitatType: '산호초/해양',
     colorPalette: ['#1E3A8A', '#3B82F6', '#FFFFFF', '#0F172A', '#60A5FA'],
     locationCoord: {
@@ -1644,7 +1644,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '척삭동물문', '연골어강', '매가오리목', '매가오리과', '쥐가오리속', '대왕쥐가오리'],
-    traitChips: ['해양 비행 날개 (5m)', '두부 지느러미', '클리닝 스테이션', '고지능 어류', 'IUCN 취약(VU)'],
+    traitChips: ['해양 비행 날개 (5m)', '두부 지느러미', '클리닝 스테이션', '고지능 어류', '산호초 원양 어류'],
     habitatType: '산호초/해양',
     colorPalette: ['#09090B', '#18181B', '#F8FAFC', '#0284C7', '#38BDF8'],
     locationCoord: {
@@ -1743,7 +1743,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '절지동물문', '거미강', '거미목', '타란툴라과', '브라키펠마속', '멕시칸레드니타란툴라'],
-    traitChips: ['멕시코 태평양 연안', '붉은 주황 무릎마디', '버로우(굴) 서식', '자모(방어털) 발사', 'CITES 부속서 II'],
+    traitChips: ['멕시코 태평양 연안', '붉은 주황 무릎마디', '버로우(굴) 서식', '자모(방어털) 발사', '건조 관목림 서식'],
     habitatType: '열대우림/사바나',
     colorPalette: ['#EA580C', '#C2410C', '#18181B', '#27272A', '#FED7AA'],
     locationCoord: {
@@ -1776,7 +1776,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['식물계', '속씨식물문', '쌍떡잎식물강', '아욱목', '아욱과', '바오밥속', '그랑디디에바오밥'],
-    traitChips: ['마다가스카르 고유종', '거대한 원통 줄기 (30m)', '수만 리터 수분 저장', '수령 1000년', 'IUCN 멸종위기(EN)'],
+    traitChips: ['마다가스카르 고유종', '거대한 원통 줄기 (30m)', '수만 리터 수분 저장', '수령 1000년', '건조림 상징목'],
     habitatType: '열대우림/사바나',
     colorPalette: ['#9A3412', '#C2410C', '#451A03', '#15803D', '#FED7AA'],
     locationCoord: {
@@ -1809,7 +1809,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['식물계', '겉씨식물문', '구과식물강', '구과목', '측백나무과', '세쿼이아덴드론속', '자이언트세쿼이아'],
-    traitChips: ['세계 최대 체적 단일 생물', '수고 84m / 둘레 31m', '탄닌 방화 수피', '수령 3000년', 'IUCN 멸종위기(EN)'],
+    traitChips: ['세계 최대 체적 단일 생물', '수고 84m / 둘레 31m', '탄닌 방화 수피', '수령 3000년', '고산 침엽수'],
     habitatType: '산림/숲',
     colorPalette: ['#92400E', '#78350F', '#166534', '#15803D', '#FEF3C7'],
     locationCoord: {
@@ -1842,7 +1842,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1543158266-0066955047b1?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1543158266-0066955047b1?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['식물계', '속씨식물문', '쌍떡잎식물강', '말피기아목', '라플레시아과', '라플레시아속', '라플레시아'],
-    traitChips: ['세계 최대 단일 꽃 (지름 1m)', '잎/줄기/뿌리 없음', '포도과 덩굴 전기생', '파리 유인 냄새', 'IUCN 위급(CR)'],
+    traitChips: ['세계 최대 단일 꽃 (지름 1m)', '잎/줄기/뿌리 없음', '포도과 덩굴 전기생', '파리 유인 냄새', '열대우림 기생식물'],
     habitatType: '열대우림/사바나',
     colorPalette: ['#991B1B', '#DC2626', '#FCA5A5', '#7F1D1D', '#FEF2F2'],
     locationCoord: {
@@ -1875,7 +1875,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['식물계', '속씨식물문', '쌍떡잎식물강', '석죽목', '끈끈이귀개과', '파리지옥속', '파리지옥'],
-    traitChips: ['식충식물', '0.1초 초고속 덫', '감각모 2회 자극 카운트', '소화 효소 분비', 'IUCN 멸종위기(EN)'],
+    traitChips: ['식충식물', '0.1초 초고속 덫', '감각모 2회 자극 카운트', '소화 효소 분비', '산성 습지 자생'],
     habitatType: '습지/하천',
     colorPalette: ['#16A34A', '#DC2626', '#22C55E', '#14532D', '#FEF2F2'],
     locationCoord: {
@@ -1908,7 +1908,7 @@ export const INITIAL_SPECIMENS: Specimen[] = [
     stickerImage: 'https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=600&auto=format&fit=crop&q=80',
     originalImage: 'https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=1200&auto=format&fit=crop&q=80',
     taxonomyPath: ['동물계', '절지동물문', '갑각강', '십각목', '넓적왼손집게과', '야자집게속', '야자집게'],
-    traitChips: ['세계 최대 육상 절지동물 (4kg)', '강력한 집게 악력 (3300N)', '야자수 등반', '아가미폐 호흡', 'IUCN 취약(VU)'],
+    traitChips: ['세계 최대 육상 절지동물 (4kg)', '강력한 집게 악력 (3300N)', '야자수 등반', '아가미폐 호흡', '열대 해안림 서식'],
     habitatType: '하천/습지',
     colorPalette: ['#1E3A8A', '#7C2D12', '#0284C7', '#EA580C', '#0F172A'],
     locationCoord: {

@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
 import { UserStats, NaturalistPersona, Specimen, UserAccount } from '../types';
 import { NATURALIST_PERSONAS } from '../data/hotspots';
-import { X, Sparkles, ChevronRight, ArrowLeft, Check, MapPin, Bell, Shield, User, LogOut, UserX, Info, CreditCard, CheckCircle2, Trash2, RefreshCw, LogIn, Globe, Languages, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  ChevronRight,
+  ArrowLeft,
+  Check,
+  LogOut,
+  UserX,
+  Trash2,
+  RefreshCw,
+  CheckCircle2,
+  ShieldCheck,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SUPPORTED_LANGUAGES } from '../utils/speciesNameHelper';
+import { getTitleAdjectiveForLevel, getUnder14DesignFlags } from '../utils/levelPolicy';
+import { getExplorerTitleInfo } from '../utils/explorerTitles';
+import { PersonaBadgeIcon } from './PersonaBadgeIcon';
+import { DataSourcesModal } from './DataSourcesModal';
 
 interface MyPageModalProps {
   userStats: UserStats;
@@ -17,8 +32,10 @@ interface MyPageModalProps {
   onPermanentDeleteSpecimen: (id: string) => void;
   onEmptyTrash: () => void;
   userAccount: UserAccount;
+  onUpdateAccount?: (updated: Partial<UserAccount>) => void;
   onOpenLoginModal: () => void;
   onOpenSubscriptionModal: () => void;
+  onOpenMapSettings?: () => void;
   onLogout?: () => void;
   onDeleteAccount?: () => void;
 }
@@ -27,41 +44,53 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
   userStats,
   onUpdateStats,
   onClose,
+  collectedCount,
   onShowToast,
   specimens,
   onRestoreSpecimen,
   onPermanentDeleteSpecimen,
   onEmptyTrash,
   userAccount,
+  onUpdateAccount,
   onOpenLoginModal,
   onOpenSubscriptionModal,
+  onOpenMapSettings,
   onLogout,
   onDeleteAccount,
 }) => {
   const [isPersonaSubPageOpen, setIsPersonaSubPageOpen] = useState(false);
+  const [isTitleSubPageOpen, setIsTitleSubPageOpen] = useState(false);
+  const [pendingTitleId, setPendingTitleId] = useState<string>(userStats.selectedTitleId || 'default');
   const [isLanguageSubPageOpen, setIsLanguageSubPageOpen] = useState(false);
-  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [isDataSourcesOpen, setIsDataSourcesOpen] = useState(false);
+  const [isConfirmAdultTransitionOpen, setIsConfirmAdultTransitionOpen] = useState(false);
+  const [adultTransitionStep, setAdultTransitionStep] = useState<'confirm' | 'reconsent'>('confirm');
+  const [reconsentTerms, setReconsentTerms] = useState(false);
+  const [reconsentPrivacy, setReconsentPrivacy] = useState(false);
+  const [reconsentCommunity, setReconsentCommunity] = useState(false);
   const [isTrashSubPageOpen, setIsTrashSubPageOpen] = useState(false);
   const [isSubManagementSubPageOpen, setIsSubManagementSubPageOpen] = useState(false);
+  const [legalDocType, setLegalDocType] = useState<'terms' | 'privacy' | null>(null);
 
-  // Logout & Delete Account confirm modals
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
   const [isConfirmDeleteAccountOpen, setIsConfirmDeleteAccountOpen] = useState(false);
-
-  // Trash modals
   const [isConfirmEmptyTrashOpen, setIsConfirmEmptyTrashOpen] = useState(false);
   const [permanentDeleteSpecimenId, setPermanentDeleteSpecimenId] = useState<string | null>(null);
-
-  // Multi-step subscription cancellation (구독 해지 방어 뎁스)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const currentPersonaKey = userStats.persona || 'general';
   const currentPersona = NATURALIST_PERSONAS[currentPersonaKey];
+  const titleInfo = getExplorerTitleInfo(specimens, userStats, userAccount);
+  const nextTierLevel =
+    titleInfo.currentLevel < 5 ? 5 : titleInfo.currentLevel < 10 ? 10 : titleInfo.currentLevel < 20 ? 20 : titleInfo.currentLevel < 30 ? 30 : null;
+  const nextTierAdj = nextTierLevel ? getTitleAdjectiveForLevel(nextTierLevel) : null;
+  const { under14: isUnder14 } = getUnder14DesignFlags(userAccount);
+  const questAlertOn = Boolean(userStats.questAlertsEnabled);
 
   const handleConfirmCancellation = () => {
-    // 결제는 스토어가 관리하므로 앱 이용권 상태(isProUser)는 바꾸지 않고 해지 안내만 합니다.
+    onUpdateStats({ isProUser: false, planType: 'free' });
     setIsCancelModalOpen(false);
-    onShowToast('해지는 Google Play 또는 App Store의 구독 관리에서 하세요.');
+    onShowToast('구독이 해지되었습니다. 무료 플랜으로 전환되었습니다.');
   };
 
   const handleToggleSetting = (key: keyof UserStats) => {
@@ -76,142 +105,230 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
     setIsPersonaSubPageOpen(false);
   };
 
+  const renderToggle = (isOn: boolean, onClick: () => void, ariaLabel: string) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      aria-pressed={isOn}
+      className={`w-12 h-7 rounded-full transition-colors p-1 flex items-center shrink-0 cursor-pointer ${
+        isOn ? 'bg-black justify-end' : 'bg-[#e6e9e5] justify-start'
+      }`}
+    >
+      <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
+    </button>
+  );
+
   return (
     <div
       id="mypage-modal-backdrop"
-      className="fixed inset-0 z-50 bg-[#F6F8F6] text-stone-900 flex flex-col p-4 sm:p-6 overflow-hidden select-none"
+      className="fixed inset-0 z-50 bg-[#fbfbfb] text-[#202320] flex flex-col overflow-hidden select-none"
     >
-      <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col overflow-hidden">
+      <div className="max-w-lg w-full mx-auto flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
-          {/* ================= [SUB-PAGE] Persona Selection Depth ================= */}
+          {/* ================= [SUB-PAGE] Persona Selection ================= */}
           {isPersonaSubPageOpen ? (
             <motion.div
               key="persona-subpage"
-              initial={{ x: 30, opacity: 0 }}
+              initial={{ x: 24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col h-full flex-1 overflow-hidden"
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
             >
               <div className="flex items-center justify-between pb-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsPersonaSubPageOpen(false)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>설정으로 돌아가기</span>
                 </button>
+                <span className="text-[16px] font-bold text-[#202320]">탐험가 유형 선택</span>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="py-4 space-y-3 flex-1 overflow-y-auto pr-1 scrollbar-none">
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900">관찰자 성향 선택</h3>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    선택한 성향에 맞춰 생태 가이드의 핫스팟 및 추천 종이 자동 구성됩니다.
-                  </p>
-                </div>
+              <div className="py-2 space-y-2.5 flex-1 overflow-y-auto scrollbar-none">
+                <p className="text-[13px] text-[#8c948a] px-1">
+                  선택한 유형에 맞춰 도감 및 탐험 맵 추천 종이 구성됩니다.
+                </p>
 
-                <div className="grid grid-cols-1 gap-2.5 pt-1">
-                  {(Object.values(NATURALIST_PERSONAS) as any[]).map((persona) => {
-                    const isSelected = currentPersonaKey === persona.id;
-
-                    return (
-                      <button
-                        key={persona.id}
-                        type="button"
-                        onClick={() => handleSelectPersona(persona.id as NaturalistPersona)}
-                        className={`p-4 rounded-2xl text-left flex items-start justify-between transition-all ${
-                          isSelected
-                            ? 'bg-stone-200 font-bold shadow-sm'
-                            : 'bg-white/85 hover:bg-white'
+                {(Object.values(NATURALIST_PERSONAS) as any[]).map((persona) => {
+                  const isSelected = currentPersonaKey === persona.id;
+                  return (
+                    <button
+                      key={persona.id}
+                      type="button"
+                      onClick={() => handleSelectPersona(persona.id as NaturalistPersona)}
+                      className={`w-full p-4 rounded-[20px] text-left flex items-center justify-between transition-all cursor-pointer bg-white ${
+                        isSelected ? 'border-2 border-black' : 'border border-[#e6e9e5]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <PersonaBadgeIcon persona={persona.id as NaturalistPersona} size="md" />
+                        <div className="min-w-0">
+                          <span className="text-[15px] font-bold text-[#202320] block">{persona.title}</span>
+                          <p className="text-[12px] text-[#8c948a] mt-0.5 line-clamp-1">{persona.description}</p>
+                        </div>
+                      </div>
+                      <span
+                        className={`w-5 h-5 rounded-full shrink-0 ${
+                          isSelected ? 'border-[6px] border-black bg-white' : 'border-2 border-[#d2d7d1]'
                         }`}
-                      >
-                        <div className="min-w-0 flex-1 pr-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-lg">
-                              {persona.icon === 'Feather'
-                                ? '🪶'
-                                : persona.icon === 'Leaf'
-                                ? '🌿'
-                                : persona.icon === 'Bug'
-                                ? '🐛'
-                                : persona.icon === 'Footprints'
-                                ? '🐾'
-                                : '🧭'}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ) : isTitleSubPageOpen ? (
+            /* ================= [SUB-PAGE] G-06 내 칭호 ================= */
+            <motion.div
+              key="title-subpage"
+              initial={{ x: 24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
+            >
+              <div className="flex items-center justify-between pb-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsTitleSubPageOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer shadow-2xs"
+                  aria-label="뒤로"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <span className="text-[16px] font-bold text-[#202320]">내 칭호</span>
+                <div className="w-10" />
+              </div>
+
+              <div className="py-2 space-y-6 flex-1 overflow-y-auto scrollbar-none">
+                {/* Current Title Card (tap to change persona type) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTitleSubPageOpen(false);
+                    setIsPersonaSubPageOpen(true);
+                  }}
+                  className="w-full bg-white rounded-[20px] border border-[#e6e9e5] p-4 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[16px] font-bold text-[#202320] truncate">
+                        {titleInfo.activeTitle}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full border border-[#c4eb43] bg-[#f4fbdd] text-[#6d8911] text-[11px] font-bold tabular-nums shrink-0">
+                        Lv.{titleInfo.currentLevel}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[#8c948a] mt-1">
+                      {nextTierAdj && nextTierLevel
+                        ? `다음 칭호 · ${nextTierAdj} ${currentPersona.title} (Lv.${nextTierLevel})`
+                        : '최고 등급 칭호 구간에 도달했어요'}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#8c948a] shrink-0" />
+                </button>
+
+                {/* 표시할 칭호 List */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[18px] font-bold text-[#202320]">표시할 칭호</h3>
+                  <div className="bg-white rounded-[22px] border border-[#e6e9e5] divide-y divide-[#f4f5f4] overflow-hidden">
+                    {[titleInfo.defaultOption, ...titleInfo.unlockedHidden].map((opt) => {
+                      const isSelected = pendingTitleId === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setPendingTitleId(opt.id)}
+                          className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                        >
+                          <div className="min-w-0 pr-3">
+                            <span className="text-[15px] font-bold text-[#202320] block truncate">
+                              {opt.title}
                             </span>
-                            <span className="text-sm font-bold text-stone-900">
-                              {persona.title}
+                            <span className="text-[12px] text-[#8c948a] mt-0.5 block">
+                              {opt.subtitle}
                             </span>
                           </div>
-                          <p className="text-[11px] text-stone-500 leading-relaxed">
-                            {persona.description}
-                          </p>
-                        </div>
+                          <span
+                            className={`w-5 h-5 rounded-full shrink-0 ${
+                              isSelected ? 'border-[6px] border-black bg-white' : 'border-2 border-[#d2d7d1]'
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
 
-                        <div className="shrink-0 mt-1">
-                          {isSelected ? (
-                            <div className="w-5 h-5 rounded-full bg-stone-900 text-white flex items-center justify-center">
-                              <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded-full bg-stone-100" />
-                          )}
+                    {titleInfo.lockedHiddenCount > 0 && (
+                      <div className="w-full px-4 py-4 flex items-center justify-between text-left opacity-55">
+                        <div className="min-w-0 pr-3">
+                          <span className="text-[15px] font-bold text-[#8c948a] block tabular-nums">
+                            숨겨진 칭호 {titleInfo.lockedHiddenCount}개
+                          </span>
+                          <span className="text-[12px] text-[#8c948a] mt-0.5 block">
+                            조건은 달성할 때까지 비밀이에요
+                          </span>
                         </div>
-                      </button>
-                    );
-                  })}
+                        <span className="w-5 h-5 rounded-full border-2 border-[#e6e9e5] shrink-0" />
+                      </div>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              <div className="pt-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStats({ selectedTitleId: pendingTitleId });
+                    onShowToast('표시할 칭호가 변경되었어요');
+                    setIsTitleSubPageOpen(false);
+                  }}
+                  className="w-full h-14 bg-black hover:bg-[#202320] text-white font-bold text-[15px] rounded-2xl transition-colors cursor-pointer"
+                >
+                  이 칭호로 표시하기
+                </button>
               </div>
             </motion.div>
           ) : isLanguageSubPageOpen ? (
-            /* ================= [SUB-PAGE] Language Selection Depth ================= */
+            /* ================= [SUB-PAGE] Language Selection ================= */
             <motion.div
               key="language-subpage"
-              initial={{ x: 30, opacity: 0 }}
+              initial={{ x: 24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col h-full flex-1 overflow-hidden"
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
             >
               <div className="flex items-center justify-between pb-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsLanguageSubPageOpen(false)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1 cursor-pointer"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>설정으로 돌아가기</span>
                 </button>
+                <span className="text-[16px] font-bold text-[#202320]">언어 설정</span>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 cursor-pointer"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="py-4 space-y-4 flex-1 overflow-y-auto pr-1 scrollbar-none">
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-stone-700" />
-                    <span>도감 및 앱 표시 언어</span>
-                  </h3>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    다국어 생물명 및 UI 표시 언어를 선택하세요.
-                  </p>
-                </div>
-
-                {/* Language Selection Grid */}
-                <div className="grid grid-cols-2 gap-2">
+              <div className="py-2 space-y-4 flex-1 overflow-y-auto scrollbar-none">
+                <div className="grid grid-cols-2 gap-2.5">
                   {SUPPORTED_LANGUAGES.map((lang) => {
                     const isSelected = (userStats.language || 'ko') === lang.code;
                     return (
@@ -222,154 +339,121 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                           onUpdateStats({ language: lang.code });
                           onShowToast(`언어가 ${lang.label}(으)로 변경되었습니다`);
                         }}
-                        className={`p-3 rounded-2xl text-left border transition-all flex items-center justify-between cursor-pointer ${
+                        className={`p-3.5 rounded-[20px] text-left transition-all flex items-center justify-between cursor-pointer ${
                           isSelected
-                            ? 'bg-[#202424] text-white border-[#202424] shadow-md'
-                            : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200/80'
+                            ? 'bg-black text-white border-2 border-black'
+                            : 'bg-white text-[#202320] border border-[#e6e9e5]'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-lg shrink-0">{lang.flag}</span>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold truncate leading-tight">{lang.nativeLabel}</p>
-                            <p className={`text-[10px] truncate ${isSelected ? 'text-stone-300' : 'text-stone-400'}`}>
+                            <p className="text-[13px] font-bold truncate leading-tight">{lang.nativeLabel}</p>
+                            <p className={`text-[11px] truncate ${isSelected ? 'text-white/70' : 'text-[#8c948a]'}`}>
                               {lang.label}
                             </p>
                           </div>
                         </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-emerald-400 shrink-0 ml-1" />
-                        )}
+                        {isSelected && <Check className="w-4 h-4 text-[#c4eb43] shrink-0 ml-1" />}
                       </button>
                     );
                   })}
                 </div>
 
-                {/* 영어이름 함께 보기 토글 (비영어권 언어 선택 시 노출) */}
                 {(userStats.language || 'ko') !== 'en' && (
-                  <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3 pr-2">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-                        <Languages className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-stone-900">영어이름 함께 보기</p>
-                          <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">
-                            비영어권 전용
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-stone-400 mt-0.5 leading-relaxed">
-                          도감 및 상세 정보에서 현지어명 옆에 영문 통칭(English Name)을 함께 표시합니다
-                        </p>
-                      </div>
+                  <div className="bg-white rounded-[20px] p-4 border border-[#e6e9e5] flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[14px] font-bold text-[#202320]">영어이름 함께 보기</p>
+                      <p className="text-[12px] text-[#8c948a] mt-0.5">
+                        현지어명 옆에 영문 통칭을 함께 표시해요
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
+                    {renderToggle(
+                      userStats.showEnglishNameWithLocal !== false,
+                      () => {
                         const currentVal = userStats.showEnglishNameWithLocal !== false;
                         onUpdateStats({ showEnglishNameWithLocal: !currentVal });
                         onShowToast(!currentVal ? '영어이름 함께 보기가 켜졌습니다' : '영어이름 함께 보기가 꺼졌습니다');
-                      }}
-                      className={`w-11 h-6 rounded-full transition-colors p-0.5 flex items-center shrink-0 cursor-pointer ${
-                        userStats.showEnglishNameWithLocal !== false
-                          ? 'bg-[#202424] justify-end'
-                          : 'bg-stone-200 justify-start'
-                      }`}
-                    >
-                      <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
-                    </button>
+                      },
+                      '영어이름 함께 보기'
+                    )}
                   </div>
                 )}
               </div>
             </motion.div>
           ) : isSubManagementSubPageOpen ? (
-            /* ================= [SUB-PAGE] Subscription Contract & Payment Management (Deep Depth) ================= */
+            /* ================= [SUB-PAGE] Subscription Contract Management ================= */
             <motion.div
               key="sub-management-subpage"
-              initial={{ x: 30, opacity: 0 }}
+              initial={{ x: 24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col h-full flex-1 overflow-hidden"
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
             >
               <div className="flex items-center justify-between pb-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsSubManagementSubPageOpen(false)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>설정으로 돌아가기</span>
                 </button>
+                <span className="text-[16px] font-bold text-[#202320]">이용권 관리</span>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="py-4 space-y-4 flex-1 overflow-y-auto pr-1 scrollbar-none">
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900">결제 및 서비스 계약 세부 관리</h3>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    현재 적용 중인 플랜 상세 정보 및 결제 약관을 관리합니다.
-                  </p>
-                </div>
-
-                {/* Plan detail card */}
-                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                    <span className="text-xs font-bold text-stone-700">이용 중인 플랜</span>
-                    <span className="text-xs font-black text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                      {userStats.planType === 'yearly' ? 'MOALOG PRO (연간 결제)' : 'MOALOG PRO (월간 결제)'}
+              <div className="py-2 space-y-4 flex-1 overflow-y-auto scrollbar-none">
+                <div className="bg-white rounded-[20px] p-4 border border-[#e6e9e5] space-y-3">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#f4f5f4]">
+                    <span className="text-[13px] font-bold text-[#555c54]">이용 중인 플랜</span>
+                    <span className="text-[12px] font-bold text-[#6d8911] bg-[#f4fbdd] px-2.5 py-0.5 rounded-full border border-[#c4eb43]">
+                      {userStats.planType === 'yearly'
+                        ? 'MOALOG PRO (연간)'
+                        : userStats.planType === 'lifetime'
+                        ? '영구 이용권'
+                        : 'MOALOG PRO (월간)'}
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs text-stone-600">
+                  <div className="space-y-2.5 text-[13px]">
                     <div className="flex justify-between">
-                      <span className="text-stone-400">결제 수단</span>
-                      <span className="font-medium text-stone-800">App Store / Google Play 안전 인앱 결제</span>
+                      <span className="text-[#8c948a]">결제 수단</span>
+                      <span className="font-semibold text-[#202320]">App Store / Google Play</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-stone-400">결제 금액</span>
-                      <span className="font-bold text-stone-900">
-                        {userStats.planType === 'yearly' ? '연 29,000원 (VAT 포함)' : userStats.planType === 'lifetime' ? '58,000원 (영구 이용권)' : '월 3,300원 (VAT 포함)'}
+                      <span className="text-[#8c948a]">결제 금액</span>
+                      <span className="font-bold text-[#202320] tabular-nums">
+                        {userStats.planType === 'yearly'
+                          ? '연 29,000원'
+                          : userStats.planType === 'lifetime'
+                          ? '58,000원'
+                          : '월 3,300원'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-stone-400">서비스 상태</span>
-                      <span className="font-bold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> 무제한 혜택 적용 중 (자동 갱신)
+                      <span className="text-[#8c948a]">서비스 상태</span>
+                      <span className="font-bold text-[#6d8911] flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> 무제한 혜택 적용 중
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Terms and data protection notice */}
-                <div className="bg-stone-100/70 rounded-2xl p-4 border border-stone-200/60 text-xs text-stone-600 space-y-2">
-                  <p className="font-bold text-stone-800 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-stone-500" /> 서비스 이용 및 약관 안내
-                  </p>
-                  <p className="text-[11px] text-stone-500 leading-relaxed">
-                    구독 기간 동안 무제한 AI 종 분석 및 클라우드 동기화 서비스가 계속 제공됩니다. 결제 취소 및 환불 조항은 각 플랫폼 구매 약관을 준수합니다.
-                  </p>
-                </div>
-
-                {/* Deeply hidden Cancellation Link at the bottom of subpage */}
                 {userStats.isProUser && (
-                  <div className="pt-8 border-t border-stone-200/60 text-center">
-                    <p className="text-[10px] text-stone-400 mb-2">
-                      더 이상 PRO 혜택을 이용하지 않으시려면 아래 신청 절차를 진행하세요.
-                    </p>
+                  <div className="pt-4 text-center">
                     <button
                       type="button"
                       onClick={() => setIsCancelModalOpen(true)}
-                      className="text-[11px] font-medium text-stone-400 hover:text-red-500 underline transition-colors py-1.5 px-3 rounded-lg hover:bg-stone-100"
+                      className="text-[12px] font-semibold text-[#8c948a] hover:text-[#ff5100] underline py-2 px-4 cursor-pointer"
                     >
-                      구독 해지 안내 (스토어에서 해지)
+                      구독 서비스 해지 신청
                     </button>
                   </div>
                 )}
@@ -379,512 +463,383 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
             /* ================= [SUB-PAGE] Trash Bin ================= */
             <motion.div
               key="trash-subpage"
-              initial={{ x: 30, opacity: 0 }}
+              initial={{ x: 24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col h-full flex-1 overflow-hidden"
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
             >
               <div className="flex items-center justify-between pb-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsTrashSubPageOpen(false)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-stone-700 hover:text-stone-900 px-2 py-1 rounded-xl hover:bg-stone-100 transition-colors -ml-1"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>설정으로 돌아가기</span>
                 </button>
+                <span className="text-[16px] font-bold text-[#202320]">휴지통</span>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="py-4 space-y-3 flex-1 overflow-y-auto pr-1 scrollbar-none">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                      <Trash2 className="w-4 h-4 text-stone-500" />
-                      휴지통
-                    </h3>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      삭제된 기록은 30일 후 영구적으로 삭제됩니다.
-                    </p>
-                  </div>
-                  {(() => {
-                    const safeSpecimens = specimens || [];
-                    const deletedSpecimens = safeSpecimens.filter((s) => s.isDeleted);
-                    return (
-                      <>
-                        {deletedSpecimens.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setIsConfirmEmptyTrashOpen(true)}
-                            className="text-[11px] font-bold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors"
-                          >
-                            휴지통 비우기
-                          </button>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  {(() => {
-                    const safeSpecimens = specimens || [];
-                    const deletedSpecimens = safeSpecimens.filter((s) => s.isDeleted);
-                    if (deletedSpecimens.length === 0) {
-                      return (
-                        <div className="py-12 text-center text-stone-400 text-xs">
-                          휴지통이 비어 있습니다.
-                        </div>
-                      );
-                    }
-                    return deletedSpecimens.map((sp) => {
-                        const daysLeft = sp.deletedAt
-                          ? Math.max(0, 30 - Math.floor((Date.now() - sp.deletedAt) / 86400000))
-                          : 30;
-
-                        return (
-                          <div
-                            key={sp.id}
-                            className="p-3 rounded-2xl bg-white flex items-center justify-between gap-3 shadow-2xs"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-lg bg-stone-100 overflow-hidden flex-shrink-0">
-                                {sp.stickerImage || sp.originalImage ? (
-                                  <img src={sp.stickerImage || sp.originalImage} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-stone-300">?</div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-stone-800 truncate">{sp.koreanName}</h4>
-                                <p className="text-[10px] text-stone-500 truncate">{sp.date} · {sp.locationCoord?.name || '위치 미상'}</p>
-                                <p className="text-[10px] font-semibold text-red-500 mt-0.5">{daysLeft}일 후 영구 삭제</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-1.5 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => onRestoreSpecimen(sp.id)}
-                                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-600 flex items-center justify-center transition-colors"
-                                title="복구"
-                              >
-                                <RefreshCw className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPermanentDeleteSpecimenId(sp.id)}
-                                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-red-50 text-stone-600 hover:text-red-500 flex items-center justify-center transition-colors"
-                                title="영구 삭제"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      });
-                  })()}
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            /* ================= [MAIN PAGE] Settings & Membership ================= */
-            <motion.div
-              key="main-settings"
-              initial={{ x: -30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 30, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col h-full flex-1 overflow-hidden"
-            >
-              <div className="flex items-center justify-between pb-3 shrink-0">
-                <div>
-                  <h2 className="text-base font-bold text-stone-900">마이 — 이용권 및 설정</h2>
-                  <p className="text-[11px] text-stone-500">계정 관리 및 서비스 환경설정</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-1.5 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 py-4 flex-1 overflow-y-auto pr-1 scrollbar-none">
-                {/* 1. Subscription / Pro Membership */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-xs font-bold text-stone-900">이용권 구매</h3>
-                    <span className="text-[10px] font-mono font-medium text-stone-500">
-                      인앱 결제 · 부가세 포함
-                    </span>
-                  </div>
-
-                  {!userStats.isProUser ? (
-                    <div className="bg-[#202424] text-white rounded-3xl p-4 shadow-md space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold flex items-center gap-1.5 text-amber-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          무료 10칸 체험하기
-                        </span>
-                        <span className="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded-full text-stone-100 font-bold">
-                          체험판 활성화
-                        </span>
-                      </div>
-
-                      <div className="bg-white/10 rounded-2xl p-3 text-[11px] text-stone-300 space-y-1">
-                        <p className="font-semibold text-white">• 무료 회원 도감 10칸 기본 제공</p>
-                        <p className="text-stone-400">• 가입 후 평생 이용권을 구매하면 모든 칸 제한이 영구적으로 해제됩니다.</p>
-                      </div>
-
-                      <button
-                        type="button"
-                        id="btn-mypage-open-checkout"
-                        onClick={onOpenSubscriptionModal}
-                        className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-2xl text-xs font-black transition-all text-center shadow-md flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-stone-950" />
-                        <span>이용권 구매하기 (PRO 업그레이드)</span>
-                      </button>
-                    </div>
-                  ) : (
-                    /* Simple, Minimal PRO Status Card without icon clutter */
-                    <div className="bg-stone-900 text-white rounded-2xl p-4 shadow-sm select-none">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] font-mono text-stone-400">
-                            MOALOG PRO 멤버십
-                          </p>
-                          <h4 className="text-xs font-black text-white mt-0.5">
-                            {userStats.planType === 'yearly'
-                              ? '연간 정기 구독 이용 중'
-                              : '월간 정기 구독 이용 중'}
-                          </h4>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-0.5 rounded-full">
-                          구독 중
-                        </span>
-                      </div>
-
-                      <div className="mt-3 pt-2.5 border-t border-stone-800 flex items-center justify-between text-xs font-medium text-stone-300">
-                        <span>클라우드 백업 가동 중</span>
-                        <span className="text-stone-700">|</span>
-                        <span>무제한 AI 스캔</span>
-                      </div>
-                    </div>
+              <div className="py-2 space-y-3 flex-1 overflow-y-auto scrollbar-none">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[12px] text-[#8c948a]">삭제된 기록은 30일 후 영구 삭제돼요</p>
+                  {(specimens || []).some((s) => s.isDeleted) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmEmptyTrashOpen(true)}
+                      className="text-[12px] font-bold text-[#ff5100] cursor-pointer"
+                    >
+                      비우기
+                    </button>
                   )}
                 </div>
 
-                {/* 2. Persona Selection Row */}
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-bold text-stone-900 px-1">관찰자 성향 설정</h3>
-                  <button
-                    type="button"
-                    onClick={() => setIsPersonaSubPageOpen(true)}
-                    className="w-full bg-white rounded-2xl p-3.5 shadow-xs flex items-center justify-between hover:bg-stone-50/50 transition-all text-left group border border-stone-200/60"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-xl shrink-0">
-                        {currentPersona.icon === 'Feather'
-                          ? '🪶'
-                          : currentPersona.icon === 'Leaf'
-                          ? '🌿'
-                          : currentPersona.icon === 'Bug'
-                          ? '🐛'
-                          : currentPersona.icon === 'Footprints'
-                          ? '🐾'
-                          : '🧭'}
+                {(() => {
+                  const deletedSpecimens = (specimens || []).filter((s) => s.isDeleted);
+                  if (deletedSpecimens.length === 0) {
+                    return (
+                      <div className="py-16 text-center text-[#8c948a] text-[13px]">
+                        휴지통이 비어 있습니다.
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-stone-900">
-                            {currentPersona.title}
-                          </p>
-                          <span className="text-[10px] font-medium bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded">
-                            적용 중
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                          {currentPersona.description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-stone-400 group-hover:text-stone-700 text-xs font-semibold shrink-0 ml-2">
-                      <span>변경</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </button>
-                </div>
+                    );
+                  }
+                  return deletedSpecimens.map((sp) => {
+                    const daysLeft = sp.deletedAt
+                      ? Math.max(0, 30 - Math.floor((Date.now() - sp.deletedAt) / 86400000))
+                      : 30;
 
-                {/* 3. Settings Sections */}
-                <div className="space-y-3">
-                  {/* 계정 그룹 (현실적이고 안전한 로그인/연동 상태) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between px-1">
-                      <h3 className="text-xs font-bold text-stone-700">계정</h3>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-3.5 shadow-xs space-y-3 border border-stone-200/60">
-                      {userAccount.isLoggedIn ? (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
-                                {userAccount.name ? userAccount.name.charAt(0) : 'U'}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-stone-900 truncate">
-                                  {userAccount.name}
-                                </p>
-                                <p className="text-[10px] text-stone-500 truncate">
-                                  {userAccount.email}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              연동됨
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t border-stone-100">
-                            <div className="flex items-center gap-2.5">
-                              <Shield className="w-4 h-4 text-emerald-600" />
-                              <div>
-                                <p className="text-xs font-semibold text-stone-800">로그인 방식</p>
-                                <p className="text-[10px] text-stone-400">
-                                  {userAccount.provider === 'google' && 'Google 계정으로 로그인'}
-                                  {userAccount.provider === 'apple' && 'Apple 계정으로 로그인'}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
-                              이 기기에 저장됨
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        /* Guest / Logged-out State */
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                <User className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-stone-900">게스트 모드</p>
-                                <p className="text-[10px] text-amber-600 font-medium">
-                                  미로그인 (도감이 기기 로컬에만 보관 중)
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] bg-stone-100 text-stone-500 font-medium px-2 py-0.5 rounded-md">
-                              미연동
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={onOpenLoginModal}
-                            className="w-full py-2.5 bg-[#202424] hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
-                          >
-                            <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>소셜 계정 로그인 / 연동하기</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 언어 설정 그룹 (Language Settings Sub-page Trigger) */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-bold text-stone-700 px-1">언어 및 지역</h3>
-                    <div className="bg-white rounded-2xl p-1.5 shadow-xs border border-stone-200/60">
-                      <button
-                        type="button"
-                        onClick={() => setIsLanguageSubPageOpen(true)}
-                        className="w-full p-3 rounded-xl hover:bg-stone-50 transition-all flex items-center justify-between cursor-pointer"
+                    return (
+                      <div
+                        key={sp.id}
+                        className="p-3.5 rounded-[20px] bg-white border border-[#e6e9e5] flex items-center justify-between gap-3"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
-                            <Globe className="w-4 h-4" />
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-xl bg-[#f4f5f4] overflow-hidden shrink-0">
+                            {sp.stickerImage || sp.originalImage ? (
+                              <img src={sp.stickerImage || sp.originalImage} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[#8c948a]">?</div>
+                            )}
                           </div>
-                          <div className="text-left">
-                            <p className="text-xs font-bold text-stone-900">도감 및 앱 표시 언어 설정</p>
-                            <p className="text-[10px] text-stone-400 mt-0.5">
-                              {SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.nativeLabel} ({SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.label})
-                              {(userStats.language || 'ko') !== 'en' && userStats.showEnglishNameWithLocal !== false ? ' · 영어이름 함께 보기 켜짐' : ''}
+                          <div className="min-w-0">
+                            <h4 className="text-[14px] font-bold text-[#202320] truncate">{sp.koreanName}</h4>
+                            <p className="text-[11px] text-[#8c948a] truncate">
+                              {sp.date} · {daysLeft}일 남음
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs font-bold text-stone-400">
-                          <span>변경</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 서비스 그룹 */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-bold text-stone-700 px-1">서비스</h3>
-                    <div className="bg-white rounded-2xl p-3.5 shadow-xs space-y-3 border border-stone-200/60">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <Bell className="w-4 h-4 text-stone-500" />
-                          <div>
-                            <p className="text-xs font-semibold text-stone-800">알림</p>
-                            <p className="text-[10px] text-stone-400">새로운 서식지 발견 및 탐사 리마인드 푸시</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSetting('hapticsEnabled')}
-                          className={`w-10 h-6 rounded-full transition-colors p-0.5 flex items-center shrink-0 ${
-                            userStats.hapticsEnabled
-                              ? 'bg-[#202424] justify-end'
-                              : 'bg-stone-200 justify-start'
-                          }`}
-                        >
-                          <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2.5 border-t border-stone-100">
-                        <div className="flex items-center gap-2.5">
-                          <Info className="w-4 h-4 text-stone-500" />
-                          <div>
-                            <p className="text-xs font-semibold text-stone-800">데이터 보관 정책</p>
-                            <p className="text-[10px] text-stone-400">개인정보 보호 및 탐사 저널 저장 방침</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsPolicyModalOpen(true)}
-                          className="text-[11px] font-semibold text-emerald-700 hover:underline"
-                        >
-                          보기
-                        </button>
-                      </div>
-
-                      {userStats.isProUser && (
-                        <div className="flex items-center justify-between pt-2.5 border-t border-stone-100">
-                          <div className="flex items-center gap-2.5">
-                            <CreditCard className="w-4 h-4 text-amber-600" />
-                            <div>
-                              <p className="text-xs font-semibold text-stone-800">결제 및 서비스 계약 관리</p>
-                              <p className="text-[10px] text-stone-400">구독 플랜 상세 정보 및 계약 내역</p>
-                            </div>
-                          </div>
+                        <div className="flex gap-1.5 shrink-0">
                           <button
                             type="button"
-                            onClick={() => setIsSubManagementSubPageOpen(true)}
-                            className="text-[11px] font-bold text-stone-700 hover:text-stone-900 flex items-center gap-0.5 bg-stone-100 px-2 py-1 rounded-lg transition-colors"
+                            onClick={() => onRestoreSpecimen(sp.id)}
+                            className="w-9 h-9 rounded-full bg-[#f4f5f4] hover:bg-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
+                            title="복구"
                           >
-                            <span>계약 관리</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPermanentDeleteSpecimenId(sp.id)}
+                            className="w-9 h-9 rounded-full bg-[#f4f5f4] hover:bg-[#fee2e2] text-[#ff5100] flex items-center justify-center cursor-pointer"
+                            title="영구 삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </motion.div>
+          ) : (
+            /* ================= [MAIN PAGE] G-03 설정 ================= */
+            <motion.div
+              key="main-settings"
+              initial={{ x: -24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden"
+            >
+              {/* Top Bar matching G-03_설정.png */}
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer shadow-2xs"
+                  aria-label="뒤로"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h2 className="text-[16px] font-bold text-[#202320]">설정</h2>
+                <div className="w-10" />
+              </div>
+
+              <div className="px-4 pt-2 pb-10 space-y-5 flex-1 overflow-y-auto scrollbar-none">
+                {/* 1. Explorer Title & Level Card (G-03 top card) */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingTitleId(userStats.selectedTitleId || 'default');
+                      setIsTitleSubPageOpen(true);
+                    }}
+                    className="w-full bg-white rounded-[20px] border border-[#e6e9e5] p-4 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-bold text-[#202320]">
+                          {titleInfo.activeTitle}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full border border-[#c4eb43] bg-[#f4fbdd] text-[#6d8911] text-[11px] font-bold tabular-nums">
+                          Lv.{titleInfo.currentLevel}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#8c948a] mt-1">
+                        표시 중인 칭호 · {titleInfo.activeTitleId === 'default' ? '기본' : '숨겨진 칭호'}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#8c948a] shrink-0" />
+                  </button>
+
+                  {/* 2. Slot / Plan Card (G-03 second card) */}
+                  <button
+                    type="button"
+                    id="btn-mypage-open-checkout"
+                    onClick={() =>
+                      userStats.isProUser ? setIsSubManagementSubPageOpen(true) : onOpenSubscriptionModal()
+                    }
+                    className="w-full bg-white rounded-[20px] border border-[#e6e9e5] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#c4eb43] text-[#202320] text-[11px] font-bold shrink-0">
+                        {userStats.isProUser ? 'PRO' : '무료'}
+                      </span>
+                      <span className="text-[14px] font-bold text-[#202320] truncate tabular-nums">
+                        {userStats.isProUser ? '무제한 도감 이용 중' : `무료 도감 ${collectedCount} / 10칸`}
+                      </span>
+                    </div>
+                    <span className="text-[13px] text-[#8c948a] font-medium flex items-center gap-0.5 shrink-0 whitespace-nowrap">
+                      {userStats.isProUser ? '이용권 관리' : '이용권 보기'} <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </button>
+                </div>
+
+                {/* 3. 도감 · 앱 알림 Section (G-03) */}
+                <div className="space-y-2">
+                  <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">도감 · 앱 알림</h3>
+                  <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                    <div className="px-4 py-3.5 flex items-center justify-between gap-3">
+                      <span className="text-[15px] font-semibold text-[#202320]">포착 · 뱃지 알림</span>
+                      {renderToggle(
+                        userStats.hapticsEnabled,
+                        () => handleToggleSetting('hapticsEnabled'),
+                        '포착 · 뱃지 알림'
+                      )}
+                    </div>
+
+                    <div className="px-4 py-3.5 flex items-center justify-between gap-3">
+                      <span className="text-[15px] font-semibold text-[#202320]">출석 · 퀘스트 알림</span>
+                      {renderToggle(
+                        questAlertOn,
+                        () => {
+                          onUpdateStats({ questAlertsEnabled: !questAlertOn });
+                          onShowToast('설정이 저장되었습니다');
+                        },
+                        '출석 · 퀘스트 알림'
                       )}
                     </div>
                   </div>
+                </div>
 
-                  {/* 위치 정보 이용 그룹 */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-xs font-bold text-stone-700 px-1">위치 정보 이용</h3>
-                    <div className="bg-white rounded-2xl p-3.5 shadow-xs border border-stone-200/60">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <MapPin className="w-4 h-4 text-emerald-600" />
-                          <div>
-                            <p className="text-xs font-semibold text-stone-800">위치 정보 (GPS) 사용</p>
-                            <p className="text-[10px] text-stone-400">실시간 탐사 맵 및 촬영 위치 자동 기록</p>
-                          </div>
+                {/* G-03b 나이 그룹 (만 14세 미만 전용) */}
+                {isUnder14 && (
+                  <div className="space-y-2">
+                    <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">나이</h3>
+                    <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                      <div className="px-4 py-3.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[15px] font-semibold text-[#202320]">현재 계정 연령</span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] text-[11px] font-bold">
+                            만 14세 미만
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSetting('soundEnabled')}
-                          className={`w-10 h-6 rounded-full transition-colors p-0.5 flex items-center shrink-0 ${
-                            userStats.soundEnabled
-                              ? 'bg-[#202424] justify-end'
-                              : 'bg-stone-200 justify-start'
-                          }`}
-                        >
-                          <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
-                        </button>
+                        <p className="text-[12px] text-[#8c948a] leading-relaxed">
+                          외부 공유 · 탐험맵 메모/댓글/하트 · 친구 초대 · 랭킹 공개는 만 14세 미만 보호 정책에 따라 제한돼요.
+                        </p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* 기타 그룹 (휴지통, 로그아웃, 회원 탈퇴, 버전 정보) */}
-                  <div className="space-y-1.5 pt-1">
-                    <h3 className="text-xs font-bold text-stone-700 px-1">기타</h3>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsTrashSubPageOpen(true)}
-                        className="w-full py-3 px-4 bg-white text-stone-700 hover:text-stone-900 hover:bg-stone-50 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-2xs transition-colors border border-stone-200/60"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Trash2 className="w-4 h-4 text-stone-400" />
-                          <span>휴지통</span>
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-stone-300" />
-                      </button>
-
-                      {userAccount.isLoggedIn ? (
+                      {userAccount.isLoggedIn && onUpdateAccount && (
                         <button
                           type="button"
-                          id="btn-mypage-logout"
-                          onClick={() => setIsConfirmLogoutOpen(true)}
-                          className="w-full py-3 px-4 bg-white text-stone-700 hover:text-stone-900 hover:bg-stone-50 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-2xs transition-colors border border-stone-200/60"
+                          onClick={() => {
+                            setAdultTransitionStep('confirm');
+                            setReconsentTerms(false);
+                            setReconsentPrivacy(false);
+                            setReconsentCommunity(false);
+                            setIsConfirmAdultTransitionOpen(true);
+                          }}
+                          className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
                         >
-                          <span className="flex items-center gap-2">
-                            <LogOut className="w-4 h-4 text-stone-400" />
-                            <span>로그아웃</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-stone-300" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          id="btn-mypage-login"
-                          onClick={onOpenLoginModal}
-                          className="w-full py-3 px-4 bg-white text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50/50 rounded-2xl text-xs font-bold flex items-center justify-between shadow-2xs transition-colors border border-emerald-200/60"
-                        >
-                          <span className="flex items-center gap-2">
-                            <LogIn className="w-4 h-4 text-emerald-600" />
-                            <span>계정 로그인 / 연동</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-emerald-400" />
+                          <span className="text-[15px] font-semibold text-[#6d8911]">만 14세가 되었어요 · 제한 해제</span>
+                          <ChevronRight className="w-4 h-4 text-[#8c948a]" />
                         </button>
                       )}
+                    </div>
+                  </div>
+                )}
 
+                {/* 4. 일반 Section (G-03) */}
+                <div className="space-y-2">
+                  <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">일반</h3>
+                  <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                    <button
+                      type="button"
+                      onClick={() => setIsLanguageSubPageOpen(true)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">언어</span>
+                      <span className="text-[13px] text-[#8c948a] flex items-center gap-1">
+                        {SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.nativeLabel || '시스템 기본'}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+
+                    <div className="px-4 py-3.5 flex items-center justify-between gap-3">
+                      <span className="text-[15px] font-semibold text-[#202320]">내 기기 앨범에도 저장</span>
+                      {renderToggle(
+                        userStats.soundEnabled,
+                        () => handleToggleSetting('soundEnabled'),
+                        '내 기기 앨범에도 저장'
+                      )}
+                    </div>
+
+                    {!isUnder14 && (
                       <button
                         type="button"
-                        id="btn-mypage-delete-account"
-                        onClick={() => setIsConfirmDeleteAccountOpen(true)}
-                        className="w-full py-3 px-4 bg-white text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-2xs transition-colors border border-stone-200/60"
+                        onClick={() => onShowToast('초대 링크가 복사되었어요.')}
+                        className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
                       >
-                        <span className="flex items-center gap-2">
-                          <UserX className="w-4 h-4 text-red-400" />
-                          <span>회원 탈퇴</span>
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-red-200" />
+                        <span className="text-[15px] font-semibold text-[#202320]">친구 초대</span>
+                        <ChevronRight className="w-4 h-4 text-[#8c948a]" />
                       </button>
+                    )}
+                  </div>
+                </div>
 
-                      <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-stone-400 font-mono">
-                        <span>버전 정보</span>
-                        <span>v1.0.0</span>
-                      </div>
+                {/* 5. 탐험맵 설정 바로가기 (탐험맵 전용 설정으로 분리 연결) */}
+                {onOpenMapSettings && (
+                  <div className="space-y-2">
+                    <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">탐험맵</h3>
+                    <div className="bg-white rounded-[20px] border border-[#e6e9e5] overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={onOpenMapSettings}
+                        className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                      >
+                        <div className="min-w-0 pr-3">
+                          <span className="text-[15px] font-semibold text-[#202320] block">탐험맵 설정</span>
+                          <span className="text-[12px] text-[#8c948a] mt-0.5 block">
+                            {isUnder14
+                              ? '위치 권한 · 주변 새 기록 알림'
+                              : '메모 공개 · 보호종 위치 · 랭킹 · 탐험맵 알림 · 차단 관리'}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[#8c948a] shrink-0" />
+                      </button>
                     </div>
+                  </div>
+                )}
+
+                {/* 6. 정보 Section (G-03) */}
+                <div className="space-y-2">
+                  <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">정보</h3>
+                  <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                    <button
+                      type="button"
+                      onClick={() => setLegalDocType('terms')}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">서비스 이용약관</span>
+                      <ChevronRight className="w-4 h-4 text-[#8c948a]" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setLegalDocType('privacy')}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">개인정보 처리방침</span>
+                      <ChevronRight className="w-4 h-4 text-[#8c948a]" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDataSourcesOpen(true)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">데이터 출처 · 라이선스</span>
+                      <ChevronRight className="w-4 h-4 text-[#8c948a]" />
+                    </button>
+
+                    <div className="w-full px-4 py-3.5 flex items-center justify-between">
+                      <span className="text-[15px] font-semibold text-[#202320]">앱 버전</span>
+                      <span className="text-[13px] text-[#8c948a] tabular-nums">1.0.0</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. 계정 Section (G-03) */}
+                <div className="space-y-2">
+                  <h3 className="text-[13px] font-semibold text-[#8c948a] px-1">계정</h3>
+                  <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                    <button
+                      type="button"
+                      onClick={onOpenLoginModal}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">연동된 계정</span>
+                      <span className="text-[13px] text-[#8c948a] flex items-center gap-1">
+                        {userAccount.isLoggedIn ? userAccount.name : '로그인 필요'}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsTrashSubPageOpen(true)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">휴지통</span>
+                      <ChevronRight className="w-4 h-4 text-[#8c948a]" />
+                    </button>
+
+                    {userAccount.isLoggedIn && (
+                      <button
+                        type="button"
+                        id="btn-mypage-logout"
+                        onClick={() => setIsConfirmLogoutOpen(true)}
+                        className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                      >
+                        <span className="text-[15px] font-semibold text-[#202320]">로그아웃</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      id="btn-mypage-delete-account"
+                      onClick={() => setIsConfirmDeleteAccountOpen(true)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">계정 삭제</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -893,121 +848,47 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* ================= [SUBSCRIPTION CANCELLATION RETENTION MODAL] (구독 해지 방어 뎁스) ================= */}
+      {/* ================= Confirmation Modals ================= */}
       {isCancelModalOpen && (
-        <div className="fixed inset-0 z-60 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5"
-          >
-            <div className="flex items-center justify-between pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-sm">
-                  ⚠️
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900">정말 PRO 혜택을 포기하시겠어요?</h3>
-                  <p className="text-[10px] text-stone-500">해지는 스토어의 구독 관리에서 하셔야 결제가 멈춰요</p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-sm w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4">
+            <h3 className="text-[17px] font-bold text-[#202320]">정말 구독을 해지하시겠어요?</h3>
+            <p className="text-[13px] text-[#555c54] leading-relaxed">
+              해지하셔도 이미 모은 도감은 평생 안전하게 보존되며, 새 생물 등록만 무료 10칸 기준으로 전환됩니다.
+            </p>
+            <div className="flex gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setIsCancelModalOpen(false)}
-                className="p-1 rounded-full text-stone-400 hover:text-stone-900"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-amber-50 rounded-2xl p-4 space-y-2 text-xs text-amber-900">
-              <p className="font-bold flex items-center gap-1.5">
-                <span>💡</span> 해지 시 손실되는 주요 혜택
-              </p>
-              <ul className="space-y-1 pl-5 list-disc text-[11px] text-stone-700">
-                <li>무제한 생태 도감 스캔 및 AI 자동 분석</li>
-                <li>고해상도 압화집 및 내셔널 탐사 프레임 영구 보존</li>
-                <li>프리미엄 핫스팟 실시간 가이드 전체 이용권</li>
-                <li>AI 생태백과 챗봇 질의응답 기능</li>
-              </ul>
-            </div>
-
-            {/* ⚠️ Crucial Data Warning */}
-            {/* Data Protection Notice */}
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 text-stone-900 text-[11px] leading-relaxed flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-stone-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-stone-950">기존 데이터 평생 보존</p>
-                <p className="text-stone-600 mt-0.5">
-                  구독을 해지하셔도 이미 모은 도감은 평생 안전하게 보존됩니다.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsCancelModalOpen(false)}
-                className="flex-1 py-3 bg-[#202424] hover:bg-stone-800 text-white rounded-2xl text-xs font-bold transition-colors shadow-md"
+                className="flex-1 h-12 bg-black text-white rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 혜택 유지하기
               </button>
               <button
                 type="button"
                 onClick={handleConfirmCancellation}
-                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl text-xs font-bold transition-colors"
+                className="flex-1 h-12 bg-[#f4f5f4] text-[#555c54] rounded-xl text-[14px] font-bold cursor-pointer"
               >
-                스토어에서 해지하기
+                해지하기
               </button>
             </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Policy Modal */}
-      {isPolicyModalOpen && (
-        <div className="fixed inset-0 z-60 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-sm font-bold text-stone-900">데이터 보관 및 개인정보 보호 방침</h3>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              본 애플리케이션(MOALOG 자연 도감)은 사용자의 소중한 생태 탐사 기록과 저널 데이터를 안전하게 보호하며, 위치 정보 및 관찰 기록은 사용자 기기 및 보안 클라우드에 암호화되어 안전하게 보관됩니다. 구독 해지 후 1년 뒤에는 데이터가 삭제되거나 압축될 수 있습니다.
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsPolicyModalOpen(false)}
-              className="w-full py-2.5 bg-stone-900 text-white rounded-xl text-xs font-bold"
-            >
-              확인
-            </button>
           </div>
         </div>
       )}
 
-      {/* Empty Trash Confirmation Modal */}
+
       {isConfirmEmptyTrashOpen && (
-        <div className="fixed inset-0 z-70 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl space-y-5 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-stone-900">휴지통을 비우시겠습니까?</h3>
-              <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
-                휴지통의 모든 항목이 영구적으로 삭제되며<br/>
-                <span className="font-bold text-red-600">이 작업은 복구할 수 없습니다.</span>
-              </p>
-            </div>
-            <div className="flex gap-2 pt-1">
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-xs w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4 text-center">
+            <h3 className="text-[16px] font-bold text-[#202320]">휴지통을 비우시겠습니까?</h3>
+            <p className="text-[13px] text-[#555c54] leading-relaxed">
+              모든 항목이 영구 삭제되며 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setIsConfirmEmptyTrashOpen(false)}
-                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-bold transition-colors"
+                className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 취소
               </button>
@@ -1017,82 +898,60 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                   onEmptyTrash();
                   setIsConfirmEmptyTrashOpen(false);
                 }}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-bold transition-colors shadow-md"
+                className="flex-1 h-12 bg-[#ff5100] text-white rounded-xl text-[14px] font-bold cursor-pointer"
               >
-                휴지통 비우기
+                비우기
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
-      {/* Permanent Single Delete Confirmation Modal */}
       {permanentDeleteSpecimenId && (
-        <div className="fixed inset-0 z-70 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl space-y-5 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-stone-900">영구적으로 삭제할까요?</h3>
-              <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
-                선택한 관찰 기록이 완전히 삭제되며<br/>
-                <span className="font-bold text-red-600">다시 복구할 수 없습니다.</span>
-              </p>
-            </div>
-            <div className="flex gap-2 pt-1">
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-xs w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4 text-center">
+            <h3 className="text-[16px] font-bold text-[#202320]">영구적으로 삭제할까요?</h3>
+            <p className="text-[13px] text-[#555c54]">선택한 기록이 완전히 삭제되며 복구할 수 없습니다.</p>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPermanentDeleteSpecimenId(null)}
-                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-bold transition-colors"
+                className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 취소
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (permanentDeleteSpecimenId) {
-                    onPermanentDeleteSpecimen(permanentDeleteSpecimenId);
-                  }
+                  if (permanentDeleteSpecimenId) onPermanentDeleteSpecimen(permanentDeleteSpecimenId);
                   setPermanentDeleteSpecimenId(null);
                 }}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-bold transition-colors shadow-md"
+                className="flex-1 h-12 bg-[#ff5100] text-white rounded-xl text-[14px] font-bold cursor-pointer"
               >
-                영구 삭제
+                삭제
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
-      {/* Logout Confirmation Modal */}
       {isConfirmLogoutOpen && (
-        <div className="fixed inset-0 z-70 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl space-y-5 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center mx-auto">
-              <LogOut className="w-6 h-6" />
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-xs w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f4f5f4] text-[#202320] flex items-center justify-center mx-auto">
+              <LogOut className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-stone-900">로그아웃 하시겠습니까?</h3>
-              <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
-                로그아웃 시 계정 연동이 해제되고 앱 첫 화면(스티커 도감 미리보기)으로 돌아갑니다. 기존 관찰 기록은 기기에 안전하게 보존됩니다.
+              <h3 className="text-[16px] font-bold text-[#202320]">로그아웃 하시겠습니까?</h3>
+              <p className="text-[12px] text-[#555c54] mt-1.5 leading-relaxed">
+                기존 관찰 기록은 기기에 안전하게 보존됩니다.
               </p>
             </div>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setIsConfirmLogoutOpen(false)}
-                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-bold transition-colors"
+                className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 취소
               </button>
@@ -1102,39 +961,32 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                   setIsConfirmLogoutOpen(false);
                   if (onLogout) onLogout();
                 }}
-                className="flex-1 py-3 bg-[#202424] hover:bg-stone-800 text-white rounded-2xl text-xs font-bold transition-colors shadow-md"
+                className="flex-1 h-12 bg-black text-white rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 로그아웃
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
-      {/* Delete Account Confirmation Modal */}
       {isConfirmDeleteAccountOpen && (
-        <div className="fixed inset-0 z-70 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-3xl max-w-xs w-full p-6 shadow-2xl space-y-5 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <UserX className="w-6 h-6" />
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-xs w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#fff1eb] text-[#ff5100] flex items-center justify-center mx-auto">
+              <UserX className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-stone-900">정말 회원 탈퇴하시겠습니까?</h3>
-              <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
-                이 계정의 수집 도감과 관찰 기록, 계정 연동 정보가 이 기기에서 즉시 영구 삭제되며<br/>
-                <span className="font-bold text-red-600">이 작업은 복구할 수 없습니다.</span>
+              <h3 className="text-[16px] font-bold text-[#202320]">정말 회원 탈퇴하시겠습니까?</h3>
+              <p className="text-[12px] text-[#555c54] mt-1.5 leading-relaxed">
+                모든 도감 및 계정 정보가 영구 삭제되며 복구할 수 없습니다.
               </p>
             </div>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setIsConfirmDeleteAccountOpen(false)}
-                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-bold transition-colors"
+                className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
               >
                 취소
               </button>
@@ -1144,14 +996,149 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                   setIsConfirmDeleteAccountOpen(false);
                   if (onDeleteAccount) onDeleteAccount();
                 }}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-bold transition-colors shadow-md"
+                className="flex-1 h-12 bg-[#ff5100] text-white rounded-xl text-[14px] font-bold cursor-pointer"
               >
-                회원 탈퇴
+                탈퇴하기
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
+      {isConfirmAdultTransitionOpen && (
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-[28px] sm:rounded-[24px] max-w-sm w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4">
+            {adultTransitionStep === 'confirm' ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] flex items-center justify-center mx-auto">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div className="text-center space-y-1.5">
+                  <h3 className="text-[17px] font-bold text-[#202320]">만 14세가 되었나요?</h3>
+                  <p className="text-[13px] text-[#555c54] leading-relaxed">
+                    약관에 다시 동의하면 외부 공유, 탐험맵 메모·댓글·하트, 친구 초대, 랭킹 공개 기능이 열려요.
+                  </p>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmAdultTransitionOpen(false)}
+                    className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
+                  >
+                    나중에
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdultTransitionStep('reconsent')}
+                    className="flex-1 h-12 bg-black text-white rounded-xl text-[14px] font-bold cursor-pointer"
+                  >
+                    약관 동의하기
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <h3 className="text-[17px] font-bold text-[#202320]">만 14세 이상 약관 재동의</h3>
+                  <p className="text-[12px] text-[#8c948a]">
+                    일반 계정 전환을 위해 아래 필수 약관에 동의해 주세요.
+                  </p>
+                </div>
+
+                <div className="bg-[#fbfbfb] rounded-2xl border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
+                  {[
+                    {
+                      checked: reconsentTerms,
+                      onChange: () => setReconsentTerms((v) => !v),
+                      label: '[필수] 서비스 이용약관 동의',
+                    },
+                    {
+                      checked: reconsentPrivacy,
+                      onChange: () => setReconsentPrivacy((v) => !v),
+                      label: '[필수] 개인정보 처리방침 동의',
+                    },
+                    {
+                      checked: reconsentCommunity,
+                      onChange: () => setReconsentCommunity((v) => !v),
+                      label: '[필수] 커뮤니티 · 공유 이용 기준 동의',
+                    },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={item.onChange}
+                      className="w-full px-3.5 py-3 flex items-center gap-3 text-left cursor-pointer"
+                    >
+                      <span
+                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                          item.checked ? 'bg-black text-white' : 'border border-[#d2d7d1] bg-white'
+                        }`}
+                      >
+                        {item.checked && <Check className="w-3.5 h-3.5" />}
+                      </span>
+                      <span className="text-[13px] font-semibold text-[#202320]">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAdultTransitionStep('confirm')}
+                    className="flex-1 h-12 bg-[#f4f5f4] text-[#202320] rounded-xl text-[14px] font-bold cursor-pointer"
+                  >
+                    이전
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!(reconsentTerms && reconsentPrivacy && reconsentCommunity)}
+                    onClick={() => {
+                      if (onUpdateAccount) {
+                        onUpdateAccount({
+                          isUnder14: false,
+                          ageGroup: 'adult_or_teen14',
+                          guardianConsentPending: false,
+                        });
+                      }
+                      setIsConfirmAdultTransitionOpen(false);
+                      onShowToast('일반 계정(만 14세 이상)으로 전환되었습니다.');
+                    }}
+                    className="flex-1 h-12 bg-black disabled:bg-[#d2d7d1] text-white rounded-xl text-[14px] font-bold cursor-pointer transition-colors"
+                  >
+                    동의하고 제한 해제
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {legalDocType && (
+        <div className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] max-w-sm w-full p-6 border border-[#e6e9e5] shadow-2xl space-y-4">
+            <h3 className="text-[16px] font-bold text-[#202320]">
+              {legalDocType === 'terms' ? '서비스 이용약관' : '개인정보 처리방침'}
+            </h3>
+            <p className="text-[13px] text-[#555c54] leading-relaxed">
+              {legalDocType === 'terms'
+                ? '모아로그는 자연 관찰과 생태 기록 공유를 위한 도감 서비스이며, 보호종 및 서식지 안전 수칙을 준수합니다.'
+                : '업로드된 현장 사진의 위치 메타데이터(EXIF)는 저장 전 자동 제거되며, 보호종 위치는 광역 권역으로 보호됩니다.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setLegalDocType(null)}
+              className="w-full h-12 bg-black text-white rounded-xl text-[14px] font-bold cursor-pointer"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
+      <DataSourcesModal
+        isOpen={isDataSourcesOpen}
+        onClose={() => setIsDataSourcesOpen(false)}
+      />
     </div>
   );
 };

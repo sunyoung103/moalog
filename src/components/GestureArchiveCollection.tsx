@@ -10,9 +10,43 @@ interface GestureArchiveCollectionProps {
   userStats: UserStats;
   selectedCategory: SpecimenCategory;
   onOpenSubscriptionModal?: () => void;
+  viewMode?: 'gallery' | 'sticker';
+  onViewModeChange?: (mode: 'gallery' | 'sticker') => void;
+  onSelectCategory?: (category: SpecimenCategory) => void;
+  groupingMode?: 'category' | 'order';
+  selectedOrderFilter?: string;
+  onOpenCategoryDetail?: (category: SpecimenCategory) => void;
+}
+
+interface DockedPair {
+  specimenA: Specimen;
+  specimenB: Specimen;
 }
 
 type CollectionViewMode = 'gallery' | 'sticker';
+
+const getCategoryRimStyle = (category?: string): { bar: string; count: string; rim: string } => {
+  switch (category) {
+    case 'plants':
+      return { bar: '#6d8911', count: '#6d8911', rim: 'linear-gradient(145deg, #a7da48 0%, #6d9e19 100%)' };
+    case 'birds':
+      return { bar: '#4a88c7', count: '#4a88c7', rim: 'linear-gradient(145deg, #8ec5f8 0%, #4b89c8 100%)' };
+    case 'insects':
+      return { bar: '#d4941c', count: '#d4941c', rim: 'linear-gradient(145deg, #f3ca64 0%, #c98617 100%)' };
+    case 'mammals':
+      return { bar: '#b8622a', count: '#b8622a', rim: 'linear-gradient(145deg, #df9461 0%, #a55221 100%)' };
+    case 'fungi':
+      return { bar: '#d04656', count: '#d04656', rim: 'linear-gradient(145deg, #eb8390 0%, #bf3c4d 100%)' };
+    case 'fishes':
+      return { bar: '#2d72d2', count: '#2d72d2', rim: 'linear-gradient(145deg, #74adec 0%, #2764ba 100%)' };
+    case 'amphibians':
+    case 'reptiles':
+    case 'herptiles':
+      return { bar: '#188f84', count: '#188f84', rim: 'linear-gradient(145deg, #5cc7bd 0%, #157d73 100%)' };
+    default:
+      return { bar: '#626961', count: '#626961', rim: 'linear-gradient(145deg, #c2c8c0 0%, #8c948a 100%)' };
+  }
+};
 
 interface CladeSpecimenGroup {
   id: string;
@@ -23,22 +57,44 @@ interface CladeSpecimenGroup {
   specimens: Specimen[];
 }
 
-// Major biological clades info for 'all' mode
+export const CATEGORY_DISPLAY_LABELS: Record<string, string> = {
+  all: '전체',
+  plants: '식물',
+  insects: '곤충',
+  birds: '조류',
+  invertebrates: '거미&연체',
+  arachnids: '거미&연체',
+  mollusks: '거미&연체',
+  crustaceans: '거미&연체',
+  mammals: '포유류',
+  herptiles: '양서&파충류',
+  amphibians: '양서&파충류',
+  reptiles: '양서&파충류',
+  fishes: '어류',
+  fungi: '균류',
+  others: '기타',
+};
+
+export function getCategoryDisplayLabel(categoryKey: string): string {
+  return CATEGORY_DISPLAY_LABELS[categoryKey] || categoryKey;
+}
+
+// Major biological clades info for category-level summary descriptions
 const CATEGORY_CLADE_INFO: Record<string, { korean: string; latin: string; desc: string }> = {
-  insects: { korean: '곤충강', latin: 'Insecta', desc: '육상 절지동물 곤충군' },
-  plants: { korean: '식물계', latin: 'Plantae', desc: '광합성 관속식물군' },
-  birds: { korean: '조강', latin: 'Aves', desc: '비행 척추동물 조류군' },
-  mammals: { korean: '포유강', latin: 'Mammalia', desc: '온혈 척추동물 포유류' },
-  fungi: { korean: '균계', latin: 'Fungi', desc: '포자 생식 진핵 균류' },
-  amphibians: { korean: '양서강', latin: 'Amphibia', desc: '수륙양용 변온 척추동물' },
-  reptiles: { korean: '파충강', latin: 'Reptilia', desc: '비늘 표피 변온 파충류' },
-  herptiles: { korean: '양서·파충류', latin: 'Herpetofauna', desc: '수륙 변온 척추동물' },
+  insects: { korean: '곤충', latin: 'Insecta', desc: '육상 절지동물 곤충군' },
+  plants: { korean: '식물', latin: 'Plantae', desc: '광합성 관속식물군' },
+  birds: { korean: '조류', latin: 'Aves', desc: '비행 척추동물 조류군' },
+  mammals: { korean: '포유류', latin: 'Mammalia', desc: '온혈 척추동물 포유류' },
+  fungi: { korean: '균류', latin: 'Fungi', desc: '포자 생식 진핵 균류' },
+  amphibians: { korean: '양서&파충류', latin: 'Amphibia', desc: '수륙양용 변온 척추동물' },
+  reptiles: { korean: '양서&파충류', latin: 'Reptilia', desc: '비늘 표피 변온 파충류' },
+  herptiles: { korean: '양서&파충류', latin: 'Herpetofauna', desc: '수륙 변온 척추동물' },
   fishes: { korean: '어류', latin: 'Pisces', desc: '수생 아가미 호흡 척추동물' },
-  arachnids: { korean: '거미강', latin: 'Arachnida', desc: '8족 육식 협각류' },
-  mollusks: { korean: '연체동물문', latin: 'Mollusca', desc: '패각 및 연체동물' },
-  crustaceans: { korean: '갑각아문', latin: 'Crustacea', desc: '수생 절지동물' },
-  invertebrates: { korean: '무척추동물군', latin: 'Invertebrata', desc: '절지·연체 복합 무척추동물' },
-  others: { korean: '기타 생물군', latin: 'Biota', desc: '자연 생태계 특수 표본' },
+  arachnids: { korean: '거미&연체', latin: 'Arachnida', desc: '8족 육식 협각류' },
+  mollusks: { korean: '거미&연체', latin: 'Mollusca', desc: '패각 및 연체동물' },
+  crustaceans: { korean: '거미&연체', latin: 'Crustacea', desc: '수생 절지동물' },
+  invertebrates: { korean: '거미&연체', latin: 'Invertebrata', desc: '절지·연체 복합 무척추동물' },
+  others: { korean: '기타', latin: 'Biota', desc: '자연 생태계 특수 표본' },
 };
 
 // Taxonomic Order (목) detailed descriptions & latin mappings
@@ -88,17 +144,150 @@ const ORDER_INFO_MAP: Record<string, { latin: string; desc: string }> = {
   '십각목': { latin: 'Decapoda', desc: '집게다리 10족 갑각류' },
 };
 
+export function resolveSpecimenOrder(sp: Specimen): { orderName: string; latin: string; desc: string } {
+  const eco = SPECIES_ECOLOGY_ENCYCLOPEDIA.find(
+    (e) => e.koreanName === sp.koreanName || sp.koreanName.includes(e.koreanName)
+  );
+  if (eco?.order) {
+    const match = eco.order.match(/^([가-힣]+목)/);
+    if (match) {
+      const name = match[1];
+      const info = ORDER_INFO_MAP[name];
+      return {
+        orderName: name,
+        latin: info?.latin || '',
+        desc: info?.desc || '고유 생태 계통군',
+      };
+    }
+  }
+
+  if (sp.taxonomyPath && Array.isArray(sp.taxonomyPath)) {
+    const match = sp.taxonomyPath.find(
+      (t) => t.endsWith('목') && !t.endsWith('과') && !t.endsWith('강') && !t.endsWith('문') && !t.endsWith('계')
+    );
+    if (match) {
+      const info = ORDER_INFO_MAP[match];
+      return {
+        orderName: match,
+        latin: info?.latin || '',
+        desc: info?.desc || '고유 생태 계통군',
+      };
+    }
+  }
+
+  if (sp.category === 'insects') {
+    if (sp.koreanName.includes('나비') || sp.koreanName.includes('나방')) {
+      return { orderName: '나비목', latin: 'Lepidoptera', desc: ORDER_INFO_MAP['나비목'].desc };
+    }
+    if (
+      sp.koreanName.includes('벌레') ||
+      sp.koreanName.includes('풍뎅이') ||
+      sp.koreanName.includes('사슴벌레')
+    ) {
+      return { orderName: '딱정벌레목', latin: 'Coleoptera', desc: ORDER_INFO_MAP['딱정벌레목'].desc };
+    }
+    if (sp.koreanName.includes('잠자리')) {
+      return { orderName: '잠자리목', latin: 'Odonata', desc: ORDER_INFO_MAP['잠자리목'].desc };
+    }
+    if (sp.koreanName.includes('벌') || sp.koreanName.includes('개미')) {
+      return { orderName: '벌목', latin: 'Hymenoptera', desc: ORDER_INFO_MAP['벌목'].desc };
+    }
+    if (sp.koreanName.includes('매미') || sp.koreanName.includes('노린재')) {
+      return { orderName: '노린재목', latin: 'Hemiptera', desc: ORDER_INFO_MAP['노린재목'].desc };
+    }
+    return { orderName: '곤충 계통군', latin: 'Insect Clade', desc: '다양한 곤충강 계통 표본' };
+  }
+
+  if (sp.category === 'plants') {
+    if (sp.family?.includes('국화')) return { orderName: '국화목', latin: 'Asterales', desc: ORDER_INFO_MAP['국화목'].desc };
+    if (sp.family?.includes('장미')) return { orderName: '장미목', latin: 'Rosales', desc: ORDER_INFO_MAP['장미목'].desc };
+    if (sp.family?.includes('참나무')) return { orderName: '참나무목', latin: 'Fagales', desc: ORDER_INFO_MAP['참나무목'].desc };
+    if (sp.family?.includes('천남성')) return { orderName: '천남성목', latin: 'Alismatales', desc: ORDER_INFO_MAP['천남성목'].desc };
+    if (sp.family?.includes('소나무') || sp.koreanName.includes('소나무')) {
+      return { orderName: '소나무목', latin: 'Pinales', desc: ORDER_INFO_MAP['소나무목'].desc };
+    }
+    if (sp.family?.includes('콩') || sp.koreanName.includes('토끼풀')) {
+      return { orderName: '콩목', latin: 'Fabales', desc: '질소 고정 콩과 식물군' };
+    }
+    return { orderName: sp.family ? `${sp.family}` : '식물 계통군', latin: 'Plantae Clade', desc: '초본 및 목본 관속식물' };
+  }
+
+  if (sp.category === 'birds') {
+    if (sp.koreanName.includes('오리') || sp.koreanName.includes('기러기') || sp.koreanName.includes('원앙')) {
+      return { orderName: '기러기목', latin: 'Anseriformes', desc: ORDER_INFO_MAP['기러기목'].desc };
+    }
+    if (sp.koreanName.includes('수리') || sp.koreanName.includes('매') || sp.koreanName.includes('부엉')) {
+      return { orderName: '수리목', latin: 'Accipitriformes', desc: ORDER_INFO_MAP['수리목'].desc };
+    }
+    if (sp.koreanName.includes('물총새')) {
+      return { orderName: '파랑새목', latin: 'Coraciiformes', desc: '선명한 깃색 수상 조류' };
+    }
+    return { orderName: '참새목', latin: 'Passeriformes', desc: ORDER_INFO_MAP['참새목'].desc };
+  }
+
+  if (sp.category === 'mammals') {
+    if (sp.koreanName.includes('다람쥐') || sp.koreanName.includes('청설모') || sp.koreanName.includes('쥐')) {
+      return { orderName: '설치목', latin: 'Rodentia', desc: ORDER_INFO_MAP['설치목'].desc };
+    }
+    if (sp.koreanName.includes('사자') || sp.koreanName.includes('판다') || sp.koreanName.includes('여우') || sp.koreanName.includes('고양이')) {
+      return { orderName: '식육목', latin: 'Carnivora', desc: ORDER_INFO_MAP['식육목'].desc };
+    }
+    if (sp.koreanName.includes('산양') || sp.koreanName.includes('아이벡스') || sp.koreanName.includes('고라니') || sp.koreanName.includes('사슴')) {
+      return { orderName: '우제목', latin: 'Artiodactyla', desc: ORDER_INFO_MAP['우제목'].desc };
+    }
+    if (sp.koreanName.includes('원숭이') || sp.koreanName.includes('리머')) {
+      return { orderName: '영장목', latin: 'Primates', desc: '발달한 시각과 사회성 포유류' };
+    }
+    if (sp.koreanName.includes('캥거루')) {
+      return { orderName: '캥거루목', latin: 'Diprotodontia', desc: '육아낭 유대류 포유류' };
+    }
+  }
+
+  if (sp.category === 'fungi') {
+    if (sp.koreanName.includes('영지') || sp.koreanName.includes('사슴뿔')) {
+      return { orderName: '구멍장이버섯목', latin: 'Polyporales', desc: ORDER_INFO_MAP['구멍장이버섯목'].desc };
+    }
+    return { orderName: '주름버섯목', latin: 'Agaricales', desc: ORDER_INFO_MAP['주름버섯목'].desc };
+  }
+
+  if (sp.category === 'fishes') {
+    if (sp.koreanName.includes('쏘가리') || sp.koreanName.includes('꺽지')) {
+      return { orderName: '농어목', latin: 'Perciformes', desc: '육식성 가시지느러미 어류' };
+    }
+    return { orderName: '잉어목', latin: 'Cypriniformes', desc: ORDER_INFO_MAP['잉어목'].desc };
+  }
+
+  if (sp.category === 'amphibians') return { orderName: '무미목', latin: 'Anura', desc: ORDER_INFO_MAP['무미목'].desc };
+  if (sp.category === 'reptiles') return { orderName: '뱀목', latin: 'Squamata', desc: ORDER_INFO_MAP['뱀목'].desc };
+  if (sp.category === 'arachnids') return { orderName: '거미목', latin: 'Araneae', desc: ORDER_INFO_MAP['거미목'].desc };
+  if (sp.category === 'crustaceans') return { orderName: '십각목', latin: 'Decapoda', desc: ORDER_INFO_MAP['십각목'].desc };
+  if (sp.category === 'mollusks') return { orderName: '병안목', latin: 'Stylommatophora', desc: ORDER_INFO_MAP['병안목'].desc };
+
+  const cleanFamily = sp.family ? sp.family.split(' ')[0] : '표본 계통군';
+  return { orderName: cleanFamily, latin: '', desc: '자연 생태 표본 계통' };
+}
+
 export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> = ({
   specimens,
   onSelectSpecimen,
   userStats,
   selectedCategory,
+  viewMode: controlledViewMode,
+  onViewModeChange,
+  onSelectCategory,
+  groupingMode = 'category',
+  selectedOrderFilter = 'all',
+  onOpenCategoryDetail,
 }) => {
   // -------------------------------------------------------------
   // PRIMARY VIEW MODE: Gallery Card View vs Sticker Album View
-  // Dribbble-tier morphing segmented pill switcher
   // -------------------------------------------------------------
-  const [viewMode, setViewMode] = useState<CollectionViewMode>('gallery');
+  const [internalViewMode, setInternalViewMode] = useState<CollectionViewMode>('gallery');
+  const viewMode = controlledViewMode ?? internalViewMode;
+  const setViewMode = (mode: CollectionViewMode) => {
+    setInternalViewMode(mode);
+    onViewModeChange?.(mode);
+  };
 
   // -------------------------------------------------------------
   // GALLERY DENSITY PINCH (0 = Compact, 1 = Expanded Spacious)
@@ -116,6 +305,14 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
   const [scrubLevel, setScrubLevel] = useState<number>(0); // 0 (Visual), 1 (Taxonomy), 2 (Bio), 3 (Geospatial)
   const longPressTimer = useRef<any>(null);
   const touchStartY = useRef<number>(0);
+  const isDraggingSpecimen = useRef(false);
+
+  // -------------------------------------------------------------
+  // DRAG & DOCK (Magnetic Snapping into Split Comparison Card)
+  // -------------------------------------------------------------
+  const [draggedSpecimenId, setDraggedSpecimenId] = useState<string | null>(null);
+  const [hoveredDropTargetId, setHoveredDropTargetId] = useState<string | null>(null);
+  const [dockedPair, setDockedPair] = useState<DockedPair | null>(null);
 
   // Filter specimens based on selectedCategory
   const filteredList = specimens.filter((sp) => {
@@ -136,97 +333,28 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
     );
   };
 
-  // Helper to resolve the taxonomic Order (목) of a specimen
-  const getSpecimenOrderKey = (sp: Specimen): { orderName: string; latin: string; desc: string } => {
-    // 1. Check Encyclopedia order field
-    const eco = getEcoDetail(sp.koreanName);
-    if (eco?.order) {
-      const match = eco.order.match(/^([가-힣]+목)/);
-      if (match) {
-        const name = match[1];
-        const info = ORDER_INFO_MAP[name];
-        return {
-          orderName: name,
-          latin: info?.latin || '',
-          desc: info?.desc || '고유 생태 계통군',
-        };
-      }
-    }
-
-    // 2. Check taxonomyPath for element ending with '목'
-    if (sp.taxonomyPath && Array.isArray(sp.taxonomyPath)) {
-      const match = sp.taxonomyPath.find(
-        (t) => t.endsWith('목') && !t.endsWith('과') && !t.endsWith('강') && !t.endsWith('문') && !t.endsWith('계')
-      );
-      if (match) {
-        const info = ORDER_INFO_MAP[match];
-        return {
-          orderName: match,
-          latin: info?.latin || '',
-          desc: info?.desc || '고유 생태 계통군',
-        };
-      }
-    }
-
-    // 3. Fallbacks by family or name hints
-    if (sp.category === 'insects') {
-      if (sp.koreanName.includes('나비') || sp.koreanName.includes('나방')) {
-        return { orderName: '나비목', latin: 'Lepidoptera', desc: ORDER_INFO_MAP['나비목'].desc };
-      }
-      if (sp.koreanName.includes('벌레') || sp.koreanName.includes('풍뎅이') || sp.koreanName.includes('사슴벌레')) {
-        return { orderName: '딱정벌레목', latin: 'Coleoptera', desc: ORDER_INFO_MAP['딱정벌레목'].desc };
-      }
-      if (sp.koreanName.includes('잠자리')) {
-        return { orderName: '잠자리목', latin: 'Odonata', desc: ORDER_INFO_MAP['잠자리목'].desc };
-      }
-      if (sp.koreanName.includes('벌') || sp.koreanName.includes('개미')) {
-        return { orderName: '벌목', latin: 'Hymenoptera', desc: ORDER_INFO_MAP['벌목'].desc };
-      }
-      if (sp.koreanName.includes('매미') || sp.koreanName.includes('노린재')) {
-        return { orderName: '노린재목', latin: 'Hemiptera', desc: ORDER_INFO_MAP['노린재목'].desc };
-      }
-      return { orderName: '곤충 계통군', latin: 'Insect Clade', desc: '다양한 곤충강 계통 표본' };
-    }
-
-    if (sp.category === 'plants') {
-      if (sp.family?.includes('국화')) return { orderName: '국화목', latin: 'Asterales', desc: ORDER_INFO_MAP['국화목'].desc };
-      if (sp.family?.includes('장미')) return { orderName: '장미목', latin: 'Rosales', desc: ORDER_INFO_MAP['장미목'].desc };
-      if (sp.family?.includes('참나무')) return { orderName: '참나무목', latin: 'Fagales', desc: ORDER_INFO_MAP['참나무목'].desc };
-      if (sp.family?.includes('천남성')) return { orderName: '천남성목', latin: 'Alismatales', desc: ORDER_INFO_MAP['천남성목'].desc };
-      return { orderName: sp.family ? `${sp.family} 계통` : '식물 계통군', latin: 'Plantae Clade', desc: '초본 및 목본 관속식물' };
-    }
-
-    if (sp.category === 'birds') {
-      if (sp.koreanName.includes('오리') || sp.koreanName.includes('기러기') || sp.koreanName.includes('원앙')) {
-        return { orderName: '기러기목', latin: 'Anseriformes', desc: ORDER_INFO_MAP['기러기목'].desc };
-      }
-      return { orderName: '참새목', latin: 'Passeriformes', desc: ORDER_INFO_MAP['참새목'].desc };
-    }
-
-    const cleanFamily = sp.family ? sp.family.split(' ')[0] : '표본 계통군';
-    return { orderName: cleanFamily, latin: '', desc: '자연 생태 표본 계통' };
-  };
+  const getSpecimenOrderKey = resolveSpecimenOrder;
 
   // -------------------------------------------------------------
   // DYNAMIC GROUPING
-  // 1. When selectedCategory === 'all':
-  //    Group by Major Clade / Class (곤충강, 식물계, 조강 등)
-  // 2. When selectedCategory !== 'all':
-  //    Group by Taxonomic Order (목: 딱정벌레목, 나비목 등)
+  // 1. groupingMode === 'category' (메인 도감 목록 & 카테고리 필터):
+  //    항상 카테고리별(식물, 곤충, 조류, 포유류...)로 그룹화 + 자세히 > 버튼 제공
+  // 2. groupingMode === 'order' (자세히 > 진입 후 세부 화면):
+  //    세부 목(딱정벌레목, 나비목, 우제목, 식육목...) 단위로 그룹화
   // -------------------------------------------------------------
   const specimenGroups: CladeSpecimenGroup[] = useMemo(() => {
     if (filteredList.length === 0) return [];
 
-    if (selectedCategory === 'all') {
+    if (groupingMode === 'category') {
       const categoryOrder: string[] = [
         'plants',
         'insects',
         'birds',
+        'invertebrates',
         'mammals',
         'herptiles',
         'fishes',
         'fungi',
-        'invertebrates',
         'others',
       ];
 
@@ -246,14 +374,14 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
         const list = groupedMap.get(catKey);
         if (list && list.length > 0) {
           const info = CATEGORY_CLADE_INFO[catKey] || {
-            korean: catKey,
+            korean: getCategoryDisplayLabel(catKey),
             latin: 'Biota',
             desc: '자연 생태계 표본군',
           };
           groups.push({
             id: `clade-${catKey}`,
             indexStr: index.toString().padStart(2, '0'),
-            koreanName: info.korean,
+            koreanName: getCategoryDisplayLabel(catKey),
             latinName: info.latin.toUpperCase(),
             shortDesc: info.desc,
             specimens: list,
@@ -265,14 +393,14 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
       for (const [catKey, list] of groupedMap.entries()) {
         if (!groups.some((g) => g.id === `clade-${catKey}`) && list.length > 0) {
           const info = CATEGORY_CLADE_INFO[catKey] || {
-            korean: catKey,
+            korean: getCategoryDisplayLabel(catKey),
             latin: 'Taxa',
             desc: '생태 표본군',
           };
           groups.push({
             id: `clade-${catKey}`,
             indexStr: index.toString().padStart(2, '0'),
-            koreanName: info.korean,
+            koreanName: getCategoryDisplayLabel(catKey),
             latinName: info.latin.toUpperCase(),
             shortDesc: info.desc,
             specimens: list,
@@ -288,6 +416,7 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
       for (const sp of filteredList) {
         const orderKeyInfo = getSpecimenOrderKey(sp);
         const key = orderKeyInfo.orderName;
+        if (selectedOrderFilter !== 'all' && key !== selectedOrderFilter) continue;
 
         if (!orderMap.has(key)) {
           orderMap.set(key, {
@@ -317,7 +446,7 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
 
       return groups;
     }
-  }, [filteredList, selectedCategory]);
+  }, [filteredList, groupingMode, selectedOrderFilter]);
 
   // Deterministic micro-tilt angle for tactile sticker realism (-2.4deg to +2.4deg)
   const getStickerTilt = (id: string, index: number): number => {
@@ -369,6 +498,7 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
   // -------------------------------------------------------------
   const handlePointerDownCard = (sp: Specimen, e: React.PointerEvent) => {
     touchStartY.current = e.clientY;
+    isDraggingSpecimen.current = false;
 
     longPressTimer.current = setTimeout(() => {
       setActiveScrubId(sp.id);
@@ -397,9 +527,59 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
     if (activeScrubId) {
       setActiveScrubId(null);
       setScrubLevel(0);
-    } else {
+    } else if (!isDraggingSpecimen.current) {
       onSelectSpecimen(sp);
     }
+  };
+
+  // -------------------------------------------------------------
+  // DRAG & DOCK PROXIMITY CHECK
+  // -------------------------------------------------------------
+  const handleDragStart = (id: string) => {
+    isDraggingSpecimen.current = true;
+    setDraggedSpecimenId(id);
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  const handleDrag = (_: any, info: any) => {
+    const draggedEl = document.getElementById(`card-${draggedSpecimenId}`);
+    if (!draggedEl) return;
+    const draggedRect = draggedEl.getBoundingClientRect();
+    const centerX = draggedRect.left + draggedRect.width / 2 + info.offset.x;
+    const centerY = draggedRect.top + draggedRect.height / 2 + info.offset.y;
+
+    let closestId: string | null = null;
+    let minDistance = 90; // Snap threshold in px
+
+    for (const other of filteredList) {
+      if (other.id === draggedSpecimenId) continue;
+      const otherEl = document.getElementById(`card-${other.id}`);
+      if (!otherEl) continue;
+      const r = otherEl.getBoundingClientRect();
+      const ox = r.left + r.width / 2;
+      const oy = r.top + r.height / 2;
+      const dist = Math.sqrt((centerX - ox) ** 2 + (centerY - oy) ** 2);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestId = other.id;
+      }
+    }
+    setHoveredDropTargetId(closestId);
+  };
+
+  const handleDragEnd = () => {
+    if (draggedSpecimenId && hoveredDropTargetId) {
+      const spA = specimens.find((s) => s.id === draggedSpecimenId);
+      const spB = specimens.find((s) => s.id === hoveredDropTargetId);
+      if (spA && spB) {
+        setDockedPair({ specimenA: spA, specimenB: spB });
+      }
+    }
+    setDraggedSpecimenId(null);
+    setHoveredDropTargetId(null);
+    setTimeout(() => {
+      isDraggingSpecimen.current = false;
+    }, 100);
   };
 
   const cardRadius = Math.round(12 + viewMorphProgress * 14);
@@ -408,21 +588,39 @@ export const GestureArchiveCollection: React.FC<GestureArchiveCollectionProps> =
   // Render individual Gallery Card
   const renderGalleryCard = (sp: Specimen) => {
     const isScrubbingThis = activeScrubId === sp.id;
+    const isHoveredTarget = hoveredDropTargetId === sp.id;
+    const isCurrentDrag = draggedSpecimenId === sp.id;
     const eco = getEcoDetail(sp.koreanName);
+
+    const rimStyle = getCategoryRimStyle(sp.category);
+    const displayNo = (sp.number || 'NO.001').toUpperCase().startsWith('NO')
+      ? (sp.number || 'NO.001').toUpperCase()
+      : `NO.${(sp.number || '001').replace(/\D/g, '').padStart(3, '0')}`;
 
     return (
       <motion.div
         id={`card-${sp.id}`}
         key={sp.id}
         layout
+        drag
+        dragSnapToOrigin
+        onDragStart={() => handleDragStart(sp.id)}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ scale: 1.04, zIndex: 50 }}
         onPointerDown={(e) => handlePointerDownCard(sp, e)}
         onPointerMove={handlePointerMoveCard}
         onPointerUp={() => handlePointerUpCard(sp)}
         transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.8 }}
         style={{
-          borderRadius: `${cardRadius}px`,
+          borderRadius: isSpaciousGallery ? '20px' : `${cardRadius}px`,
+          background: isSpaciousGallery ? rimStyle.rim : '#ffffff',
         }}
-className="relative overflow-hidden bg-white text-stone-900 border border-stone-200/90 shadow-2xs transition-colors select-none"
+        className={`relative overflow-hidden select-none cursor-pointer transition-all ${
+          isSpaciousGallery ? 'p-[2px]' : 'bg-white border border-[#e6e9e5]'
+        } ${
+          isHoveredTarget ? 'ring-2 ring-black shadow-md' : 'shadow-2xs'
+        } ${isCurrentDrag ? 'opacity-80' : 'opacity-100'}`}
       >
         {/* ORGANIC SCRUB OVERLAY */}
         <AnimatePresence>
@@ -432,21 +630,21 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
               animate={{ opacity: 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, filter: 'blur(6px)' }}
               transition={{ duration: 0.16 }}
-              className="absolute inset-0 z-30 bg-stone-950/95 text-white p-3.5 flex flex-col justify-between"
+              className="absolute inset-0 z-30 bg-[#202320]/95 text-white p-3.5 flex flex-col justify-between rounded-[17px]"
             >
-              <div className="flex items-center justify-between text-[10px] font-mono text-stone-400 border-b border-stone-800 pb-2">
-                <span className="font-bold text-white uppercase tracking-wider">
-                  {scrubLevel === 0 && 'LAYER 0: MASTER VISUAL'}
-                  {scrubLevel === 1 && 'LAYER 1: TAXONOMY'}
-                  {scrubLevel === 2 && 'LAYER 2: BIOMETRICS'}
-                  {scrubLevel === 3 && 'LAYER 3: GEOSPATIAL'}
+              <div className="flex items-center justify-between text-[10px] text-[#a5aca4] border-b border-white/10 pb-2">
+                <span className="font-bold text-white">
+                  {scrubLevel === 0 && '기본 보기'}
+                  {scrubLevel === 1 && '분류 체계'}
+                  {scrubLevel === 2 && '형태 규격'}
+                  {scrubLevel === 3 && '관찰 위치'}
                 </span>
                 <div className="flex items-center gap-1">
                   {[0, 1, 2, 3].map((lvl) => (
                     <span
                       key={lvl}
                       className={`w-1.5 h-1.5 rounded-full ${
-                        scrubLevel === lvl ? 'bg-white' : 'bg-stone-700'
+                        scrubLevel === lvl ? 'bg-[#c4eb43]' : 'bg-white/20'
                       }`}
                     />
                   ))}
@@ -455,18 +653,18 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
 
               <div className="py-2 flex-1 flex flex-col justify-center">
                 {scrubLevel === 1 && (
-                  <div className="space-y-1.5 font-mono text-[11px]">
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">KINGDOM:</span>
-                      <span>{sp.category === 'plants' ? 'PLANTAE' : 'ANIMALIA'}</span>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">계</span>
+                      <span>{sp.category === 'plants' ? '식물계' : sp.category === 'fungi' ? '균계' : '동물계'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">ORDER:</span>
-                      <span className="truncate max-w-[130px] uppercase">{eco?.order || 'N/A'}</span>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">목</span>
+                      <span className="truncate max-w-[110px]">{eco?.order || sp.family || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">BINOMIAL:</span>
-                      <span className="italic text-emerald-400 truncate max-w-[130px]">
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">학명</span>
+                      <span className="italic text-[#c4eb43] truncate max-w-[110px]">
                         {sp.scientificName}
                       </span>
                     </div>
@@ -474,85 +672,80 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
                 )}
 
                 {scrubLevel === 2 && (
-                  <div className="space-y-1.5 font-mono text-[11px]">
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">SCALE:</span>
-                      <span className="truncate max-w-[130px]">{eco?.size || '중형 표본'}</span>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">크기</span>
+                      <span className="truncate max-w-[110px]">{eco?.size || '표준 크기'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">IUCN:</span>
-                      <span className="text-amber-400">{eco?.status?.split('•')[0] || 'LC'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">SEASON:</span>
-                      <span className="truncate max-w-[130px]">{eco?.seasonality || '사계절'}</span>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">관찰 시기</span>
+                      <span className="truncate max-w-[110px]">{eco?.seasonality || '사계절'}</span>
                     </div>
                   </div>
                 )}
 
                 {scrubLevel === 3 && (
-                  <div className="space-y-1.5 font-mono text-[11px]">
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">LOCATION:</span>
-                      <span className="truncate max-w-[130px]">{sp.locationCoord?.name || sp.habitatType || '야외'}</span>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">장소</span>
+                      <span className="truncate max-w-[110px]">{sp.locationCoord?.name || sp.habitatType || '야외'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">HABITAT:</span>
-                      <span className="truncate max-w-[130px]">{sp.habitatType || '자연 환경'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-stone-900 pb-1">
-                      <span className="text-stone-500">DATE:</span>
-                      <span>{sp.observations?.[0]?.date || '2026.08'}</span>
+                    <div className="flex justify-between border-b border-white/10 pb-1">
+                      <span className="text-[#8c948a]">최근 관찰</span>
+                      <span className="tabular-nums">{sp.observations?.[0]?.date || '2026.11'}</span>
                     </div>
                   </div>
                 )}
 
                 {scrubLevel === 0 && (
-                  <div className="text-center font-mono text-[11px] text-stone-400 py-3">
-                    손가락을 위/아래로 스크럽하여 내부 심층 데이터를 탐색하세요
+                  <div className="text-center text-[11px] text-[#a5aca4] py-3">
+                    위아래로 움직여 세부 정보를 확인하세요
                   </div>
                 )}
               </div>
 
-              <div className="text-[9px] font-mono text-stone-600 text-center uppercase tracking-wider">
-                RELEASE TO CLOSE
-              </div>
+              <div className="text-[10px] text-[#8c948a] text-center">손을 떼면 닫혀요</div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* CARD BODY */}
+        {/* CARD BODY — C-01_도감목록.png style */}
         {isSpaciousGallery ? (
-          <div className="p-3 flex flex-col justify-between h-full">
-            <div
-              className="aspect-square w-full bg-stone-100 overflow-hidden mb-2.5 relative"
-              style={{ borderRadius: `${Math.max(6, cardRadius - 8)}px` }}
-            >
+          <div className="rounded-[17px] overflow-hidden bg-white flex flex-col h-full">
+            <div className="aspect-square w-full bg-[#f4f5f4] overflow-hidden relative">
               <img
                 src={sp.originalImage || sp.stickerImage}
                 alt={sp.koreanName}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/85 text-white font-mono text-[9px] font-bold">
-                {sp.number || '#001'}
-              </div>
+              {(() => {
+                if (!sp.isCollected || (sp as any).isNew === false) return null;
+                let alreadyViewed = false;
+                try {
+                  const raw = localStorage.getItem('moalog_viewed_species_ids');
+                  const viewed: string[] = raw ? JSON.parse(raw) : [];
+                  alreadyViewed = viewed.includes(sp.id);
+                } catch {}
+                if (alreadyViewed) return null;
+                return (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-[6px] bg-[#1a1c1a] text-white text-[9px] font-bold tracking-wide shadow-xs">
+                    NEW
+                  </span>
+                );
+              })()}
             </div>
 
-            <div>
-              <h4 className="text-xs font-bold text-stone-900 truncate">
+            <div className="bg-gradient-to-b from-[#eaede9] to-[#d7dbd5] px-2.5 py-2.5 text-center border-t border-black/5">
+              <h4 className="text-[14px] font-bold text-[#202320] truncate leading-tight">
                 {formatSpeciesDisplayName(sp, {
                   language: userStats?.language,
                   showEnglishNameWithLocal: userStats?.showEnglishNameWithLocal,
                 })}
               </h4>
-              <p className="text-[10px] font-mono text-stone-500 italic truncate mt-0.5">
-                {sp.scientificName}
+              <p className="text-[11px] font-semibold text-[#626961] tabular-nums mt-0.5 tracking-tight">
+                {displayNo}
               </p>
-              <div className="mt-1.5 pt-1.5 border-t border-stone-100 flex items-center justify-between text-[9px] font-mono text-stone-400 uppercase">
-                <span>{sp.category}</span>
-                <span>{sp.observations?.length || 1} OBS</span>
-              </div>
             </div>
           </div>
         ) : (
@@ -660,96 +853,150 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#f4f2ee] text-stone-900 select-none font-geist pb-28 pt-1"
+      className="w-full bg-[#fbfbfb] text-[#202320] select-none pb-6 pt-1"
     >
-      {/* ==============================================================
-          DRIBBLE-TIER VIEW MODE SWITCHER
-          Single continuous capsule container with sliding black indicator
-          ============================================================== */}
-      <div className="px-4 mb-4 flex items-center justify-between">
-        <div className="relative inline-flex p-1 rounded-full bg-stone-200/90 backdrop-blur-md shadow-inner">
-          <button
-            type="button"
-            onClick={() => setViewMode('gallery')}
-            className={`relative z-10 px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-tight transition-colors duration-200 cursor-pointer ${
-              viewMode === 'gallery' ? 'text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            {viewMode === 'gallery' && (
-              <motion.div
-                layoutId="activeCollectionModePill"
-                className="absolute inset-0 bg-stone-900 rounded-full shadow-sm"
-                transition={{ type: 'spring', stiffness: 450, damping: 34, mass: 0.8 }}
-              />
-            )}
-            <span className="relative z-20 flex items-center gap-1.5">
-              <span>갤러리 뷰</span>
-              <span className="text-[10px] opacity-70">CARD</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('sticker')}
-            className={`relative z-10 px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-tight transition-colors duration-200 cursor-pointer ${
-              viewMode === 'sticker' ? 'text-white' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            {viewMode === 'sticker' && (
-              <motion.div
-                layoutId="activeCollectionModePill"
-                className="absolute inset-0 bg-stone-900 rounded-full shadow-sm"
-                transition={{ type: 'spring', stiffness: 450, damping: 34, mass: 0.8 }}
-              />
-            )}
-            <span className="relative z-20 flex items-center gap-1.5">
-              <span>스티커 형식</span>
-              <span className="text-[10px] opacity-70">ALBUM</span>
-            </span>
-          </button>
-        </div>
-
-        {/* Dynamic Clade or Order Mode Meta Indicator */}
-        <div className="text-[11px] font-mono text-stone-500 font-bold uppercase tracking-wider">
-          {isAllCategory ? `CLADES (${specimenGroups.length})` : `ORDERS (${specimenGroups.length})`}
-        </div>
-      </div>
-
-      {/* ==============================================================
-          GALLERY PINCH DENSITY BAR (Only shown in Gallery Mode)
-          ============================================================== */}
-      {viewMode === 'gallery' && (
-        <div className="px-4 py-1 mb-3">
-          <div className="flex items-center justify-between text-[10px] font-mono text-stone-400 mb-1">
-            <span className={viewMorphProgress < 0.4 ? 'text-stone-900 font-bold' : ''}>
-              COMPACT
-            </span>
-            <span className="text-[9px] text-stone-400 font-mono">
-              스크랩 밀도 제어
-            </span>
-            <span className={viewMorphProgress >= 0.4 ? 'text-stone-900 font-bold' : ''}>
-              EXPANDED
-            </span>
-          </div>
-
-          <div className="relative w-full h-1.5 bg-stone-200/90 rounded-full overflow-hidden flex items-center">
-            <motion.div
-              className="absolute left-0 top-0 bottom-0 bg-stone-900 rounded-full"
-              style={{ width: `${viewMorphProgress * 100}%` }}
-            />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={viewMorphProgress}
-              onChange={(e) => setViewMorphProgress(parseFloat(e.target.value))}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize touch-none"
-              title="밀도 조절"
-            />
+      {/* Inline switcher only shown when not controlled by ArchiveView header */}
+      {!controlledViewMode && (
+        <div className="mb-4 flex items-center justify-end">
+          <div className="inline-flex bg-[#f4f5f4] p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('gallery')}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                viewMode === 'gallery' ? 'bg-white text-[#202320] font-bold shadow-2xs' : 'text-[#8c948a] font-semibold'
+              }`}
+            >
+              카드
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('sticker')}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                viewMode === 'sticker' ? 'bg-white text-[#202320] font-bold shadow-2xs' : 'text-[#8c948a] font-semibold'
+              }`}
+            >
+              스티커
+            </button>
           </div>
         </div>
       )}
+
+      {/* ==============================================================
+          SPLIT COMPARISON DOCKED MODAL / SNAP MATRIX
+          ============================================================== */}
+      <AnimatePresence>
+        {dockedPair && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.8 }}
+            className="mx-4 mb-5 p-4 rounded-[26px] bg-stone-950 text-white shadow-2xl border border-stone-800"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-stone-800 text-[10px] font-mono tracking-wider">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-bold text-white uppercase">흡착 분할 비교 모드 (DOCKED MATRIX)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDockedPair(null)}
+                className="px-2.5 py-1 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 font-mono text-[9px] cursor-pointer"
+              >
+                UNSNAP
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              {/* Specimen A */}
+              {(() => {
+                const sp = dockedPair.specimenA;
+                const eco = getEcoDetail(sp.koreanName);
+                return (
+                  <div className="space-y-2">
+                    <div className="aspect-square w-full rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
+                      <img
+                        src={sp.originalImage || sp.stickerImage}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-stone-500 block">
+                        {sp.number || '#001'}
+                      </span>
+                      <h4 className="text-sm font-bold text-white leading-tight">
+                        {sp.koreanName}
+                      </h4>
+                      <p className="text-[10px] font-mono text-stone-400 italic truncate">
+                        {sp.scientificName}
+                      </p>
+                    </div>
+                    <div className="text-[10px] font-mono space-y-1 pt-1 border-t border-stone-800 text-stone-300">
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">CATEGORY:</span>
+                        <span className="uppercase">{sp.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">HABITAT:</span>
+                        <span className="truncate max-w-[80px]">{sp.habitatType || '야외'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">SCALE:</span>
+                        <span className="truncate max-w-[80px]">{eco?.size || '표준 크기'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Specimen B */}
+              {(() => {
+                const sp = dockedPair.specimenB;
+                const eco = getEcoDetail(sp.koreanName);
+                return (
+                  <div className="space-y-2 border-l border-stone-800 pl-3">
+                    <div className="aspect-square w-full rounded-2xl overflow-hidden bg-stone-900 border border-stone-800">
+                      <img
+                        src={sp.originalImage || sp.stickerImage}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-stone-500 block">
+                        {sp.number || '#002'}
+                      </span>
+                      <h4 className="text-sm font-bold text-white leading-tight">
+                        {sp.koreanName}
+                      </h4>
+                      <p className="text-[10px] font-mono text-stone-400 italic truncate">
+                        {sp.scientificName}
+                      </p>
+                    </div>
+                    <div className="text-[10px] font-mono space-y-1 pt-1 border-t border-stone-800 text-stone-300">
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">CATEGORY:</span>
+                        <span className="uppercase">{sp.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">HABITAT:</span>
+                        <span className="truncate max-w-[80px]">{sp.habitatType || '야외'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-stone-500">SCALE:</span>
+                        <span className="truncate max-w-[80px]">{eco?.size || '표준 크기'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ==============================================================
           UNIFIED MORPHING BUNDLE LIST
@@ -758,87 +1005,78 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
           - Fluid spring layout motion when toggling views or categories
           ============================================================== */}
       <motion.div
-        key={`collection-container-${selectedCategory}`}
-        initial={{ opacity: 0, filter: 'blur(4px)' }}
-        animate={{ opacity: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, filter: 'blur(4px)' }}
+        key={`collection-container-${groupingMode}-${selectedCategory}-${selectedOrderFilter}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{ duration: 0.16 }}
-        className="px-4 space-y-6"
+        className="space-y-6"
       >
         {specimenGroups.map((group) => {
+          const sampleCat = group.specimens[0]?.category;
+          const groupRim = getCategoryRimStyle(sampleCat);
+          const targetCatId = group.id.startsWith('clade-') ? group.id.replace('clade-', '') : null;
+
           return (
             <motion.div
               key={group.id}
               layout
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
+              exit={{ opacity: 0, y: -10 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.8 }}
               className="w-full"
             >
-              {/* 1-Line Group Header (Placed OUTSIDE and ABOVE the container) */}
-              <div className="flex items-baseline justify-between mb-2 px-1 text-stone-900 select-none">
-                <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0 overflow-hidden pr-2">
-                  {/* Number: Smaller font for '목' (Order) as requested */}
-                  <span
-                    className={`font-mono text-stone-400 font-bold shrink-0 ${
-                      isAllCategory ? 'text-xs' : 'text-[10px]'
-                    }`}
-                  >
-                    {group.indexStr}
-                  </span>
-
-                  {/* Category / Order Korean Name */}
-                  <span className="text-xs sm:text-sm font-bold text-stone-900 shrink-0">
+              {/* C-01 Clean Group Header: Colored bar (in category mode) + Name + Count on Left, 자세히 > on Right */}
+              <div className="flex items-center justify-between mb-3 px-0.5 select-none">
+                <div className="flex items-center gap-2 min-w-0">
+                  {groupingMode === 'category' && (
+                    <span
+                      className="w-[3px] h-4 rounded-full shrink-0"
+                      style={{ backgroundColor: groupRim.bar }}
+                    />
+                  )}
+                  <span className="text-[16px] font-bold text-[#202320] truncate">
                     {group.koreanName}
                   </span>
-
-                  {/* Latin Binomial / Taxon Label */}
-                  {group.latinName && (
-                    <span className="font-mono text-[10px] text-stone-400 font-normal uppercase shrink-0">
-                      {group.latinName}
-                    </span>
-                  )}
-
-                  {/* Short 1-line description */}
-                  {group.shortDesc && (
-                    <span className="text-[11px] font-mono text-stone-500 truncate min-w-0">
-                      · {group.shortDesc}
-                    </span>
-                  )}
+                  <span
+                    className="text-[15px] font-bold tabular-nums shrink-0"
+                    style={{ color: groupRim.count }}
+                  >
+                    {group.specimens.length}
+                  </span>
                 </div>
 
-                {/* Specimen / Sticker Count in the same single line */}
-                <span className="font-mono text-[10px] text-stone-400 shrink-0 font-medium">
-                  {group.specimens.length} {viewMode === 'sticker' ? 'STICKERS' : 'SPECIMENS'}
-                </span>
+                {groupingMode === 'category' && targetCatId && (onOpenCategoryDetail || onSelectCategory) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenCategoryDetail) onOpenCategoryDetail(targetCatId as SpecimenCategory);
+                      else onSelectCategory?.(targetCatId as SpecimenCategory);
+                    }}
+                    className="text-xs font-semibold text-[#8c948a] hover:text-[#202320] flex items-center gap-0.5 cursor-pointer shrink-0 transition-colors"
+                  >
+                    <span>자세히</span>
+                    <span aria-hidden>›</span>
+                  </button>
+                )}
               </div>
 
-              {/* Simple Bundle Container - Identical size and position for both Gallery and Sticker */}
-              <div
-                className={`w-full rounded-[26px] p-3.5 sm:p-4 border shadow-2xs transition-colors duration-200 ${
-                  viewMode === 'gallery'
-                    ? 'bg-white border-stone-200/90'
-                    : 'bg-[#efece6] border-stone-300/70'
-                }`}
-              >
-                {viewMode === 'gallery' ? (
-                  /* Gallery View: High-Fidelity Cards Grid */
-                  <div
-                    className={`transition-all duration-200 ${
-                      isSpaciousGallery ? 'grid grid-cols-2 gap-3.5' : 'space-y-2'
-                    }`}
-                  >
-                    {group.specimens.map((sp) => renderGalleryCard(sp))}
-                    {/* Removed empty slots as requested */}
-                  </div>
-                ) : (
-                  /* Sticker Album View: Die-Cut Vinyl Stickers on Archival Sheet */
+              {viewMode === 'gallery' ? (
+                <div
+                  className={`transition-all duration-200 ${
+                    isSpaciousGallery ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3' : 'space-y-2'
+                  }`}
+                >
+                  {group.specimens.map((sp) => renderGalleryCard(sp))}
+                </div>
+              ) : (
+                <div className="w-full rounded-[20px] p-4 bg-white border border-[#e6e9e5]">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 py-1">
                     {group.specimens.map((sp, idx) => renderStickerItem(sp, idx))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           );
         })}
@@ -846,7 +1084,7 @@ className="relative overflow-hidden bg-white text-stone-900 border border-stone-
 
       {/* Empty State */}
       {filteredList.length === 0 && (
-        <div className="text-center py-20 px-4 text-stone-400 font-mono text-xs">
+        <div className="text-center py-20 px-4 text-[#8c948a] text-xs font-semibold">
           등록된 도감 표본이 없습니다
         </div>
       )}

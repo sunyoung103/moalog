@@ -1,1050 +1,1467 @@
-import { KINGFISHER_PHOTO } from '../data/specimenImages';
-import { getArtScore } from '../utils/artScore';
-import { LensView } from './LensView';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Check,
   ChevronRight,
   ArrowLeft,
   Camera,
-  ImageIcon,
-  Search,
-  BookOpen,
-  Share2,
+  Image as ImageIcon,
+  MapPin,
+  Bell,
+  Mail,
+  ShieldCheck,
+  Lock,
+  AlertCircle,
+  ZapOff,
+  RotateCcw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
-import { NaturalistPersona, UserAccount, Specimen, LoginOptions } from '../types';
-import { mockSocialLogin } from '../utils/auth';
-import { INITIAL_SPECIMENS } from '../data/defaultSpecimens';
-import { SPECIES_ECOLOGY_ENCYCLOPEDIA } from '../data/hotspots';
-import { EXPLORER_BADGES_MASTER, EXPLORER_LEVEL_MIN_EXP } from '../data/badges';
-import { RadarChart } from './RadarChart';
+import { NaturalistPersona, UserAccount } from '../types';
+import { NATURALIST_PERSONAS } from '../data/hotspots';
+import { PersonaBadgeIcon } from './PersonaBadgeIcon';
+import yellowCosmosPhoto from '../assets/specimens/unsplash_4ByFHyNdoD4.png';
+
+export type OnboardingFlowStep =
+  | 'splash'
+  | 'preview' // A-02 시작 화면
+  | 'preview_prompt' // A-02b 미리 해 보기
+  | 'demo_camera' // A-02c 샘플 카메라 체험
+  | 'demo_result' // A-02d 샘플 포착 결과
+  | 'terms_age' // A-09 서비스 이용 동의 & 나이 확인
+  | 'guardian_info' // A-09c 보호자 정보 입력
+  | 'guardian_sent' // A-09d/e/f 보호자 메일 발송 & 결과
+  | 'nickname' // A-04 닉네임 입력
+  | 'locations' // A-05 장소·빈도 질문
+  | 'purposes' // A-06 목적 질문
+  | 'persona' // A-07 탐험가 유형 (9종)
+  | 'permissions' // A-08 권한 안내
+  | 'complete'; // A-12 시작 완료
+
+export interface OnboardingCompletePayload {
+  selectedPersona?: NaturalistPersona;
+  targetTab?: 'archive' | 'lens';
+  preferredLocations?: string[];
+  visitFrequency?: string;
+  purposes?: string[];
+  account?: UserAccount;
+  isNewSignup?: boolean;
+}
 
 export interface OnboardingModalProps {
-  onComplete: (selectedPersona?: NaturalistPersona, firstSpecimen?: Specimen) => void;
-  onLoginSuccess: (account: UserAccount, opts?: LoginOptions) => void;
+  onComplete: (payload?: OnboardingCompletePayload) => void;
+  onLoginSuccess: (account: UserAccount, options?: { isNewSignup?: boolean }) => void;
   userAccount?: UserAccount;
   initialPersona?: NaturalistPersona;
   initialStep?: OnboardingFlowStep;
 }
 
-export type OnboardingFlowStep =
-  // FLOW 1-1
-  | 'splash'
-  | 'preview'
-  // FLOW 1-2 질문
-  | 'q_intro'
-  | 'q_kingdom'
-  | 'q_subgroup'
-  | 'q_location'
-  | 'q_purpose'
-  | 'q_ready'
-  // FLOW 1-3 첫 포착 체험
-  | 'capture_method'
-  | 'capture_viewfinder'
-  | 'capture_gallery'
-  | 'capture_analyzing'
-  | 'capture_result'
-  // FLOW 1-4 도감 등록 & 가입
-  | 'save_card'
-  | 'terms_agreement'
-  | 'signup_complete'
-  // FLOW 1-5 요금제
-  | 'plan_compare';
+type AuthSheetMode =
+  | null
+  | 'login' // A-03 기존 계정 로그인
+  | 'signup_select' // A-03s 신규 가입 계정 선택
+  | 'loading' // A-03d 연결 중
+  | 'error' // A-03b 로그인 실패
+  | 'already_registered' // A-03c 이미 가입한 계정
+  | 'expired'; // A-03e 세션 만료
 
-// Kingfisher (물총새) spec matching FLOW 1-3, 1-4, 1-5
-const KINGFISHER_SPECIMEN: Specimen = {
-  id: 'sp-kingfisher-001',
-  number: 'No.001',
-  koreanName: '물총새',
-  scientificName: 'Alcedo atthis',
-  englishName: 'Common Kingfisher',
-  category: 'birds',
-  family: '물총새과',
-  genus: '물총새속',
-  isCollected: true,
-  confidence: 98,
-  stickerImage: KINGFISHER_PHOTO,
-  originalImage: KINGFISHER_PHOTO,
-  taxonomyPath: ['동물계', '척삭동물문', '조강', '파랑새목', '물총새과', '물총새속', '물총새'],
-  traitChips: ['여름철새', '하천·호수', '약 17cm', '작은 물고기'],
-  habitatType: '하천/호수',
-  colorPalette: ['#0284C7', '#EA580C', '#0369A1', '#C2410C', '#F8FAFC'],
-  locationCoord: {
-    name: '양재천 둔치 수풀',
-    city: '서울',
-    district: '강남구 개포동',
-    country: '대한민국',
-    environmentType: 'nature_wild',
-    x: 52,
-    y: 60,
-    mapScope: 'seoul',
-  },
-  wikiSummary: '물총새는 파랑새목 물총새과의 대표 조류입니다. 코발트 블루의 등과 선명한 주황색 배를 지니며, 나뭇가지에 앉아 물속의 작은 물고기를 쏜살같이 낚아챕니다.',
-  wikiUrl: 'https://ko.wikipedia.org/wiki/%EB%AC%BC%EC%B4%9D%EC%83%88',
-  seasonalTip: '봄부터 가을까지 양재천이나 탄천 여울목 나뭇가지에 앉아 있는 모습을 관찰할 수 있습니다.',
-  observations: [
-    {
-      id: 'obs-kf-1',
-      date: '2026.10.25',
-      time: '14:32',
-      location: '양재천 둔치 수풀',
-      weather: '☀️ 맑음',
-      temperature: '21°C',
-      photoUrl: KINGFISHER_PHOTO,
-      seasonLabel: '성체 관찰',
-      memo: '나뭇가지 끝에 앉은 순간을 포착. 등깃의 코발트 청록색이 자연광에서 선명함.',
-      analysisMetadata: {
-        imageClarityScore: 92,
-        isTargetInFocus: true,
-        featuresDetected: ['wing_pattern', 'beak_profile', 'chest_color'],
-        recognitionConfidence: 98,
-      },
-    },
-  ],
-};
+const RESERVED_OR_DUPLICATE_NICKNAMES = new Set([
+  '하천지기',
+  '모아탐험가',
+  '관리자',
+  '운영자',
+  'admin',
+  'moalog',
+]);
+
+const PLACE_OPTIONS = [
+  { id: '동네 산책길', label: '동네 산책길', bg: '#F4F5F4', icon: 'walk' as const },
+  { id: '공원', label: '공원', bg: '#F4F5F4', icon: 'park' as const },
+  { id: '산·숲', label: '산·숲', bg: '#F4F5F4', icon: 'mountain' as const },
+  { id: '바다·갯벌', label: '바다·갯벌', bg: '#F4F5F4', icon: 'sea' as const },
+  { id: '강·하천', label: '강·하천', bg: '#F4F5F4', icon: 'river' as const },
+  { id: '집·베란다', label: '집·베란다', bg: '#F4F5F4', icon: 'home' as const },
+  { id: '여행지', label: '여행지', bg: '#F4F5F4', icon: 'travel' as const },
+];
+
+const FREQUENCY_OPTIONS = ['거의 매일', '주 2~3회', '주말에만', '가끔 여행 갈 때'];
+
+const PURPOSE_OPTIONS = [
+  { id: 'curious_name', label: '보이는 생물 이름이 궁금해요' },
+  { id: 'fill_dex', label: '나만의 도감을 채우고 싶어요' },
+  { id: 'walk_nature', label: '산책하며 자연을 더 관찰하고 싶어요' },
+  { id: 'badge_level', label: '뱃지 모으고 레벨업 하고 싶어요' },
+  { id: 'with_family', label: '아이·가족과 함께 찾아보고 싶어요' },
+];
+
+const GUARDIAN_CONSENT_CHECKLIST = [
+  '법정대리인(보호자) 이메일 본인 확인 완료',
+  '만 14세 미만 아동의 개인정보 수집·이용 동의',
+  '안전 보호 설정 적용 (메모 쓰기·프로필 공개·랭킹 비활성)',
+  '도감·뱃지·리포트·탐험맵 조회 기능 정상 이용 가능',
+  '만 14세 도달 시 설정에서 일반 계정 전환 가능',
+  '보호자 동의 일시 및 확인 이력 안전 보관',
+];
+
+function renderPlaceVector(icon: typeof PLACE_OPTIONS[number]['icon']) {
+  switch (icon) {
+    case 'walk':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <circle cx="21" cy="11" r="3" fill="#E8B98A" />
+          <path d="M18 16L22 16L21 24L17 24L18 16Z" fill="#7D96D8" />
+          <path d="M17 24L14 31M21 24L25 31" stroke="#6B79A8" strokeWidth="2.4" strokeLinecap="round" />
+          <path d="M18 18L14 21M22 18L26 20" stroke="#E8B98A" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    case 'park':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <rect x="18.5" y="23" width="3" height="9" rx="1.5" fill="#B5937A" />
+          <circle cx="20" cy="17" r="8" fill="#9ED7BD" />
+        </svg>
+      );
+    case 'mountain':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <path d="M7 28L16 13L25 28H7Z" fill="#8CD2B3" />
+          <path d="M16 28L23 16L32 28H16Z" fill="#A8DFC6" />
+        </svg>
+      );
+    case 'sea':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <path
+            d="M8 29C10 23 14 14 21 14C25 14 27 17 25 20C23 22 25 26 32 29H8Z"
+            fill="#8DB9F8"
+          />
+          <path d="M18 14.5C21.5 14 24.5 15.5 25.5 17.5" stroke="#EAF3FF" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    case 'river':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <rect x="8" y="10" width="24" height="20" rx="4" fill="#E3F2FA" />
+          <path d="M10 24L16 16L22 24H10Z" fill="#9FD6B9" />
+          <path d="M18 24L24 14L30 24H18Z" fill="#B7E2CA" />
+          <path d="M12 28C16 25 22 27 28 24" stroke="#85B8F2" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+    case 'home':
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <path d="M9 19L20 10L31 19V30H9V19Z" fill="#EFF3F6" />
+          <path d="M8 20L20 10L32 20" stroke="#9AC2F5" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="17.5" y="23" width="5" height="7" rx="1" fill="#C4C9CE" />
+        </svg>
+      );
+    case 'travel':
+    default:
+      return (
+        <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none">
+          <path d="M16 13V10.5C16 9.67 16.67 9 17.5 9H22.5C23.33 9 24 9.67 24 10.5V13" stroke="#9D9692" strokeWidth="2" />
+          <rect x="10" y="13" width="20" height="16" rx="3" fill="#CFC1BB" />
+        </svg>
+      );
+  }
+}
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   onComplete,
   onLoginSuccess,
   userAccount,
-  initialPersona = 'birder',
+  initialPersona,
   initialStep = 'splash',
 }) => {
   const [step, setStep] = useState<OnboardingFlowStep>(initialStep);
+  const [enteredViaDemo, setEnteredViaDemo] = useState(false);
 
-  // FLOW 1-1 Login sheet state
-  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false);
-  const [isProcessingLogin, setIsProcessingLogin] = useState(false);
+  // Demo camera state (A-02c / A-02d) - pure sample, zero OS permission, zero slot deduction
+  const [demoZoom, setDemoZoom] = useState<'0.5x' | '1x' | '3x' | '5x'>('1x');
+  const [isDemoScanning, setIsDemoScanning] = useState(false);
 
-  // FLOW 1-2 Question State
-  const [qKingdom, setQKingdom] = useState<'plants' | 'animals' | 'both'>('animals');
-  const [qSubgroups, setQSubgroups] = useState<string[]>(['조류', '곤충', '바다 생물']);
-  const [showOppositeGroup, setShowOppositeGroup] = useState(false);
-  const [qLocations, setQLocations] = useState<string[]>(['동네 산책길']);
-  const [qFrequency, setQFrequency] = useState<string>('주말에만');
-  const [qPurposes, setQPurposes] = useState<string[]>([
-    '보이는 생물 이름이 궁금해요',
-    '나만의 도감을 채우고 싶어요',
-    '뱃지 모으고 레벨업 하고 싶어요',
-  ]);
-  const [assignedPersona, setAssignedPersona] = useState<NaturalistPersona>('birder');
+  // Auth sheet state (A-03 / A-03s / A-03b / A-03c / A-03d / A-03e)
+  const [authSheetMode, setAuthSheetMode] = useState<AuthSheetMode>(null);
+  const [authLoadingText, setAuthLoadingText] = useState('로그인하고 있어요');
+  const [pendingAccount, setPendingAccount] = useState<UserAccount | null>(null);
+  const [lastTriedProvider, setLastTriedProvider] = useState<'google' | 'apple'>('google');
 
-  // FLOW 1-3 Capture & AI Result State
-  const [selectedPhotoIdx, setSelectedPhotoIdx] = useState<number>(0);
-  const [analysisProgressStep, setAnalysisProgressStep] = useState<number>(0); // 0, 1, 2, 3
-  const [resultSubTab, setResultSubTab] = useState<'wiki' | 'score'>('wiki');
-  const [isChooseAltModalOpen, setIsChooseAltModalOpen] = useState(false);
-  const [chosenSpecimen, setChosenSpecimen] = useState<Specimen>(KINGFISHER_SPECIMEN);
-  const onboardingScore = getArtScore({ name: chosenSpecimen.koreanName }, 0);
-  const [searchAltQuery, setSearchAltQuery] = useState('');
-  // Plan intro is shown once per account after signup (tracked per account id)
-  const planIntroKey = (id?: string) => `moalog_plan_intro_${id || 'guest'}`;
-  const hasSeenPlanIntro = (id?: string): boolean => {
-    try { return localStorage.getItem(planIntroKey(id)) === 'true'; } catch { return false; }
-  };
-  const markPlanIntroSeen = (id?: string) => {
-    try { localStorage.setItem(planIntroKey(id), 'true'); } catch {}
-  };
-  
-
-  // FLOW 1-4 Save & Signup State
-  const [isSaveAuthSheetOpen, setIsSaveAuthSheetOpen] = useState(false);
-  const [agreeAll, setAgreeAll] = useState(true);
-  const [agreeAge, setAgreeAge] = useState(true);
-  const [agreeTerms, setAgreeTerms] = useState(true);
-  const [agreePrivacy, setAgreePrivacy] = useState(true);
-  const [agreeLocation, setAgreeLocation] = useState(true);
+  // Terms & Age (A-09 / A-09b / A-10 / A-11) — ALL initially unselected / unchecked
+  const [signupAgeGroup, setSignupAgeGroup] = useState<'adult_or_teen14' | 'under14' | null>(null);
+  const [agreeAll, setAgreeAll] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeLocation, setAgreeLocation] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
+  const [isUnder14SheetOpen, setIsUnder14SheetOpen] = useState(false);
 
-  // FLOW 1-5 Plan State
-  const [selectedPlanTier, setSelectedPlanTier] = useState<'yearly' | 'monthly' | 'lifetime'>('yearly');
+  // Guardian consent (A-09c / A-09d / A-09e / A-09f)
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
+  const [guardianEmailError, setGuardianEmailError] = useState('');
+  const [guardianStatus, setGuardianStatus] = useState<'sent' | 'confirmed' | 'failed'>('sent');
+  const [guardianResendNotice, setGuardianResendNotice] = useState(false);
 
-  // 9 Specimen Stickers for FLOW 1-1 Preview
-  const previewStickers = useMemo(() => {
-    const picks = [
-      INITIAL_SPECIMENS[0],
-      INITIAL_SPECIMENS[14],
-      INITIAL_SPECIMENS[1],
-      INITIAL_SPECIMENS[10],
-      INITIAL_SPECIMENS[12],
-      INITIAL_SPECIMENS[13],
-      INITIAL_SPECIMENS[11],
-      INITIAL_SPECIMENS[2],
-      INITIAL_SPECIMENS[15],
-    ].filter(Boolean);
+  // Post-signup onboarding questions (A-04 ~ A-08)
+  const [nickname, setNickname] = useState('');
+  const [nicknameError, setNicknameError] = useState('');
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedFrequency, setSelectedFrequency] = useState<string>('');
+  const [selectedPurposes, setSelectedPurposes] = useState<string[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<NaturalistPersona | null>(
+    initialPersona && initialStep !== 'splash' ? null : null
+  );
 
-    const angles = [-3, 2.5, -2, 3.2, 0, -2.8, 2, -3.5, 2.2];
-    return picks.map((sp, idx) => ({
-      sp,
-      tilt: angles[idx % angles.length],
-      img: sp.stickerImage || sp.originalImage,
-    }));
-  }, []);
-
-  // FLOW 1-3 Gallery candidate photos
-  const sampleGalleryPhotos = [
-    {
-      id: 'photo-1',
-      title: '물총새 (양재천)',
-      targetKoreanName: '물총새',
-      url: KINGFISHER_PHOTO,
-      category: '조류',
-    },
-    {
-      id: 'photo-2',
-      title: '작은멋쟁이나비',
-      targetKoreanName: '작은멋쟁이나비',
-      url: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&auto=format&fit=crop&q=80',
-      category: '곤충',
-    },
-    {
-      id: 'photo-3',
-      title: '비단잉어 (연못)',
-      targetKoreanName: '비단잉어',
-      url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop&q=80',
-      category: '어류',
-    },
-    {
-      id: 'photo-4',
-      title: '청개구리',
-      targetKoreanName: '청개구리',
-      url: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=800&auto=format&fit=crop&q=80',
-      category: '양서류',
-    },
-    {
-      id: 'photo-5',
-      title: '서양민들레',
-      targetKoreanName: '서양민들레',
-      url: 'https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=800&auto=format&fit=crop&q=80',
-      category: '식물',
-    },
-    {
-      id: 'photo-6',
-      title: '느타리버섯',
-      targetKoreanName: '느타리버섯',
-      url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80',
-      category: '균류',
-    },
-  ];
-
-  // Auto-login transition logic on splash
+  // Splash auto-advance (A-01)
   useEffect(() => {
-    if (step === 'splash') {
-      const isAuto = Boolean(userAccount?.isLoggedIn);
-      const timer = setTimeout(() => {
-        if (isAuto) {
-          onComplete(assignedPersona, chosenSpecimen);
+    if (step !== 'splash') return;
+    const timer = setTimeout(() => {
+      if (userAccount?.isLoggedIn) {
+        if (userAccount.guardianConsentPending) {
+          setPendingAccount(userAccount);
+          setGuardianName(userAccount.guardianConsent?.guardianName || '');
+          setGuardianEmail(userAccount.guardianConsent?.guardianEmail || '');
+          setGuardianStatus('sent');
+          setStep('guardian_sent');
         } else {
-          setStep('preview');
+          onComplete({ selectedPersona: initialPersona || 'general', targetTab: 'archive' });
         }
-      }, isAuto ? 1200 : 1600);
-
-      return () => clearTimeout(timer);
-    }
-  }, [step, userAccount, onComplete, assignedPersona, chosenSpecimen]);
-
-  // Analysis progress animation for FLOW 1-3 STEP 4
-  useEffect(() => {
-    if (step === 'capture_analyzing') {
-      setAnalysisProgressStep(0);
-      const t1 = setTimeout(() => setAnalysisProgressStep(1), 900);
-      const t2 = setTimeout(() => setAnalysisProgressStep(2), 2000);
-      const t3 = setTimeout(() => {
-        setAnalysisProgressStep(3);
-        setStep('capture_result');
-      }, 3100);
-
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
-    }
-  }, [step]);
-
-  // Sync Persona from questions
-  useEffect(() => {
-    if (qKingdom === 'plants') {
-      setAssignedPersona('botanist');
-    } else if (qSubgroups.includes('조류')) {
-      setAssignedPersona('birder');
-    } else if (qSubgroups.includes('곤충')) {
-      setAssignedPersona('entomologist');
-    } else {
-      setAssignedPersona('general');
-    }
-  }, [qKingdom, qSubgroups]);
-
-  // Social Login handler
-  // 소셜 로그인: 계정 확정은 App 의 handleLoginSuccess 한 곳에서만 처리합니다.
-  const handleSocialLogin = async (provider: 'google' | 'apple') => {
-    if (isProcessingLogin) return;
-    setIsProcessingLogin(true);
-    try {
-      // 온보딩의 로그인·가입은 기존 회원 데이터와 분리된 새 계정으로 처리합니다.
-      const account = await mockSocialLogin(provider, { newAccount: true });
-      setIsProcessingLogin(false);
-      setIsLoginSheetOpen(false);
-      setIsSaveAuthSheetOpen(false);
-
-      if (step === 'save_card') {
-        // 저장 = 가입: 로그인을 먼저 확정하고, 약관 동의 단계로 이어갑니다. (온보딩은 유지)
-        onLoginSuccess(account, {
-          persona: assignedPersona,
-          firstSpecimen: chosenSpecimen,
-          closeOnboarding: false,
-        });
-        setStep('terms_agreement');
       } else {
-        // 그 외 단계(프리뷰 등): 로그인 후 온보딩을 닫고 홈으로 이동합니다.
-        onLoginSuccess(account, {
-          persona: assignedPersona,
-          firstSpecimen: chosenSpecimen,
-          closeOnboarding: true,
-        });
+        setStep('preview');
       }
-    } catch {
-      setIsProcessingLogin(false);
-    }
-  };
+    }, 1250);
+    return () => clearTimeout(timer);
+  }, [step, userAccount, initialPersona, onComplete]);
 
-  const handleAgreeAllToggle = () => {
+  // Keep agreeAll synced when individual items toggle
+  useEffect(() => {
+    const marketingDone = signupAgeGroup === 'under14' ? true : agreeMarketing;
+    setAgreeAll(agreeTerms && agreePrivacy && agreeLocation && marketingDone);
+  }, [agreeTerms, agreePrivacy, agreeLocation, agreeMarketing, signupAgeGroup]);
+
+  // Clear marketing consent automatically if user switches to under14
+  useEffect(() => {
+    if (signupAgeGroup === 'under14') {
+      setAgreeMarketing(false);
+    }
+  }, [signupAgeGroup]);
+
+  const handleToggleAgreeAll = () => {
     const next = !agreeAll;
     setAgreeAll(next);
-    setAgreeAge(next);
     setAgreeTerms(next);
     setAgreePrivacy(next);
     setAgreeLocation(next);
-    setAgreeMarketing(next);
+    setAgreeMarketing(signupAgeGroup === 'under14' ? false : next);
   };
 
-  // Complete entire onboarding and enter Archive Home
-  const handleFinalHomeEntry = (isPro = false) => {
-    onComplete(assignedPersona, chosenSpecimen);
+  // Demo camera shutter -> scan -> A-02d result
+  const handleDemoShutter = () => {
+    if (isDemoScanning) return;
+    setIsDemoScanning(true);
+    setTimeout(() => {
+      setIsDemoScanning(false);
+      setStep('demo_result');
+    }, 1150);
   };
 
-  // 온보딩 결과 공유 (LensView 공유와 동일한 방식)
-  const handleResultShare = async () => {
-    const title = chosenSpecimen.koreanName || '자연 생물 포착';
-    const text = `[포착 생물 도감] ${title} (신뢰도 ${chosenSpecimen.confidence ?? 0}%) - 자연 생물 탐사 현장에서 포착했습니다!`;
-    const url = window.location.href;
+  // Social Auth handler for both A-03 (existing login) & A-03s (new signup)
+  const handleSelectAuthProvider = (
+    provider: 'google' | 'apple',
+    context: 'login' | 'signup_select'
+  ) => {
+    setLastTriedProvider(provider);
+    setAuthLoadingText(context === 'login' ? '로그인하고 있어요' : '계정을 연결하고 있어요');
+    setAuthSheetMode('loading');
 
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
+    setTimeout(() => {
+      const email =
+        provider === 'google' ? 'explorer@gmail.com' : 'explorer@icloud.com';
+      const isUnder14 = signupAgeGroup === 'under14';
+
+      if (context === 'login') {
+        const returningAccount: UserAccount = {
+          isLoggedIn: true,
+          id: `${provider}_returning`,
+          email,
+          name: provider === 'google' ? '자연 관찰자' : 'Apple 탐험가',
+          nickname: '자연관찰자',
+          provider,
+          connectedAt: new Date().toLocaleDateString('ko-KR'),
+          ageGroup: 'adult_or_teen14',
+          isUnder14: false,
+        };
+        setAuthSheetMode(null);
+        onLoginSuccess(returningAccount, { isNewSignup: false });
+        onComplete({
+          account: returningAccount,
+          targetTab: 'archive',
+          isNewSignup: false,
+        });
         return;
-      } catch {}
-    }
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
-      alert('포착 정보와 링크가 클립보드에 복사되었습니다!');
-    } catch {
-      alert('공유 링크 복사 완료');
+      }
+
+      // New signup account creation (A-03s -> A-03d)
+      // 갈래 C: Under-14 creates account in "동의 대기" state BEFORE guardian email (A-09c)
+      const createdAccount: UserAccount = {
+        isLoggedIn: true,
+        id: `${provider}_${Date.now()}`,
+        email,
+        name: isUnder14 ? '어린이 탐험가' : '새 탐험가',
+        provider,
+        connectedAt: new Date().toLocaleDateString('ko-KR'),
+        ageGroup: isUnder14 ? 'under14' : 'adult_or_teen14',
+        isUnder14,
+        guardianConsentPending: isUnder14,
+      };
+
+      setPendingAccount(createdAccount);
+      setAuthSheetMode(null);
+
+      if (isUnder14) {
+        setStep('guardian_info');
+      } else {
+        setStep('nickname');
+      }
+    }, 650);
+  };
+
+  // A-09 CTA click
+  const handleTermsContinue = () => {
+    if (!signupAgeGroup || !agreeTerms || !agreePrivacy) return;
+    if (signupAgeGroup === 'under14') {
+      // A-09b sheet opens OVER A-09
+      setIsUnder14SheetOpen(true);
+    } else {
+      // Adult >= 14: A-03s account selection sheet -> A-03d -> A-04
+      setAuthSheetMode('signup_select');
     }
   };
+
+  // A-09b CTA ("확인하고 시작하기") -> A-03s FIRST (account created in "동의 대기") -> A-09c
+  const handleConfirmUnder14Notice = () => {
+    setIsUnder14SheetOpen(false);
+    setAuthSheetMode('signup_select');
+  };
+
+  // A-09c guardian submit
+  const handleSubmitGuardianInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = guardianName.trim();
+    const trimmedEmail = guardianEmail.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedName) return;
+    if (!emailRegex.test(trimmedEmail)) {
+      setGuardianEmailError('올바른 이메일 주소를 입력해 주세요');
+      return;
+    }
+
+    setGuardianEmailError('');
+    setGuardianStatus('sent');
+    setGuardianResendNotice(false);
+    setPendingAccount((prev) =>
+      prev
+        ? {
+            ...prev,
+            guardianConsentPending: true,
+            guardianConsent: {
+              guardianName: trimmedName,
+              guardianEmail: trimmedEmail,
+              consentedAt: '',
+            },
+          }
+        : prev
+    );
+    setStep('guardian_sent');
+  };
+
+  const handleConfirmGuardianConsent = () => {
+    const consentedAt = new Date().toLocaleDateString('ko-KR');
+    setPendingAccount((prev) =>
+      prev
+        ? {
+            ...prev,
+            guardianConsentPending: false,
+            guardianConsent: {
+              guardianName: guardianName.trim(),
+              guardianEmail: guardianEmail.trim(),
+              consentedAt,
+            },
+          }
+        : prev
+    );
+    setStep('nickname');
+  };
+
+  const handleCancelUnder14Signup = () => {
+    setPendingAccount(null);
+    setGuardianName('');
+    setGuardianEmail('');
+    setGuardianStatus('sent');
+    setSignupAgeGroup(null);
+    setStep('preview');
+  };
+
+  // A-04 nickname validation & submit (mandatory, no skip)
+  const validateNickname = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed) return '닉네임을 입력해 주세요';
+    if (trimmed.length < 2) return '2자 이상 입력해 주세요';
+    if (trimmed.length > 12) return '12자 이하로 입력해 주세요';
+    if (!/^[가-힣a-zA-Z0-9_]+$/.test(trimmed)) {
+      return '한글, 영문, 숫자, 밑줄(_)만 사용할 수 있어요';
+    }
+    if (RESERVED_OR_DUPLICATE_NICKNAMES.has(trimmed.toLowerCase())) {
+      return '이미 사용 중이거나 사용할 수 없는 닉네임이에요';
+    }
+    return '';
+  };
+
+  const handleNicknameSubmit = () => {
+    const err = validateNickname(nickname);
+    if (err) {
+      setNicknameError(err);
+      return;
+    }
+    const cleanNick = nickname.trim();
+    setNicknameError('');
+    setPendingAccount((prev) =>
+      prev
+        ? {
+            ...prev,
+            name: cleanNick,
+            nickname: cleanNick,
+            nicknameUpdatedAt: new Date().toISOString(),
+          }
+        : {
+            isLoggedIn: true,
+            email: 'explorer@gmail.com',
+            name: cleanNick,
+            nickname: cleanNick,
+            nicknameUpdatedAt: new Date().toISOString(),
+            provider: lastTriedProvider,
+            ageGroup: signupAgeGroup || 'adult_or_teen14',
+            isUnder14: signupAgeGroup === 'under14',
+          }
+    );
+    setStep('locations');
+  };
+
+  // A-12 final entry
+  const handleFinishOnboarding = (targetTab: 'archive' | 'lens') => {
+    const chosenPersona: NaturalistPersona = selectedPersona || 'general';
+    const cleanNick = nickname.trim() || pendingAccount?.nickname || '탐험가';
+    const finalAccount: UserAccount = pendingAccount
+      ? {
+          ...pendingAccount,
+          name: cleanNick,
+          nickname: cleanNick,
+          guardianConsentPending: false,
+        }
+      : {
+          isLoggedIn: true,
+          email: 'explorer@gmail.com',
+          name: cleanNick,
+          nickname: cleanNick,
+          provider: lastTriedProvider,
+          connectedAt: new Date().toLocaleDateString('ko-KR'),
+          ageGroup: signupAgeGroup || 'adult_or_teen14',
+          isUnder14: signupAgeGroup === 'under14',
+          guardianConsentPending: false,
+        };
+
+    onLoginSuccess(finalAccount, { isNewSignup: true });
+    onComplete({
+      selectedPersona: chosenPersona,
+      targetTab,
+      preferredLocations: selectedLocations,
+      visitFrequency: selectedFrequency || undefined,
+      purposes: selectedPurposes,
+      account: finalAccount,
+      isNewSignup: true,
+    });
+  };
+
+  const activePersonaProfile = NATURALIST_PERSONAS[selectedPersona || 'general'];
+
+  const renderProgressHeader = (stepIndex: number, onBack: () => void) => (
+    <div className="shrink-0 bg-[#fbfbfb]">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-10 h-10 -ml-2 rounded-full text-[#202320] hover:bg-[#f4f5f4] flex items-center justify-center cursor-pointer transition-colors"
+          aria-label="뒤로"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="w-10" />
+      </div>
+      <div className="w-full h-[2px] bg-[#e6e9e5]">
+        <div
+          className="h-full bg-black transition-all duration-300"
+          style={{ width: `${(stepIndex / 5) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+
+  // Sample card used in A-02 & A-02b matching reference screenshots
+  const renderSampleCosmosCard = () => (
+    <div className="w-[216px] rounded-[18px] p-[6px] bg-gradient-to-b from-[#9bd64c] via-[#7bbd2a] to-[#91cf42] shadow-[0_8px_24px_rgba(32,35,32,0.08)]">
+      <div className="rounded-[13px] overflow-hidden bg-white">
+        <div className="relative aspect-[4/4.1] bg-[#2d3826] overflow-hidden">
+          <img
+            src={yellowCosmosPhoto}
+            alt="노랑코스모스"
+            className="w-full h-full object-cover object-[50%_78%]"
+          />
+          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-md bg-black text-white text-[11px] font-bold tracking-wider">
+            NEW
+          </span>
+        </div>
+        <div className="bg-gradient-to-b from-[#e8eae7] via-[#f4f5f4] to-[#d9dcd7] py-3 px-2 text-center border-t border-[#e6e9e5]">
+          <p className="text-[15px] font-bold text-[#202320] tracking-[-0.01em]">노랑코스모스</p>
+          <p className="text-[11px] font-semibold text-[#8c948a] mt-0.5 tabular-nums">NO.001</p>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
       id="onboarding-flow-container"
-      className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden select-none font-geist bg-[#F5F5F7] text-stone-900"
+      className="fixed inset-0 z-50 bg-[#fbfbfb] text-[#202320] flex flex-col overflow-hidden select-none"
     >
       <AnimatePresence mode="wait">
-        {/* ==============================================================
-            FLOW 1-1 STEP 1: 스플래시 (SPLASH)
-            ============================================================== */}
+        {/* ================= A-01: 스플래시 ================= */}
         {step === 'splash' && (
           <motion.div
-            key="splash-screen"
+            key="a01-splash"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
             onClick={() => {
-              if (userAccount?.isLoggedIn) {
-                onComplete(assignedPersona, chosenSpecimen);
-              } else {
-                setStep('preview');
-              }
+              if (!userAccount?.isLoggedIn) setStep('preview');
             }}
-            className="w-full h-full bg-[#d4ee38] flex flex-col items-center justify-between p-8 text-center cursor-pointer"
+            className="w-full h-full flex flex-col items-center justify-between px-6 py-12 cursor-pointer bg-[#fbfbfb]"
           >
-            <div className="pt-8" />
-
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative w-36 h-36 flex items-center justify-center">
-                <img
-                  src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&auto=format&fit=crop&q=80"
-                  alt="Sticker Top"
-                  className="w-24 h-24 object-contain filter drop-shadow-xl absolute -top-4 -rotate-6"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=400&auto=format&fit=crop&q=80"
-                  alt="Sticker Base"
-                  className="w-28 h-28 object-contain filter drop-shadow-2xl absolute -bottom-2 rotate-12"
-                />
+            <div />
+            <div className="flex flex-col items-center space-y-5 text-center">
+              <div className="w-20 h-20 rounded-[24px] bg-[#f4fbdd] border border-[#c4eb43] flex items-center justify-center shadow-2xs">
+                <span className="text-[32px] font-bold text-[#202320] tracking-tight">M</span>
               </div>
-
-              <div className="space-y-1">
-                <h1 className="text-3xl font-black text-stone-950 tracking-tight flex items-center justify-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-full bg-blue-600 inline-block" />
-                  <span>Moalog</span>
-                </h1>
-                <p className="text-sm font-semibold text-stone-900/80 tracking-normal">
-                  찍으면, 도감이 된다
-                </p>
+              <div className="space-y-1.5">
+                <h1 className="text-[32px] font-bold text-[#202320] tracking-[-0.02em]">Moalog</h1>
+                <p className="text-[14px] text-[#626961]">찍으면, 도감이 된다</p>
               </div>
             </div>
-
-            <div className="pb-6">
-              <div className="w-36 h-1 rounded-full bg-stone-950/20 mx-auto overflow-hidden">
-                <motion.div
-                  className="h-full bg-stone-950"
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 1.5, ease: 'easeInOut' }}
-                />
-              </div>
+            <div className="w-32 h-1 rounded-full bg-[#e6e9e5] overflow-hidden">
+              <motion.div
+                className="h-full bg-black"
+                initial={{ width: 0 }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 1.2, ease: 'easeInOut' }}
+              />
             </div>
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-1 STEP 2: 첫 화면 (PREVIEW & START)
-            ============================================================== */}
+        {/* ================= A-02: 시작 화면 ================= */}
         {step === 'preview' && (
           <motion.div
-            key="preview-screen"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
+            key="a02-start"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6 overflow-hidden"
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between px-4 py-6 overflow-y-auto"
           >
-            {/* Header */}
-            <div className="pt-2 flex items-center justify-between">
-              <h2 className="text-xl font-black text-stone-950 tracking-tight flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-                <span>Moalog</span>
-              </h2>
+            <div className="my-auto pt-4 pb-6 flex flex-col items-center">
+              {renderSampleCosmosCard()}
             </div>
 
-            {/* 3x3 Die-cut Sticker Album Board */}
-            <div className="my-auto py-2">
-              <div className="bg-white/80 rounded-3xl p-4 shadow-sm border border-stone-200/60">
-                <div className="grid grid-cols-3 gap-3">
-                  {previewStickers.map((item, idx) => (
-                    <motion.div
-                      key={item.sp.id || idx}
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: idx * 0.04, duration: 0.3 }}
-                      style={{ transform: `rotate(${item.tilt}deg)` }}
-                      className="aspect-square bg-stone-100/90 rounded-2xl p-2 flex items-center justify-center relative overflow-hidden shadow-xs hover:scale-105 transition-transform"
-                    >
-                      <img
-                        src={item.img}
-                        alt={item.sp.koreanName}
-                        className="w-full h-full object-contain filter drop-shadow-md"
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tagline */}
-              <div className="mt-6 text-center space-y-1.5 px-4">
-                <h3 className="text-lg font-black text-stone-900 tracking-tight leading-snug">
-                  찍기만 하면<br />나만의 생물 도감이 완성돼요
-                </h3>
-                <p className="text-xs text-stone-500">
-                  AI가 종명을 인식하고, 수집 점수까지 매겨줘요
+            <div className="space-y-6 pb-2">
+              <div className="space-y-2 px-1 text-left">
+                <p className="text-[14px] font-semibold text-[#8c948a]">반가워요</p>
+                <h2 className="text-[28px] font-bold text-[#202320] tracking-[-0.02em] leading-[1.28]">
+                  만난 생명을<br />찍고 알아보고 모아요
+                </h2>
+                <p className="text-[14px] text-[#626961] leading-[1.55]">
+                  길에서 만난 꽃, 새, 곤충 등을 찍어 보세요<br />
+                  이름과 특징을 바로 알려 드려요
                 </p>
               </div>
-            </div>
 
-            {/* Bottom Action Section */}
-            <div className="pb-4 space-y-2.5">
-              <button
-                type="button"
-                id="btn-onboarding-start"
-                onClick={() => setStep('q_intro')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>시작하기</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-onboarding-guest-browse"
-                onClick={() => onComplete(assignedPersona)}
-                className="w-full py-3 bg-stone-200/90 hover:bg-stone-300 text-stone-800 rounded-2xl text-xs font-bold transition-all cursor-pointer text-center"
-              >
-                가입 없이 둘러보기
-              </button>
-
-              <div className="text-center pt-1">
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  id="btn-onboarding-start"
+                  onClick={() => setStep('preview_prompt')}
+                  className="w-full h-14 bg-black hover:bg-[#202320] text-white rounded-xl text-[15px] font-bold transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  시작하기
+                </button>
                 <button
                   type="button"
                   id="btn-onboarding-open-login"
-                  onClick={() => setIsLoginSheetOpen(true)}
-                  className="text-xs text-stone-500 hover:text-stone-900 transition-colors inline-flex items-center gap-1 font-medium cursor-pointer"
+                  onClick={() => setAuthSheetMode('login')}
+                  className="w-full h-14 bg-white hover:bg-[#f4f5f4] text-[#202320] border border-[#e6e9e5] rounded-xl text-[15px] font-bold transition-all active:scale-[0.99] cursor-pointer"
                 >
-                  <span>이미 계정이 있나요?</span>
-                  <span className="font-bold underline text-stone-800">로그인</span>
+                  로그인
                 </button>
               </div>
             </div>
-
-            {/* STEP 3 Existing Member Login Bottom Sheet */}
-            {isLoginSheetOpen && (
-              <div
-                className="fixed inset-0 z-60 bg-stone-950/60 backdrop-blur-xs flex items-end justify-center"
-                onClick={() => setIsLoginSheetOpen(false)}
-              >
-                <motion.div
-                  initial={{ y: '100%' }}
-                  animate={{ y: 0 }}
-                  exit={{ y: '100%' }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-white rounded-t-3xl max-w-md w-full p-6 shadow-2xl space-y-4 pb-8"
-                >
-                  <div className="flex items-center justify-between pb-1">
-                    <div className="space-y-0.5">
-                      <h4 className="text-base font-black text-stone-900">다시 만나서 반가워요</h4>
-                      <p className="text-xs text-stone-500">가입했던 계정으로 로그인해 주세요</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsLoginSheetOpen(false)}
-                      className="p-1 rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5 pt-2">
-                    <button
-                      type="button"
-                      disabled={isProcessingLogin}
-                      onClick={() => handleSocialLogin('google')}
-                      className="w-full py-3.5 px-4 rounded-2xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-900 text-xs font-bold flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                      <span>Google로 계속하기</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isProcessingLogin}
-                      onClick={() => handleSocialLogin('apple')}
-                      className="w-full py-3.5 px-4 rounded-2xl bg-black hover:bg-stone-900 text-white text-xs font-bold flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer"
-                    >
-                      <span className="text-base leading-none"></span>
-                      <span>Apple로 계속하기</span>
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-stone-400 text-center pt-1 font-medium">
-                    로그인하면 내 도감과 모든 기록을 바로 불러와요
-                  </p>
-                </motion.div>
-              </div>
-            )}
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-2 STEP 1: 질문 안내
-            ============================================================== */}
-        {step === 'q_intro' && (
+        {/* ================= A-02b: 미리 해 보기 ================= */}
+        {step === 'preview_prompt' && (
           <motion.div
-            key="q-intro-screen"
-            initial={{ opacity: 0, x: 20 }}
+            key="a02b-preview-prompt"
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6"
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between px-4 py-6 overflow-y-auto"
           >
-            <div className="pt-2 flex items-center justify-between">
+            <div className="my-auto pt-4 pb-6 flex flex-col items-center">
+              {renderSampleCosmosCard()}
+            </div>
+
+            <div className="space-y-6 pb-2">
+              <div className="space-y-2 px-1 text-left">
+                <p className="text-[14px] font-semibold text-[#8c948a]">미리 해 보기</p>
+                <h2 className="text-[28px] font-bold text-[#202320] tracking-[-0.02em] leading-[1.28]">
+                  한번 찍어 볼까요?
+                </h2>
+                <p className="text-[14px] text-[#626961] leading-[1.55]">
+                  샘플 사진으로 모아로그가 이름을 알아내는 과정까지<br />
+                  빠르게 체험해 볼 수 있어요
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnteredViaDemo(true);
+                    setStep('demo_camera');
+                  }}
+                  className="w-full h-14 bg-black hover:bg-[#202320] text-white rounded-xl text-[15px] font-bold transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  체험해 보기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthSheetMode('login')}
+                  className="w-full py-2.5 text-center text-[14px] text-[#8c948a] hover:text-[#202320] font-semibold cursor-pointer"
+                >
+                  건너뛰기
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= A-02c: 샘플 카메라 체험 (권한 요청 없음, 칸 차감 없음) ================= */}
+        {step === 'demo_camera' && (
+          <motion.div
+            key="a02c-demo-camera"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full max-w-md mx-auto bg-black text-white flex flex-col justify-between"
+          >
+            {/* Top Bar matching B-01 */}
+            <div className="px-4 pt-4 pb-3 flex items-center justify-between shrink-0">
               <button
                 type="button"
-                onClick={() => setStep('preview')}
-                className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
+                onClick={() => setStep('preview_prompt')}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <span className="text-[12px] font-semibold text-white/70 bg-white/10 px-3 py-1 rounded-full">
+                샘플 체험 카메라
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-9 h-9 rounded-full bg-white/10 text-white/80 flex items-center justify-center text-[12px] font-bold">
+                  A
+                </span>
+                <span className="w-9 h-9 rounded-full bg-white/10 text-white/80 flex items-center justify-center">
+                  <ZapOff className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+
+            {/* Sample Viewfinder */}
+            <div className="relative flex-1 overflow-hidden bg-[#151815] flex items-center justify-center">
+              <img
+                src={yellowCosmosPhoto}
+                alt="노랑코스모스 샘플 화면"
+                className={`w-full h-full object-cover object-[50%_75%] transition-transform duration-300 ${
+                  demoZoom === '0.5x'
+                    ? 'scale-90'
+                    : demoZoom === '3x'
+                    ? 'scale-125'
+                    : demoZoom === '5x'
+                    ? 'scale-150'
+                    : 'scale-105'
+                }`}
+              />
+              {/* Subtle corner framing brackets */}
+              <div className="absolute inset-8 pointer-events-none">
+                <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-white/80 rounded-tl-sm" />
+                <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-white/80 rounded-tr-sm" />
+                <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-white/80 rounded-bl-sm" />
+                <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-white/80 rounded-br-sm" />
+              </div>
+
+              {isDemoScanning && (
+                <div className="absolute inset-0 bg-black/55 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-full border-3 border-[#c4eb43] border-t-transparent animate-spin" />
+                  <p className="text-[14px] font-bold text-white">이름을 알아보는 중...</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Zoom & Shutter Bar matching B-01 */}
+            <div className="px-6 pt-3 pb-8 bg-black space-y-5 shrink-0">
+              <div className="flex items-center justify-center gap-3">
+                {(['0.5x', '1x', '3x', '5x'] as const).map((z) => (
+                  <button
+                    key={z}
+                    type="button"
+                    onClick={() => setDemoZoom(z)}
+                    className={`px-3 py-1 rounded-full text-[12px] font-bold tabular-nums transition-colors cursor-pointer ${
+                      demoZoom === z ? 'bg-white text-black' : 'text-white/75 hover:text-white'
+                    }`}
+                  >
+                    {z}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-white/60">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDemoShutter}
+                  disabled={isDemoScanning}
+                  className="w-[72px] h-[72px] rounded-full border-4 border-white p-1 flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+                  aria-label="샘플 촬영"
+                >
+                  <div className="w-full h-full rounded-full bg-white" />
+                </button>
+                <div className="w-11 h-11 rounded-xl overflow-hidden border border-white/25 bg-white/10">
+                  <img
+                    src={yellowCosmosPhoto}
+                    alt="샘플 미리보기"
+                    className="w-full h-full object-cover object-bottom"
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= A-02d: 샘플 포착 결과 (저장 안 됨) ================= */}
+        {step === 'demo_result' && (
+          <motion.div
+            key="a02d-demo-result"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full max-w-md mx-auto bg-[#fbfbfb] flex flex-col justify-between px-4 py-4 overflow-y-auto"
+          >
+            <div className="flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('demo_camera')}
+                className="w-10 h-10 rounded-full bg-[#f4f5f4] text-[#202320] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="text-[14px] font-bold text-[#202320]">체험 결과</span>
+              <div className="w-10" />
+            </div>
+
+            <div className="my-auto py-4 space-y-4 text-center">
+              <div>
+                <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                  노랑코스모스
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-0.5">
+                  식물 · 국화과 · Cosmos sulphureus
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#e6e9e5]">
+                <span className="w-5 h-5 rounded-md bg-[#2f9ad6] text-white text-[11px] font-bold flex items-center justify-center">
+                  S
+                </span>
+                <span className="text-[15px] font-bold text-[#202320] tabular-nums">93점</span>
+              </div>
+
+              {/* Green Framed Card matching B-10 */}
+              <div className="bg-[#f4f5f4] rounded-[24px] p-5 flex justify-center">
+                <div className="w-[186px] rounded-[16px] bg-gradient-to-b from-[#6ab816] to-[#56a208] p-3 text-left shadow-md">
+                  <p className="text-center text-[11px] font-bold text-[#142006] mb-2">Moalog</p>
+                  <div className="rounded-[12px] bg-[#1e211e] text-white p-2.5 space-y-2.5">
+                    <div className="text-center">
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-white/10 text-[10px] text-white/80 font-semibold">
+                        식물 · No.001
+                      </span>
+                    </div>
+                    <div className="aspect-square rounded-lg overflow-hidden bg-[#2b302b]">
+                      <img
+                        src={yellowCosmosPhoto}
+                        alt="노랑코스모스"
+                        className="w-full h-full object-cover object-[50%_80%]"
+                      />
+                    </div>
+                    <div className="flex items-end justify-between gap-2 pt-0.5">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-white leading-snug">노랑코스모스</p>
+                        <p className="text-[9px] text-white/60 italic leading-tight">
+                          Cosmos sulphureus
+                        </p>
+                        <p className="text-[9px] text-white/60 mt-1">망원동 · 2026.11.15</p>
+                      </div>
+                      <span className="w-5 h-5 rounded-md bg-[#2f9ad6] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                        S
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-center text-[10px] font-semibold text-[#142006] mt-2">
+                    @moa_explorer
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[13px] text-[#626961]">
+                가입하면 내 도감이 시작돼요
+              </p>
+            </div>
+
+            <div className="pb-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('terms_age')}
+                className="w-full h-14 bg-black hover:bg-[#202320] text-white rounded-xl text-[15px] font-bold transition-all active:scale-[0.99] cursor-pointer"
+              >
+                가입하고 계속하기
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= A-09: 서비스 이용 동의 & 나이 확인 ================= */}
+        {step === 'terms_age' && (
+          <motion.div
+            key="a09-terms-age"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
+          >
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep(enteredViaDemo ? 'demo_result' : 'preview_prompt')}
+                className="w-10 h-10 -ml-2 rounded-full text-[#202320] hover:bg-[#f4f5f4] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="my-auto space-y-6 text-center">
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/80 max-w-xs mx-auto space-y-2">
-                <p className="text-sm font-black text-stone-900 leading-snug">
-                  나만의 도감을 위해<br />간단한 질문 4개만 할게요!
-                </p>
-                <p className="text-xs text-stone-500">30초면 끝나요</p>
-              </div>
-
-              <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
-                <img
-                  src="https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=400&auto=format&fit=crop&q=80"
-                  alt="Plant"
-                  className="w-24 h-24 object-contain filter drop-shadow-md absolute -left-2 -bottom-2 -rotate-12"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&auto=format&fit=crop&q=80"
-                  alt="Butterfly"
-                  className="w-28 h-28 object-contain filter drop-shadow-lg absolute -right-2 -top-2 rotate-12"
-                />
-              </div>
-            </div>
-
-            <div className="pb-4">
-              <button
-                type="button"
-                onClick={() => setStep('q_kingdom')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer"
-              >
-                좋아요
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-2 STEP 2: 질문 1/4 (식물파? 동물파?)
-            ============================================================== */}
-        {step === 'q_kingdom' && (
-          <motion.div
-            key="q-kingdom-screen"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6"
-          >
-            {/* Top header with progress */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep('q_intro')}
-                  className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="text-xs font-mono font-bold text-stone-400">1/4</span>
-              </div>
-              <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
-                <div className="w-1/4 h-full bg-stone-950 rounded-full" />
-              </div>
-            </div>
-
-            <div className="my-auto space-y-4">
+            <div className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-5">
               <div>
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">식물파? 동물파?</h3>
-                <p className="text-xs text-stone-500 mt-1">더 끌리는 쪽을 골라 주세요</p>
-              </div>
-
-              <div className="space-y-2.5">
-                {/* Option 1: Plant */}
-                <button
-                  type="button"
-                  onClick={() => setQKingdom('plants')}
-                  className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                    qKingdom === 'plants'
-                      ? 'bg-white border-stone-950 shadow-sm'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center p-1.5 overflow-hidden">
-                      <img
-                        src="https://images.unsplash.com/photo-1558285549-2a06fdfc5547?w=200&auto=format&fit=crop&q=80"
-                        alt="식물"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-stone-900">식물이 더 좋아요</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">꽃 · 나무 · 풀 · 버섯</p>
-                    </div>
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                      qKingdom === 'plants'
-                        ? 'border-stone-950 bg-stone-950 text-white'
-                        : 'border-stone-300'
-                    }`}
-                  >
-                    {qKingdom === 'plants' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                </button>
-
-                {/* Option 2: Animal */}
-                <button
-                  type="button"
-                  onClick={() => setQKingdom('animals')}
-                  className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                    qKingdom === 'animals'
-                      ? 'bg-white border-stone-950 shadow-sm'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center p-1.5 overflow-hidden">
-                      <img
-                        src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=200&auto=format&fit=crop&q=80"
-                        alt="동물"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-stone-900">동물이 더 좋아요</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">새 · 곤충 · 물고기 · 파충류</p>
-                    </div>
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                      qKingdom === 'animals'
-                        ? 'border-stone-950 bg-stone-950 text-white'
-                        : 'border-stone-300'
-                    }`}
-                  >
-                    {qKingdom === 'animals' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                </button>
-
-                {/* Option 3: Both */}
-                <button
-                  type="button"
-                  onClick={() => setQKingdom('both')}
-                  className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                    qKingdom === 'both'
-                      ? 'bg-white border-stone-950 shadow-sm'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center p-1.5 overflow-hidden">
-                      <img
-                        src={KINGFISHER_PHOTO}
-                        alt="둘 다"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-stone-900">둘 다 좋아요</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">보이는 건 다 궁금해요</p>
-                    </div>
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                      qKingdom === 'both'
-                        ? 'border-stone-950 bg-stone-950 text-white'
-                        : 'border-stone-300'
-                    }`}
-                  >
-                    {qKingdom === 'both' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="pb-4 space-y-2.5">
-              <button
-                type="button"
-                onClick={() => setStep('q_subgroup')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer"
-              >
-                다음
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep('q_subgroup')}
-                className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-medium"
-              >
-                건너뛰기
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-2 STEP 3: 질문 2/4 (세부 분야)
-            ============================================================== */}
-        {step === 'q_subgroup' && (
-          <motion.div
-            key="q-subgroup-screen"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6 overflow-hidden"
-          >
-            {/* Top header */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep('q_kingdom')}
-                  className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="text-xs font-mono font-bold text-stone-400">2/4</span>
-              </div>
-              <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
-                <div className="w-2/4 h-full bg-stone-950 rounded-full" />
-              </div>
-            </div>
-
-            <div className="my-auto space-y-4">
-              <div>
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">
-                  {qKingdom === 'plants' ? '특히 어떤 식물이 궁금해요?' : '특히 어떤 동물이 궁금해요?'}
-                </h3>
-                <p className="text-xs text-stone-500 mt-1">
-                  여러 개 골라도 좋아요 · 도감 첫 화면에 먼저 보여 드려요
+                <h2 className="text-[26px] font-bold text-[#202320] tracking-[-0.02em]">
+                  서비스 이용 동의
+                </h2>
+                <p className="text-[14px] text-[#626961] mt-1">
+                  시작하기 전에 동의가 필요해요
                 </p>
               </div>
 
-              {/* 6 Category Selection Cards */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {[
-                  {
-                    id: '조류',
-                    img: KINGFISHER_PHOTO,
-                  },
-                  {
-                    id: '곤충',
-                    img: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=200&auto=format&fit=crop&q=80',
-                  },
-                  {
-                    id: '어류',
-                    img: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&auto=format&fit=crop&q=80',
-                  },
-                  {
-                    id: '파충·양서류',
-                    img: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=200&auto=format&fit=crop&q=80',
-                  },
-                  {
-                    id: '무척추동물',
-                    img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=200&auto=format&fit=crop&q=80',
-                  },
-                  {
-                    id: '바다 생물',
-                    img: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&auto=format&fit=crop&q=80',
-                  },
-                ].map((item) => {
-                  const isChecked = qSubgroups.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setQSubgroups((prev) =>
-                          isChecked ? prev.filter((x) => x !== item.id) : [...prev, item.id]
-                        );
-                      }}
-                      className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-between relative transition-all ${
-                        isChecked
-                          ? 'bg-white border-stone-950 shadow-sm'
-                          : 'bg-white/80 border-stone-200'
-                      }`}
-                    >
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center p-1 overflow-hidden mb-1">
-                        <img
-                          src={item.img}
-                          alt={item.id}
-                          className="w-full h-full object-contain filter drop-shadow-xs"
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-stone-900">{item.id}</span>
-                      {isChecked && (
-                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-stone-950 text-white flex items-center justify-center">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+              {/* Age Check Radios — both initially unselected */}
+              <div className="space-y-3 pt-1">
+                <p className="text-[13px] font-semibold text-[#626961]">나이 확인 · 필수</p>
+
+                <button
+                  type="button"
+                  onClick={() => setSignupAgeGroup('adult_or_teen14')}
+                  className="w-full py-2 flex items-center justify-between text-left cursor-pointer"
+                >
+                  <span className="text-[16px] font-bold text-[#202320]">만 14세 이상이에요</span>
+                  <span
+                    className={`w-6 h-6 rounded-full transition-all shrink-0 ${
+                      signupAgeGroup === 'adult_or_teen14'
+                        ? 'border-[7px] border-black bg-white'
+                        : 'border-2 border-[#a5aca4] bg-white'
+                    }`}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSignupAgeGroup('under14')}
+                  className="w-full py-2 flex items-center justify-between text-left cursor-pointer"
+                >
+                  <span className="text-[16px] font-bold text-[#202320]">만 14세 미만이에요</span>
+                  <span
+                    className={`w-6 h-6 rounded-full transition-all shrink-0 ${
+                      signupAgeGroup === 'under14'
+                        ? 'border-[7px] border-black bg-white'
+                        : 'border-2 border-[#a5aca4] bg-white'
+                    }`}
+                  />
+                </button>
               </div>
 
-              {/* Opposite Group Toggle */}
-              <div className="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-stone-200/80">
-                <span className="text-xs font-medium text-stone-700">
-                  {qKingdom === 'plants' ? '동물도 함께 보기' : '식물도 함께 보기'}
+              {/* Agree All Box — initially unchecked */}
+              <button
+                type="button"
+                onClick={handleToggleAgreeAll}
+                className="w-full p-4 rounded-2xl bg-[#f4f5f4] flex items-center gap-3 text-left cursor-pointer"
+              >
+                <span
+                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                    agreeAll ? 'bg-black text-white' : 'bg-[#b7bdb5] text-white'
+                  }`}
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowOppositeGroup(!showOppositeGroup)}
-                  className={`w-10 h-6 rounded-full p-0.5 transition-colors flex items-center ${
-                    showOppositeGroup ? 'bg-stone-950 justify-end' : 'bg-stone-200 justify-start'
-                  }`}
-                >
-                  <div className="w-5 h-5 rounded-full bg-white shadow-xs" />
-                </button>
+                <span className="text-[16px] font-bold text-[#202320]">약관 모두 동의하기</span>
+              </button>
+
+              {/* Individual Terms — all initially unchecked */}
+              <div className="space-y-3.5 px-1">
+                {/* 1. 필수 회원 이용약관 (opens A-10) */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAgreeTerms(!agreeTerms)}
+                    className="flex items-center gap-3 text-left cursor-pointer flex-1 py-1"
+                  >
+                    <Check
+                      className={`w-4 h-4 stroke-[2.6] shrink-0 transition-colors ${
+                        agreeTerms ? 'text-black' : 'text-[#d2d7d1]'
+                      }`}
+                    />
+                    <span className="text-[13px] font-semibold text-[#8c948a]">필수</span>
+                    <span className="text-[15px] text-[#202320]">회원 이용약관</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLegalModal('terms')}
+                    className="p-1.5 text-[#202320] hover:bg-[#f4f5f4] rounded-lg cursor-pointer"
+                    aria-label="회원 이용약관 전문 보기"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* 2. 필수 개인정보 수집/이용 (opens A-11) */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAgreePrivacy(!agreePrivacy)}
+                    className="flex items-center gap-3 text-left cursor-pointer flex-1 py-1"
+                  >
+                    <Check
+                      className={`w-4 h-4 stroke-[2.6] shrink-0 transition-colors ${
+                        agreePrivacy ? 'text-black' : 'text-[#d2d7d1]'
+                      }`}
+                    />
+                    <span className="text-[13px] font-semibold text-[#8c948a]">필수</span>
+                    <span className="text-[15px] text-[#202320]">개인정보 수집/이용</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLegalModal('privacy')}
+                    className="p-1.5 text-[#202320] hover:bg-[#f4f5f4] rounded-lg cursor-pointer"
+                    aria-label="개인정보 수집/이용 전문 보기"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* 3. 선택 위치기반 서비스 이용약관 */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAgreeLocation(!agreeLocation)}
+                    className="flex items-center gap-3 text-left cursor-pointer flex-1 py-1"
+                  >
+                    <Check
+                      className={`w-4 h-4 stroke-[2.6] shrink-0 transition-colors ${
+                        agreeLocation ? 'text-black' : 'text-[#d2d7d1]'
+                      }`}
+                    />
+                    <span className="text-[13px] font-semibold text-[#8c948a]">선택</span>
+                    <span className="text-[15px] text-[#202320]">위치기반 서비스 이용약관</span>
+                  </button>
+                </div>
+
+                {/* 4. 선택 마케팅 정보 수신 동의 — hidden for under14 */}
+                {signupAgeGroup !== 'under14' && (
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAgreeMarketing(!agreeMarketing)}
+                      className="flex items-center gap-3 text-left cursor-pointer flex-1 py-1"
+                    >
+                      <Check
+                        className={`w-4 h-4 stroke-[2.6] shrink-0 transition-colors ${
+                          agreeMarketing ? 'text-black' : 'text-[#d2d7d1]'
+                        }`}
+                      />
+                      <span className="text-[13px] font-semibold text-[#8c948a]">선택</span>
+                      <span className="text-[15px] text-[#202320]">마케팅 정보 수신 동의</span>
+                    </button>
+                  </div>
+                )}
               </div>
+
+              <p className="text-[12px] text-[#8c948a] leading-relaxed pt-1">
+                선택 항목에 동의하지 않아도 기본 서비스는 이용할 수 있어요. 만 14세 미만이면 메모 쓰기·프로필 공개·랭킹 노출이 꺼진 상태로 시작해요
+              </p>
             </div>
 
-            <div className="pb-4 space-y-2.5">
+            <div className="px-4 pb-6 pt-2 bg-[#fbfbfb] shrink-0">
               <button
                 type="button"
-                onClick={() => setStep('q_location')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer"
+                disabled={!signupAgeGroup || !agreeTerms || !agreePrivacy}
+                onClick={handleTermsContinue}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
-                다음
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (step === 'q_kingdom') setStep('q_subgroup');
-                  else if (step === 'q_subgroup') setStep('q_location');
-                  else if (step === 'q_location') setStep('q_purpose');
-                  else setStep('q_ready');
-                }}
-                className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-medium"
-              >
-                건너뛰기
+                동의하고 계속하기
               </button>
             </div>
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-2 STEP 4: 질문 3/4 (장소 · 빈도)
-            ============================================================== */}
-        {step === 'q_location' && (
-          <motion.div
-            key="q-location-screen"
-            initial={{ opacity: 0, x: 20 }}
+        {/* ================= A-09c: 보호자 정보 입력 ================= */}
+        {step === 'guardian_info' && (
+          <motion.form
+            key="a09c-guardian-info"
+            onSubmit={handleSubmitGuardianInfo}
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6 overflow-hidden"
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
           >
-            {/* Top header */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep('q_subgroup')}
-                  className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="text-xs font-mono font-bold text-stone-400">3/4</span>
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('terms_age')}
+                className="w-10 h-10 -ml-2 rounded-full text-[#202320] hover:bg-[#f4f5f4] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-7">
+              <div>
+                <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                  보호자 정보를 알려 주세요
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-1">
+                  만 14세 미만은 보호자의 동의가 필요해요
+                </p>
               </div>
-              <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
-                <div className="w-3/4 h-full bg-stone-950 rounded-full" />
+
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[13px] font-semibold text-[#8c948a] block mb-1">
+                    보호자 성명
+                  </label>
+                  <input
+                    type="text"
+                    value={guardianName}
+                    onChange={(e) => setGuardianName(e.target.value)}
+                    placeholder="성명"
+                    className="w-full py-2.5 bg-transparent border-b border-[#e6e9e5] focus:border-black text-[18px] font-bold text-[#202320] placeholder:text-[#a5aca4] focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[13px] font-semibold text-[#8c948a] block mb-1">
+                    보호자 이메일
+                  </label>
+                  <input
+                    type="email"
+                    value={guardianEmail}
+                    onChange={(e) => {
+                      setGuardianEmail(e.target.value);
+                      if (guardianEmailError) setGuardianEmailError('');
+                    }}
+                    placeholder="guardian@email.com"
+                    className={`w-full py-2.5 bg-transparent border-b text-[18px] font-bold text-[#202320] placeholder:text-[#a5aca4] focus:outline-none transition-colors ${
+                      guardianEmailError ? 'border-[#ff5100]' : 'border-[#e6e9e5] focus:border-black'
+                    }`}
+                  />
+                  {guardianEmailError && (
+                    <p className="text-[12px] text-[#ff5100] font-semibold mt-1.5">
+                      {guardianEmailError}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="my-auto space-y-4">
+            <div className="px-4 pb-6 pt-2 bg-[#fbfbfb] shrink-0">
+              <button
+                type="submit"
+                disabled={!guardianName.trim() || !guardianEmail.trim()}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
+                동의 메일 보내기
+              </button>
+            </div>
+          </motion.form>
+        )}
+
+        {/* ================= A-09d / A-09e / A-09f: 보호자 동의 확인 ================= */}
+        {step === 'guardian_sent' && (
+          <motion.div
+            key="a09d-guardian-sent"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
+          >
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('guardian_info')}
+                className="w-10 h-10 -ml-2 rounded-full text-[#202320] hover:bg-[#f4f5f4] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            </div>
+
+            {guardianStatus === 'sent' && (
+              <>
+                <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center justify-center text-center space-y-5">
+                  <div className="w-16 h-16 rounded-full bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] flex items-center justify-center">
+                    <Mail className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#f4f5f4] text-[12px] font-bold text-[#626961]">
+                      동의 대기 중
+                    </span>
+                    <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                      동의 메일을 보냈어요
+                    </h2>
+                    <p className="text-[14px] text-[#626961] leading-relaxed">
+                      <strong className="text-[#202320]">{guardianEmail}</strong>으로 보낸 메일에서<br />
+                      {guardianName}님의 동의 확인을 완료해 주세요
+                    </p>
+                  </div>
+
+                  {guardianResendNotice && (
+                    <div className="px-3.5 py-2 rounded-xl bg-[#f4fbdd] border border-[#c4eb43] text-[12px] font-semibold text-[#6d8911]">
+                      동의 메일을 다시 보냈어요
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-center gap-4 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setGuardianResendNotice(true)}
+                      className="text-[13px] font-bold text-[#202320] underline cursor-pointer"
+                    >
+                      메일 다시 보내기
+                    </button>
+                    <span className="text-[#d2d7d1]">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setStep('guardian_info')}
+                      className="text-[13px] font-semibold text-[#626961] hover:text-[#202320] cursor-pointer"
+                    >
+                      이메일 바꾸기
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-6 pt-2 space-y-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setGuardianStatus('confirmed')}
+                    className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold cursor-pointer"
+                  >
+                    보호자 동의 완료 확인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuardianStatus('failed')}
+                    className="w-full py-2 text-center text-[13px] text-[#8c948a] hover:text-[#202320] font-semibold cursor-pointer"
+                  >
+                    동의 거절 · 만료 시 안내 보기
+                  </button>
+                </div>
+              </>
+            )}
+
+            {guardianStatus === 'confirmed' && (
+              <>
+                <div className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-[22px] font-bold text-[#202320] tracking-[-0.02em]">
+                        보호자 동의가 완료되었어요
+                      </h2>
+                      <p className="text-[13px] text-[#626961]">
+                        {guardianName}님({guardianEmail}) 확인 완료
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-[20px] border border-[#e6e9e5] p-4 space-y-3">
+                    {GUARDIAN_CONSENT_CHECKLIST.map((item) => (
+                      <div key={item} className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-[#f4fbdd] text-[#6d8911] flex items-center justify-center shrink-0 mt-0.5">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </span>
+                        <span className="text-[13px] text-[#202320] leading-snug">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-4 pb-6 pt-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleConfirmGuardianConsent}
+                    className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold cursor-pointer"
+                  >
+                    계속하기
+                  </button>
+                </div>
+              </>
+            )}
+
+            {guardianStatus === 'failed' && (
+              <>
+                <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-[#fff1eb] text-[#ff5100] flex items-center justify-center">
+                    <AlertCircle className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h2 className="text-[22px] font-bold text-[#202320]">
+                      보호자 동의를 받지 못했어요
+                    </h2>
+                    <p className="text-[14px] text-[#626961] leading-relaxed">
+                      동의 링크가 만료되었거나 거절되었어요.<br />
+                      이메일을 다시 확인하거나 가입을 취소할 수 있어요.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-6 pt-2 space-y-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGuardianStatus('sent');
+                      setStep('guardian_info');
+                    }}
+                    className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold cursor-pointer"
+                  >
+                    보호자 정보 다시 입력하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelUnder14Signup}
+                    className="w-full h-12 rounded-xl bg-white border border-[#e6e9e5] text-[#ff5100] text-[14px] font-bold cursor-pointer"
+                  >
+                    가입 취소하기
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+
+        {/* ================= A-04: 닉네임 입력 (필수, 건너뛰기 없음) ================= */}
+        {step === 'nickname' && (
+          <motion.div
+            key="a04-nickname"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
+          >
+            {renderProgressHeader(1, () =>
+              setStep(signupAgeGroup === 'under14' ? 'guardian_sent' : 'terms_age')
+            )}
+
+            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 space-y-7">
               <div>
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">주로 어디서 만나요?</h3>
-                <p className="text-xs text-stone-500 mt-1">자주 가는 곳의 생물부터 추천해 드려요</p>
+                <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                  닉네임을 적어주세요
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-1">
+                  탐험 맵과 댓글에 표시돼요
+                </p>
               </div>
 
-              {/* Location Chips */}
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-bold text-stone-400">장소</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    '🏡 동네 산책길',
-                    '🌳 공원',
-                    '⛰️ 산 · 숲',
-                    '🏖️ 바다 · 갯벌',
-                    '🏞️ 강 · 하천',
-                    '🪴 집 · 베란다',
-                    '✈️ 여행지',
-                  ].map((loc) => {
-                    const isSelected = qLocations.includes(loc.replace(/^[^\s]+\s/, ''));
-                    const cleanName = loc.replace(/^[^\s]+\s/, '');
+              <div>
+                <label className="text-[13px] font-semibold text-[#8c948a] block mb-1">
+                  닉네임
+                </label>
+                <input
+                  type="text"
+                  maxLength={12}
+                  value={nickname}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNickname(v);
+                    if (nicknameError) setNicknameError(validateNickname(v));
+                  }}
+                  placeholder="모아로그 닉네임"
+                  autoFocus
+                  className={`w-full py-3 bg-transparent border-b text-[20px] font-bold text-[#202320] placeholder:text-[#a5aca4] focus:outline-none transition-colors ${
+                    nicknameError ? 'border-[#ff5100]' : 'border-[#e6e9e5] focus:border-black'
+                  }`}
+                />
+                {nicknameError && (
+                  <p className="text-[12px] font-semibold text-[#ff5100] mt-2">
+                    {nicknameError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="px-4 pb-6 pt-2 bg-[#fbfbfb] shrink-0">
+              <button
+                type="button"
+                disabled={!nickname.trim()}
+                onClick={handleNicknameSubmit}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
+                계속하기
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= A-05: 장소 · 방문 빈도 질문 ================= */}
+        {step === 'locations' && (
+          <motion.div
+            key="a05-locations"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
+          >
+            {renderProgressHeader(2, () => setStep('nickname'))}
+
+            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 space-y-6">
+              <div>
+                <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                  주로 어디서 만나요?
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-1">
+                  자주 가는 곳의 생물부터 추천해 드려요
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-[#202320]">장소</span>
+                  <span className="text-[12px] text-[#8c948a]">중복 선택</span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                  {PLACE_OPTIONS.map((place) => {
+                    const isSelected = selectedLocations.includes(place.id);
                     return (
                       <button
-                        key={loc}
+                        key={place.id}
                         type="button"
-                        onClick={() => {
-                          setQLocations((prev) =>
-                            isSelected ? prev.filter((x) => x !== cleanName) : [...prev, cleanName]
-                          );
-                        }}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                          isSelected
-                            ? 'bg-stone-950 text-white shadow-xs'
-                            : 'bg-white text-stone-700 border border-stone-200'
-                        }`}
+                        onClick={() =>
+                          setSelectedLocations((prev) =>
+                            isSelected ? prev.filter((x) => x !== place.id) : [...prev, place.id]
+                          )
+                        }
+                        className="flex flex-col items-center gap-1.5 cursor-pointer"
                       >
-                        {loc}
+                        <div
+                          className={`w-[62px] h-[62px] rounded-full flex items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-[#f4fbdd] border-2 border-black'
+                              : 'bg-[#f4f5f4] border border-transparent hover:border-[#d2d7d1]'
+                          }`}
+                        >
+                          {renderPlaceVector(place.icon)}
+                        </div>
+                        <span
+                          className={`text-[12px] text-center leading-tight ${
+                            isSelected ? 'font-bold text-[#202320]' : 'font-normal text-[#626961]'
+                          }`}
+                        >
+                          {place.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Frequency Section */}
-              <div className="space-y-1.5 pt-2">
-                <p className="text-[11px] font-bold text-stone-400">얼마나 자주 나가나요?</p>
-                <div className="flex flex-wrap gap-2">
-                  {['거의 매일', '주 10회 이상', '주말에만', '가끔 여행 갈 때'].map((freq) => (
-                    <button
-                      key={freq}
-                      type="button"
-                      onClick={() => setQFrequency(freq)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                        qFrequency === freq
-                          ? 'bg-stone-950 text-white shadow-xs'
-                          : 'bg-white text-stone-700 border border-stone-200'
-                      }`}
-                    >
-                      {freq}
-                    </button>
-                  ))}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-[#202320]">얼마나 자주 가나요?</span>
+                  <span className="text-[12px] text-[#8c948a]">단일 선택</span>
                 </div>
-              </div>
 
-              {/* Informative Callout Note */}
-              <div className="p-3.5 rounded-2xl bg-[#f0f8db] border border-[#d4ee38] text-[11px] text-stone-800 leading-relaxed">
-                <p className="font-bold flex items-center gap-1 mb-0.5">
-                  <span>💡 위치는 포착한 장소 기록에만 쓰여요</span>
-                </p>
-                <p className="text-stone-600">탐험 맵에 내가 다녀온 곳이 예쁘게 표시돼요</p>
+                <div className="flex flex-wrap gap-2">
+                  {FREQUENCY_OPTIONS.map((freq) => {
+                    const isSelected = selectedFrequency === freq;
+                    return (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => setSelectedFrequency(isSelected ? '' : freq)}
+                        className={`px-4 py-2.5 rounded-full text-[13px] transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-black text-white font-bold border border-black'
+                            : 'bg-white text-[#202320] font-semibold border border-[#e6e9e5] shadow-2xs'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="pb-4 space-y-2.5">
+            <div className="px-4 pb-6 pt-2 space-y-2.5 bg-[#fbfbfb] shrink-0">
               <button
                 type="button"
-                onClick={() => setStep('q_purpose')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer"
+                disabled={selectedLocations.length === 0 && !selectedFrequency}
+                onClick={() => setStep('purposes')}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
-                다음
+                계속하기
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (step === 'q_kingdom') setStep('q_subgroup');
-                  else if (step === 'q_subgroup') setStep('q_location');
-                  else if (step === 'q_location') setStep('q_purpose');
-                  else setStep('q_ready');
-                }}
-                className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-medium"
+                onClick={() => setStep('purposes')}
+                className="w-full py-2 text-center text-[14px] text-[#8c948a] hover:text-[#202320] font-semibold cursor-pointer"
               >
                 건너뛰기
               </button>
@@ -1052,98 +1469,70 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-2 STEP 5: 질문 4/4 (하고 싶은 것)
-            ============================================================== */}
-        {step === 'q_purpose' && (
+        {/* ================= A-06: 목적 질문 ================= */}
+        {step === 'purposes' && (
           <motion.div
-            key="q-purpose-screen"
-            initial={{ opacity: 0, x: 20 }}
+            key="a06-purposes"
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6 overflow-hidden"
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
           >
-            {/* Top header */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep('q_location')}
-                  className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="text-xs font-mono font-bold text-stone-400">4/4</span>
-              </div>
-              <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
-                <div className="w-full h-full bg-stone-950 rounded-full" />
-              </div>
-            </div>
+            {renderProgressHeader(3, () => setStep('locations'))}
 
-            <div className="my-auto space-y-4">
+            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 space-y-5">
               <div>
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">
-                  모아로그로 뭘 하고 싶어요?
-                </h3>
-                <p className="text-xs text-stone-500 mt-1">해당하는 걸 모두 골라 주세요</p>
+                <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                  어떤 기록을 남기고 싶나요?
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-1">여러 개 골라도 좋아요</p>
               </div>
 
-              {/* 5 Purpose Checklist Cards */}
-              <div className="space-y-2">
-                {[
-                  { id: '보이는 생물 이름이 궁금해요', icon: '🔍' },
-                  { id: '나만의 도감을 채우고 싶어요', icon: '📖' },
-                  { id: '생물 사진 실력을 늘리고 싶어요', icon: '📷' },
-                  { id: '아이와 자연 공부를 하고 싶어요', icon: '👦' },
-                  { id: '뱃지 모으고 레벨업 하고 싶어요', icon: '🏅' },
-                ].map((item) => {
-                  const isChecked = qPurposes.includes(item.id);
+              <div className="space-y-2.5">
+                {PURPOSE_OPTIONS.map((opt) => {
+                  const isChecked = selectedPurposes.includes(opt.id);
                   return (
                     <button
-                      key={item.id}
+                      key={opt.id}
                       type="button"
-                      onClick={() => {
-                        setQPurposes((prev) =>
-                          isChecked ? prev.filter((x) => x !== item.id) : [...prev, item.id]
-                        );
-                      }}
-                      className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                        isChecked
-                          ? 'bg-white border-stone-950 shadow-xs'
-                          : 'bg-white/80 border-stone-200'
+                      onClick={() =>
+                        setSelectedPurposes((prev) =>
+                          isChecked ? prev.filter((x) => x !== opt.id) : [...prev, opt.id]
+                        )
+                      }
+                      className={`w-full px-4 py-4 rounded-[20px] bg-white text-left flex items-center justify-between transition-all cursor-pointer ${
+                        isChecked ? 'border-2 border-black' : 'border border-[#e6e9e5]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">{item.icon}</span>
-                        <span className="text-xs font-bold text-stone-900">{item.id}</span>
-                      </div>
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                          isChecked
-                            ? 'border-stone-950 bg-stone-950 text-white'
-                            : 'border-stone-300'
+                      <span className="text-[15px] font-semibold text-[#202320] pr-3">
+                        {opt.label}
+                      </span>
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                          isChecked ? 'bg-black text-white' : 'border border-[#d2d7d1]'
                         }`}
                       >
                         {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="pb-4 space-y-2.5">
+            <div className="px-4 pb-6 pt-2 space-y-2.5 bg-[#fbfbfb] shrink-0">
               <button
                 type="button"
-                onClick={() => setStep('q_ready')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer"
+                disabled={selectedPurposes.length === 0}
+                onClick={() => setStep('persona')}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
-                다음
+                계속하기
               </button>
               <button
                 type="button"
-                onClick={() => setStep('q_ready')}
-                className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-medium"
+                onClick={() => setStep('persona')}
+                className="w-full py-2 text-center text-[14px] text-[#8c948a] hover:text-[#202320] font-semibold cursor-pointer"
               >
                 건너뛰기
               </button>
@@ -1151,743 +1540,363 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-2 STEP 6: 준비 완료 (READY)
-            ============================================================== */}
-        {step === 'q_ready' && (
+        {/* ================= A-07: 탐험가 유형 (9종, 초기 미선택, 건너뛰기=만능) ================= */}
+        {step === 'persona' && (
           <motion.div
-            key="q-ready-screen"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6 overflow-hidden"
-          >
-            <div className="pt-2" />
-
-            <div className="my-auto space-y-6 text-center">
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200/80 max-w-xs mx-auto space-y-2">
-                <p className="text-xs text-stone-500 font-medium">준비 완료! 당신은</p>
-                <h3 className="text-xl font-black text-stone-950">
-                  {assignedPersona === 'birder'
-                    ? '초보 조류 탐험가'
-                    : assignedPersona === 'botanist'
-                    ? '초보 식물 탐험가'
-                    : assignedPersona === 'entomologist'
-                    ? '초보 곤충 탐험가'
-                    : '초보 만능 탐험가'}
-                </h3>
-                <div className="pt-1">
-                  <span className="inline-block px-3 py-1 bg-[#d4ee38] text-stone-950 rounded-full text-[11px] font-black shadow-2xs">
-                    🎁 첫 포착은 가입 없이 무료
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative w-44 h-44 mx-auto flex items-center justify-center">
-                <img
-                  src={KINGFISHER_PHOTO}
-                  alt="Bird"
-                  className="w-32 h-32 object-contain filter drop-shadow-xl"
-                />
-              </div>
-            </div>
-
-            <div className="pb-4">
-              <button
-                type="button"
-                id="btn-onboarding-capture-start"
-                onClick={() => setStep('capture_method')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer flex items-center justify-center gap-2"
-              >
-                <Camera className="w-4 h-4 text-[#d4ee38]" />
-                <span>첫 생물 포착하기</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-3 STEP 1: 포착 방법 (CAPTURE METHOD)
-            ============================================================== */}
-        {step === 'capture_method' && (
-          <motion.div
-            key="capture-method-screen"
-            initial={{ opacity: 0, x: 20 }}
+            key="a07-persona"
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-6"
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
           >
-            <div className="pt-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setStep('q_ready')}
-                className="p-1 rounded-full text-stone-600 hover:text-stone-900 hover:bg-stone-200"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
+            {renderProgressHeader(4, () => setStep('purposes'))}
+
+            <div className="px-4 pt-6 pb-3 shrink-0">
+              <h2 className="text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                당신의 탐험가 유형은 무엇인가요
+              </h2>
+              <p className="text-[13px] text-[#626961] mt-1">리포트에서 수정 가능해요</p>
             </div>
 
-            <div className="my-auto space-y-6">
-              <div className="space-y-1">
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">
-                  첫 생물을 포착해 볼까요?
-                </h3>
-                <p className="text-xs text-stone-500">지금 찍어도, 찍어 둔 사진을 골라도 돼요</p>
-              </div>
-
-              <div className="space-y-3">
-                {/* Method 1: Camera */}
-                <button
-                  type="button"
-                  id="btn-method-live-camera"
-                  onClick={() => setStep('capture_viewfinder')}
-                  className="w-full p-4 rounded-3xl bg-stone-950 text-white flex items-center justify-between shadow-md active:scale-98 transition-all"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                      <Camera className="w-6 h-6 text-[#d4ee38]" />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="text-sm font-black text-white">지금 촬영하기</h4>
-                      <p className="text-[11px] text-stone-400 mt-0.5">지금 보이는 생물을 바로 찍어요</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-stone-400" />
-                </button>
-
-                {/* Method 2: Gallery */}
-                <button
-                  type="button"
-                  id="btn-method-gallery"
-                  onClick={() => setStep('capture_gallery')}
-                  className="w-full p-4 rounded-3xl bg-white border border-stone-200/80 text-stone-900 flex items-center justify-between shadow-xs hover:bg-stone-50 active:scale-98 transition-all"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-stone-700" />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="text-sm font-black text-stone-900">갤러리에서 고르기</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">예전에 찍어 둔 사진도 분류할 수 있어요</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-stone-400" />
-                </button>
-              </div>
-
-              {/* Sample Photo Experience Link */}
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    
-                    setSelectedPhotoIdx(0);
-                    setStep('capture_analyzing');
-                  }}
-                  className="text-xs font-bold text-stone-700 hover:text-stone-950 inline-flex items-center gap-1 transition-colors"
-                >
-                  <span>지금 주변에 생물이 없다면?</span>
-                  <span className="text-blue-600 underline">예시 사진으로 체험 &gt;</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="pb-4 text-center">
-              <p className="text-[11px] text-stone-400">카메라 · 사진 권한은 조작할 때만 사용해요</p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-3 STEP 2: 촬영 (CAMERA VIEWFINDER)
-            ============================================================== */}
-        {(step === 'capture_viewfinder' || step === 'capture_gallery') && (
-          <div className="fixed inset-0 z-40 bg-black">
-            <LensView
-              onboardingMode
-              onOnboardingRegister={(sp, obs) => {
-                void obs;
-                setChosenSpecimen(sp);
-                setStep('save_card');
-              }}
-              onCollectSpecimen={() => {}}
-              existingSpecimens={[]}
-              freeScansRemaining={10}
-              isProUser={false}
-              currentPersona={assignedPersona}
-              onNavigateToArchive={() => setStep('save_card')}
-              onOpenPaywall={() => {}}
-            />
-          </div>
-        )}
-        {/* ==============================================================
-            FLOW 1-3 STEP 4: 분석 중 (ANALYZING)
-            ============================================================== */}
-        {step === 'capture_analyzing' && (
-          <motion.div
-            key="capture-analyzing-screen"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full h-full max-w-md mx-auto bg-stone-950 text-white flex flex-col justify-between p-6 relative overflow-hidden"
-          >
-            <div className="pt-2" />
-
-            <div className="my-auto flex flex-col items-center text-center space-y-6">
-              {/* Photo with Scanning Laser Animation */}
-              <div className="relative w-64 h-64 rounded-3xl overflow-hidden border border-white/20 shadow-2xl">
-                <img
-                  src={KINGFISHER_PHOTO}
-                  alt="Analyzing Target"
-                  className="w-full h-full object-cover"
-                />
-                {/* Green Laser Line Animation */}
-                <motion.div
-                  className="absolute left-0 right-0 h-1 bg-[#d4ee38] shadow-[0_0_12px_#d4ee38]"
-                  initial={{ top: '0%' }}
-                  animate={{ top: ['0%', '100%', '0%'] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="text-lg font-black text-white tracking-tight">
-                  어떤 생물인지 찾는 중...
-                </h3>
-                <p className="text-xs text-stone-400">국내 생물 1만 2천개 종과 비교하고 있어요</p>
-              </div>
-
-              {/* 3 Steps Checklist */}
-              <div className="w-full max-w-xs space-y-2 bg-white/10 backdrop-blur-md rounded-2xl p-4 text-xs font-semibold text-left border border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
-                      analysisProgressStep >= 1 ? 'bg-[#d4ee38] text-stone-950' : 'bg-white/20 text-white'
-                    }`}
-                  >
-                    {analysisProgressStep >= 1 ? <Check className="w-3 h-3 stroke-[3]" /> : '1'}
-                  </div>
-                  <span className={analysisProgressStep >= 1 ? 'text-white' : 'text-stone-400'}>
-                    생물 위치 찾기
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
-                      analysisProgressStep >= 2 ? 'bg-[#d4ee38] text-stone-950' : 'bg-white/20 text-white'
-                    }`}
-                  >
-                    {analysisProgressStep >= 2 ? <Check className="w-3 h-3 stroke-[3]" /> : '2'}
-                  </div>
-                  <span className={analysisProgressStep >= 2 ? 'text-white' : 'text-stone-400'}>
-                    종 분류
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
-                      analysisProgressStep >= 3 ? 'bg-[#d4ee38] text-stone-950' : 'bg-white/20 text-white'
-                    }`}
-                  >
-                    {analysisProgressStep >= 3 ? <Check className="w-3 h-3 stroke-[3]" /> : '3'}
-                  </div>
-                  <span className={analysisProgressStep >= 3 ? 'text-white' : 'text-stone-400'}>
-                    포착 점수 계산
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-stone-400">보통 3초 정도 걸려요</p>
-            </div>
-
-            <div className="pb-4" />
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-3 STEP 5 & 6: 분류 결과 & 포착 점수
-            ============================================================== */}
-        {step === 'capture_result' && (
-          <motion.div
-            key="capture-result-screen"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between overflow-hidden relative"
-          >
-            {/* Top Toggle Bar: 백과 / 포착 */}
-            <div className="p-4 bg-white border-b border-stone-200/80 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => setStep('capture_method')}
-                className="p-1 rounded-full text-stone-500 hover:text-stone-900"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center bg-stone-100 p-1 rounded-full relative">
-                <button
-                  type="button"
-                  onClick={() => setResultSubTab('wiki')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                    resultSubTab === 'wiki'
-                      ? 'bg-white text-stone-950 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  백과
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResultSubTab('score')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                    resultSubTab === 'score'
-                      ? 'bg-stone-950 text-white shadow-xs'
-                      : 'text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  포착
-                </button>
-
-                {resultSubTab === 'wiki' && (
-                  <div className="absolute -bottom-7 right-0 bg-stone-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md animate-bounce whitespace-nowrap">
-                    포착을 누르면 내 사진 점수가 나와요
-                  </div>
-                )}
-              </div>
-
-              <div className="w-5" />
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Photo Card with S Rank Badge */}
-              <div className="relative aspect-square rounded-3xl overflow-hidden shadow-md bg-stone-900">
-                <img
-                  src={chosenSpecimen.originalImage}
-                  alt={chosenSpecimen.koreanName}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-3 left-3 bg-[#d4ee38] text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md">
-                  NEW +
-                </div>
-                <div className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-amber-400 text-stone-950 font-black flex items-center justify-center text-xs shadow-md">
-                  S
-                </div>
-              </div>
-
-              {/* Subtab 1: 백과 (WIKI) */}
-              {resultSubTab === 'wiki' ? (
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-[11px] font-mono font-medium text-stone-400">
-                      양재천 둔치 수풀 · 오늘 14:32
-                    </span>
-                    <h3 className="text-xl font-black text-stone-950 mt-0.5">
-                      {chosenSpecimen.koreanName}
-                    </h3>
-                    <p className="text-xs text-stone-500 font-mono">
-                      조류 · 파랑새목 물총새과 · Alcedo atthis
-                    </p>
-                  </div>
-
-                  {/* 4 Feature Badges */}
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {['여름철새', '하천·호수', '약 17cm', '작은 물고기'].map((tag) => (
-                      <div
-                        key={tag}
-                        className="p-2 bg-white rounded-xl border border-stone-200/80 text-center text-[10px] font-bold text-stone-700 shadow-2xs"
-                      >
-                        {tag}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Appearance Highlights */}
-                  <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 space-y-2 shadow-2xs">
-                    <h4 className="text-xs font-bold text-stone-900">외형 특징</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['청록색 등', '주황색 배', '길고 뾰족한 부리'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2.5 py-1 bg-stone-100 rounded-lg text-xs font-medium text-stone-800"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Subtab 2: 포착 (SCORE RADAR & TIPS) */
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-base font-black text-stone-950">포착 점수</h4>
-                      <p className="text-xs text-stone-500">AI 사진 평가</p>
-                    </div>
-                    <span className="text-2xl font-black text-stone-950">{onboardingScore.total}점</span>
-                  </div>
-
-                  {/* 5각 포착 밸런스 (레이더) + 식별 신뢰도 */}
-                  <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
-                    <RadarChart
-                      data={[
-                        { label: '포즈', value: onboardingScore.pose, fullMark: 20 },
-                        { label: '구도', value: onboardingScore.direction, fullMark: 20 },
-                        { label: '배경', value: onboardingScore.background, fullMark: 20 },
-                        { label: '난이도', value: onboardingScore.size, fullMark: 20 },
-                        { label: '채광', value: onboardingScore.clarity, fullMark: 20 },
-                      ]}
-                      grade={onboardingScore.grade}
-                      totalScore={onboardingScore.total}
-                      size={220}
-                    />
-                    <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 border-t border-stone-200/70 pt-2">
-                      <span>식별 신뢰도</span>
-                      <span className="font-mono text-stone-900">{chosenSpecimen.confidence ?? 0}%</span>
-                    </div>
-                  </div>
-
-                  {/* AI Commentary Card */}
-                  <div className="bg-[#f0f8db] rounded-2xl p-4 border border-[#d4ee38] space-y-1.5 text-xs text-stone-900">
-                    <p className="font-bold">나뭇가지 끝에 앉은 순간을 정확히 잡았어요.</p>
-                    <p className="text-stone-600 text-[11px] leading-relaxed">
-                      배색이 부드럽게 넘어가 깃털 색이 돋보여요.
-                    </p>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 text-[11px] text-stone-600">
-                    <span className="font-bold text-stone-900 block mb-0.5">촬영 팁</span>
-                    한 단계 낮은 앵글로 찍으면 눈높이가 맞아 사진 점수가 더 올라가요!
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Actions: 종 변경 / 공유하기 / 도감 등록 (앱 카메라 포착 결과와 동일) */}
-            <div className="p-4 bg-white border-t border-stone-200/80 flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                id="btn-choose-alternative-species"
-                onClick={() => setIsChooseAltModalOpen(true)}
-                className="flex-1 py-3.5 bg-stone-900 hover:bg-stone-800 text-stone-200 font-bold text-xs rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4 text-amber-400" />
-                <span>종 변경</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleResultShare}
-                className="flex-1 py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-              >
-                <Share2 className="w-4 h-4 text-stone-600" />
-                <span>공유하기</span>
-              </button>
-              <button
-                type="button"
-                id="btn-register-to-dex"
-                onClick={() => setStep('save_card')}
-                className="flex-[1.5] py-3.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-2xl shadow-[0_4px_20px_rgba(251,191,36,0.3)] flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-              >
-                <Check className="w-4 h-4 stroke-[3px]" />
-                <span>도감 등록</span>
-              </button>
-            </div>
-
-            {/* STEP 7: 직접 고르기 Modal */}
-            {isChooseAltModalOpen && (
-              <div className="fixed inset-0 z-70 bg-stone-950/70 backdrop-blur-xs flex items-end justify-center">
-                <motion.div
-                  initial={{ y: '100%' }}
-                  animate={{ y: 0 }}
-                  exit={{ y: '100%' }}
-                  className="bg-white rounded-t-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
-                >
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsChooseAltModalOpen(false)}
-                        className="p-1 rounded-full text-stone-500"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-                      <h4 className="text-base font-black text-stone-900">직접 고르기</h4>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsChooseAltModalOpen(false)}
-                      className="p-1 rounded-full text-stone-400"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Search Bar */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                    <input
-                      type="text"
-                      placeholder="생물 이름으로 검색"
-                      value={searchAltQuery}
-                      onChange={(e) => setSearchAltQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-stone-100 text-xs font-medium text-stone-900 outline-none"
-                    />
-                  </div>
-
-                  {/* Similar Species List */}
-                  <div className="space-y-3 flex-1 overflow-y-auto">
-                    <div>
-                      <p className="text-[11px] font-bold text-stone-500 mb-1.5 flex items-center gap-1">
-                        <span>✦ 비슷한 추천 생물</span>
-                      </p>
-                      <div className="space-y-1.5">
-                        {SPECIES_ECOLOGY_ENCYCLOPEDIA
-                          .filter((item) => {
-                            if (searchAltQuery.trim()) {
-                              return item.koreanName.toLowerCase().includes(searchAltQuery.toLowerCase()) ||
-                                     item.family.toLowerCase().includes(searchAltQuery.toLowerCase());
-                            }
-                            return item.category === chosenSpecimen.category || item.family.includes('물총새') || item.koreanName.includes('물총새');
-                          })
-                          .slice(0, 4)
-                          .map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => {
-                                setChosenSpecimen((prev) => ({
-                                  ...prev,
-                                  koreanName: item.koreanName,
-                                  scientificName: item.scientificName,
-                                  category: item.category,
-                                  family: item.family,
-                                  habitatType: item.habitat,
-                                  wikiSummary: item.keyIdentification,
-                                  traitChips: item.tags || prev.traitChips,
-                                }));
-                                setIsChooseAltModalOpen(false);
-                              }}
-                              className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                                chosenSpecimen.koreanName === item.koreanName
-                                  ? 'bg-[#f0f8db] border-[#d4ee38]'
-                                  : 'bg-white border-stone-200'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <p className="text-xs font-bold text-stone-900">{item.koreanName}</p>
-                                  <span className="text-[9px] font-bold px-1.5 py-0.2 bg-stone-100 text-stone-600 rounded">추천</span>
-                                </div>
-                                <p className="text-[10px] text-stone-500">{item.categoryLabel || item.category} · {item.family}</p>
-                              </div>
-                              {chosenSpecimen.koreanName === item.koreanName && (
-                                <Check className="w-4 h-4 text-stone-900 stroke-[3]" />
-                              )}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[11px] font-bold text-stone-400 mb-1.5">전체 도감 종 목록</p>
-                      <div className="space-y-1.5">
-                        {SPECIES_ECOLOGY_ENCYCLOPEDIA
-                          .filter((item) => {
-                            if (!searchAltQuery.trim()) return true;
-                            return item.koreanName.toLowerCase().includes(searchAltQuery.toLowerCase()) ||
-                                   item.family.toLowerCase().includes(searchAltQuery.toLowerCase()) ||
-                                   item.scientificName.toLowerCase().includes(searchAltQuery.toLowerCase());
-                          })
-                          .map((item) => (
-                            <button
-                              key={`all-${item.id}`}
-                              type="button"
-                              onClick={() => {
-                                setChosenSpecimen((prev) => ({
-                                  ...prev,
-                                  koreanName: item.koreanName,
-                                  scientificName: item.scientificName,
-                                  category: item.category,
-                                  family: item.family,
-                                  habitatType: item.habitat,
-                                  wikiSummary: item.keyIdentification,
-                                  traitChips: item.tags || prev.traitChips,
-                                }));
-                                setIsChooseAltModalOpen(false);
-                              }}
-                              className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
-                                chosenSpecimen.koreanName === item.koreanName
-                                  ? 'bg-[#f0f8db] border-[#d4ee38]'
-                                  : 'bg-white border-stone-200/80'
-                              }`}
-                            >
-                              <div>
-                                <p className="text-xs font-bold text-stone-900">{item.koreanName}</p>
-                                <p className="text-[10px] text-stone-500">{item.categoryLabel || item.category} · {item.family}</p>
-                              </div>
-                              {chosenSpecimen.koreanName === item.koreanName && (
-                                <Check className="w-4 h-4 text-stone-900 stroke-[3]" />
-                              )}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2.5">
+              {Object.values(NATURALIST_PERSONAS).map((p) => {
+                const isSelected = selectedPersona === p.id;
+                return (
                   <button
+                    key={p.id}
                     type="button"
-                    onClick={() => {
-                      setIsChooseAltModalOpen(false);
-                      setStep('save_card');
-                    }}
-                    className="w-full py-4 bg-stone-950 text-white rounded-2xl text-xs font-black"
+                    onClick={() => setSelectedPersona(p.id)}
+                    className={`w-full px-4 py-3.5 rounded-[20px] bg-white text-left flex items-center gap-3.5 transition-all cursor-pointer ${
+                      isSelected ? 'border-2 border-black' : 'border border-[#e6e9e5] hover:border-[#d2d7d1]'
+                    }`}
                   >
-                    이 생물로 도감에 등록하기
+                    <PersonaBadgeIcon persona={p.id} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[15px] font-bold text-[#202320]">{p.title}</h3>
+                      <p className="text-[12px] text-[#8c948a] mt-0.5 truncate">{p.description}</p>
+                    </div>
                   </button>
-                </motion.div>
-              </div>
-            )}
+                );
+              })}
+            </div>
+
+            <div className="px-4 pb-6 pt-2 space-y-2.5 bg-[#fbfbfb] shrink-0 border-t border-[#f4f5f4]">
+              <button
+                type="button"
+                disabled={!selectedPersona}
+                onClick={() => setStep('permissions')}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] disabled:bg-[#e8e8e8] disabled:text-[#a5aca4] text-white text-[15px] font-bold transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
+                계속하기
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPersona('general');
+                  setStep('permissions');
+                }}
+                className="w-full py-2 text-center text-[14px] text-[#8c948a] hover:text-[#202320] font-semibold cursor-pointer"
+              >
+                건너뛰기
+              </button>
+            </div>
           </motion.div>
         )}
 
-        {/* ==============================================================
-            FLOW 1-4 STEP 1 & 2: 도감 등록 & 저장할 때 가입
-            ============================================================== */}
-        {step === 'save_card' && (
+        {/* ================= A-08: 권한 안내 (OS 팝업 미호출) ================= */}
+        {step === 'permissions' && (
           <motion.div
-            key="save-card-screen"
+            key="a08-permissions"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between overflow-hidden"
+          >
+            <div className="px-4 pt-3 pb-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('persona')}
+                className="w-10 h-10 -ml-2 rounded-full text-[#202320] hover:bg-[#f4f5f4] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-7">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#202320] tracking-[-0.02em] leading-[1.3]">
+                  필요할 때 하나씩<br />물어볼게요
+                </h2>
+                <p className="text-[13px] text-[#626961] mt-2 leading-relaxed">
+                  권한은 기능을 처음 쓸 때 요청해요. 거부해도 기본 기능은 쓸 수 있어요
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-[52px] h-[52px] rounded-full bg-[#f4f5f4] flex items-center justify-center shrink-0 text-[#48525d]">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold text-[#202320]">
+                      카메라 <span className="text-[#ff5100]">(필수)</span>
+                    </p>
+                    <p className="text-[13px] text-[#8c948a] mt-0.5">
+                      촬영하면 생물 이름을 바로 알려드려요
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-[52px] h-[52px] rounded-full bg-[#f4f5f4] flex items-center justify-center shrink-0 text-[#5fa800]">
+                    <ImageIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold text-[#202320]">사진 (선택)</p>
+                    <p className="text-[13px] text-[#8c948a] mt-0.5">
+                      앨범의 사진으로도 이름을 알아낼 수 있어요
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-[52px] h-[52px] rounded-full bg-[#f4f5f4] flex items-center justify-center shrink-0 text-[#ef4452]">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold text-[#202320]">위치 정보 (선택)</p>
+                    <p className="text-[13px] text-[#8c948a] mt-0.5">
+                      관찰 장소를 기록하고 탐험맵을 보여드려요
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-[52px] h-[52px] rounded-full bg-[#f4f5f4] flex items-center justify-center shrink-0 text-[#f2b705]">
+                    <Bell className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold text-[#202320]">알림 (선택)</p>
+                    <p className="text-[13px] text-[#8c948a] mt-0.5">
+                      뱃지·출석·댓글 소식을 알려드려요
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 pb-6 pt-2 bg-[#fbfbfb] shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('complete')}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold transition-colors cursor-pointer"
+              >
+                확인했어요
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= A-12: 시작 완료 (0 / 10칸) ================= */}
+        {step === 'complete' && (
+          <motion.div
+            key="a12-complete"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full min-h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-5 sm:p-6 relative overflow-y-auto"
+            className="w-full h-full max-w-md mx-auto flex flex-col justify-between px-4 py-4 overflow-y-auto"
           >
-            <div className="pt-2 text-center shrink-0">
-              <h3 className="text-lg font-black text-stone-950">도감에 새 생물이 추가됐어요!</h3>
+            <div className="shrink-0 pt-1">
+              <button
+                type="button"
+                onClick={() => setStep('permissions')}
+                className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] shadow-2xs text-[#202320] flex items-center justify-center cursor-pointer"
+                aria-label="뒤로"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Scrollable Collectible Card & Stats Area */}
-            <div className="my-auto py-3 space-y-3.5 flex-1">
-              <div className="bg-white rounded-3xl p-4 shadow-xl border border-stone-200/80 max-w-xs mx-auto text-center space-y-2.5">
-                <div className="relative aspect-4/5 max-h-56 rounded-2xl overflow-hidden bg-stone-900 mx-auto">
-                  <img
-                    src={chosenSpecimen.originalImage}
-                    alt={chosenSpecimen.koreanName}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2.5 left-2.5 bg-amber-400 text-stone-950 font-black text-[10px] w-6 h-6 rounded-full flex items-center justify-center shadow-md">
-                    S
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-base font-black text-stone-950">{chosenSpecimen.koreanName}</h4>
-                  <p className="text-[10px] font-mono text-stone-400">NO.001</p>
-                </div>
+            <div className="my-auto py-6 flex flex-col items-center text-center space-y-5">
+              {/* Speech bubble */}
+              <div className="relative bg-white px-4 py-2 rounded-2xl border border-[#e6e9e5] shadow-2xs">
+                <span className="text-[14px] font-bold text-[#202320]">준비가 완료되었어요!</span>
+                <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-[#e6e9e5] rotate-45" />
               </div>
 
-              {/* 1 / 10 Free Slots Progress */}
-              <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 space-y-1.5 shadow-xs">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-stone-900">무료 도감</span>
-                  <span className="text-stone-900 font-mono">1 / 10칸</span>
+              <PersonaBadgeIcon persona={selectedPersona || 'general'} size="lg" />
+
+              <div className="pt-1">
+                <span className="relative inline-block px-1">
+                  <span
+                    className="absolute left-0 right-0 bottom-0.5 h-2.5 rounded-xs"
+                    style={{
+                      backgroundColor:
+                        selectedPersona === 'invertebrates'
+                          ? '#f7cfc1'
+                          : `${activePersonaProfile.accentColor}30`,
+                    }}
+                  />
+                  <span className="relative text-[24px] font-bold text-[#202320] tracking-[-0.02em]">
+                    초보 {activePersonaProfile.title}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4 pb-2 shrink-0">
+              {/* Empty 0 / 10칸 Gauge Card */}
+              <div className="bg-white rounded-[20px] border border-[#e6e9e5] p-4 space-y-3">
+                <div className="flex items-center justify-between text-[14px]">
+                  <span className="font-bold text-[#202320]">무료 도감</span>
+                  <span className="tabular-nums text-[#8c948a]">
+                    <strong className="text-[#202320]">0</strong> / 10칸
+                  </span>
                 </div>
-                <div className="grid grid-cols-10 gap-1.5 pt-1">
-                  <div className="h-2 rounded-full bg-[#d4ee38]" />
-                  {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} className="h-2 rounded-full bg-stone-200" />
+                <div className="grid grid-cols-10 gap-1.5">
+                  {Array.from({ length: 10 }).map((_, idx) => (
+                    <div key={idx} className="h-1.5 rounded-full bg-[#f4f5f4]" />
                   ))}
                 </div>
               </div>
 
-              {/* Badges & EXP */}
-              <div className="space-y-2">
-                <div className="p-3 bg-white rounded-2xl border border-stone-200/80 flex items-center gap-3 shadow-2xs">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
-                    🌱
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-stone-900">첫 표본 뱃지 획득 · +{EXPLORER_BADGES_MASTER[0].expReward} EXP</p>
-                    <p className="text-[10px] text-stone-500">처음으로 생물을 포착했어요</p>
-                  </div>
-                </div>
+              <p className="text-[13px] text-[#626961] text-center">
+                10칸을 넘어 끝까지 모아 보세요
+              </p>
 
-                <div className="p-3 bg-stone-950 text-white rounded-2xl flex items-center justify-between shadow-xs">
-                  <div>
-                    <span className="text-xs font-bold">Lv.1 초보 조류 탐험가</span>
-                    <span className="text-[10px] text-stone-400 block mt-0.5">Lv.2까지 {EXPLORER_LEVEL_MIN_EXP[1] - EXPLORER_BADGES_MASTER[0].expReward} EXP 남음</span>
-                  </div>
-                  <span className="text-xs font-bold text-[#d4ee38]">현재 {EXPLORER_BADGES_MASTER[0].expReward} EXP</span>
-                </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleFinishOnboarding('lens')}
+                  className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold transition-colors cursor-pointer"
+                >
+                  첫 생물 포착하기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFinishOnboarding('archive')}
+                  className="w-full py-2 text-center text-[13px] font-semibold text-[#8c948a] hover:text-[#202320] cursor-pointer"
+                >
+                  확인
+                </button>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* Sticky Bottom Action Button Bar */}
-            <div className="shrink-0 pt-3 pb-6 sticky bottom-0 z-20 bg-[#F5F5F7]/95 backdrop-blur-xs">
+      {/* ================= A-09b: 만 14세 미만 보호 안내 시트 (A-09 위에 오버레이) ================= */}
+      <AnimatePresence>
+        {isUnder14SheetOpen && (
+          <div
+            className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-end justify-center"
+            onClick={() => setIsUnder14SheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-[28px] max-w-md w-full p-6 shadow-2xl space-y-5 pb-8 border-t border-[#e6e9e5]"
+            >
+              <div className="w-9 h-1 rounded-full bg-[#d2d7d1] mx-auto -mt-2" />
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <h3 className="text-[20px] font-bold text-[#202320]">만 14세 미만 이용 안내</h3>
+                  <p className="text-[13px] text-[#626961]">
+                    안전한 탐험을 위해 일부 커뮤니티 기능이 제한돼요
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsUnder14SheetOpen(false)}
+                  className="w-9 h-9 rounded-full bg-[#f4f5f4] text-[#626961] flex items-center justify-center shrink-0 cursor-pointer"
+                  aria-label="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-4 rounded-[20px] bg-[#f4f5f4] space-y-2.5 text-[13px]">
+                <div className="flex items-center gap-2 text-[#202320] font-semibold">
+                  <Check className="w-4 h-4 text-[#6d8911] shrink-0" />
+                  <span>그대로 이용: 도감 · 뱃지 · 리포트 · 기기 저장</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#8c948a]">
+                  <Lock className="w-4 h-4 shrink-0" />
+                  <span>14세부터 이용: 메모 쓰기 · 프로필 공개 · 랭킹 노출</span>
+                </div>
+              </div>
+
+              <p className="text-[12px] text-[#626961] leading-relaxed">
+                계정을 만든 뒤 보호자 이메일로 동의를 받으면 바로 시작할 수 있어요.
+              </p>
+
               <button
                 type="button"
-                id="btn-save-to-dex"
-                onClick={() => setIsSaveAuthSheetOpen(true)}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer pointer-events-auto block text-center"
+                onClick={handleConfirmUnder14Notice}
+                className="w-full h-14 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold cursor-pointer"
               >
-                도감에 저장하기
+                확인하고 시작하기
               </button>
-            </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-            {/* STEP 2: 저장 = 가입 Bottom Sheet */}
-            {isSaveAuthSheetOpen && (
-              <div
-                className="fixed inset-0 z-60 bg-stone-950/70 backdrop-blur-xs flex items-end justify-center"
-                onClick={() => setIsSaveAuthSheetOpen(false)}
-              >
-                <motion.div
-                  initial={{ y: '100%' }}
-                  animate={{ y: 0 }}
-                  exit={{ y: '100%' }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-white rounded-t-3xl max-w-md w-full p-6 shadow-2xl space-y-4 pb-8"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={chosenSpecimen.originalImage}
-                      alt="Thumb"
-                      className="w-12 h-12 rounded-2xl object-cover"
-                    />
-                    <div>
-                      <h4 className="text-sm font-black text-stone-900">
-                        포착한 {chosenSpecimen.koreanName}를 내 도감에 저장할까요?
+      {/* ================= A-03 / A-03s / A-03b / A-03c / A-03d / A-03e Auth Sheet ================= */}
+      <AnimatePresence>
+        {authSheetMode && (
+          <div
+            className="fixed inset-0 z-70 bg-black/55 backdrop-blur-xs flex items-end justify-center"
+            onClick={() => {
+              if (authSheetMode !== 'loading') setAuthSheetMode(null);
+            }}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-[28px] max-w-md w-full p-6 shadow-2xl space-y-5 pb-8 border-t border-[#e6e9e5]"
+            >
+              <div className="w-9 h-1 rounded-full bg-[#d2d7d1] mx-auto -mt-2" />
+
+              {(authSheetMode === 'login' || authSheetMode === 'signup_select') && (
+                <>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <h4 className="text-[20px] font-bold text-[#202320]">
+                        {authSheetMode === 'login'
+                          ? '다시 만나서 반가워요'
+                          : '어떤 계정으로 시작할까요?'}
                       </h4>
-                      <p className="text-xs text-stone-500">
-                        가입하면 도감 · 뱃지 · 경험치가 계정에 저장돼요
+                      <p className="text-[13px] text-[#626961]">
+                        {authSheetMode === 'login'
+                          ? '가입했던 계정으로 로그인해 주세요'
+                          : '계정을 연결하면 도감과 기록이 안전하게 보관돼요'}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="bg-stone-50 rounded-2xl p-3.5 space-y-2 text-xs font-medium text-stone-700 border border-stone-200/60">
-                    <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                      <span>무료 도감 10칸 · 모을수록 레벨업</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                      <span>10칸 모두 포착 점수 · 백과가 함께 저장돼요</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                      <span>뱃지 · 경험치 · 탐험 맵 기록 시작</span>
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => handleSocialLogin('google')}
-                      className="w-full py-3.5 px-4 rounded-2xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-900 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
+                      onClick={() => setAuthSheetMode(null)}
+                      className="w-9 h-9 rounded-full bg-[#f4f5f4] text-[#626961] hover:text-[#202320] flex items-center justify-center shrink-0 cursor-pointer"
+                      aria-label="닫기"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAuthProvider('google', authSheetMode)}
+                      className="w-full h-14 px-4 rounded-xl border border-[#e6e9e5] bg-white hover:bg-[#f4f5f4] text-[#202320] text-[15px] font-bold flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path
                           fill="#4285F4"
                           d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1910,364 +1919,170 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => handleSocialLogin('apple')}
-                      className="w-full py-3.5 px-4 rounded-2xl bg-black hover:bg-stone-900 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
+                      onClick={() => handleSelectAuthProvider('apple', authSheetMode)}
+                      className="w-full h-14 px-4 rounded-xl bg-black hover:bg-[#202320] text-white text-[15px] font-bold flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
                     >
                       <span className="text-base leading-none"></span>
                       <span>Apple로 계속하기</span>
                     </button>
                   </div>
 
+                  <p className="text-[12px] text-[#8c948a] text-center">
+                    {authSheetMode === 'login'
+                      ? '로그인하면 내 도감과 모든 기록을 바로 불러와요'
+                      : '선택한 계정으로 보호자 확인 및 도감 저장을 진행해요'}
+                  </p>
+                </>
+              )}
+
+              {authSheetMode === 'loading' && (
+                <div className="py-10 flex flex-col items-center text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full border-3 border-black border-t-transparent animate-spin" />
+                  <p className="text-[18px] font-bold text-[#202320]">{authLoadingText}</p>
+                  <p className="text-[13px] text-[#8c948a]">잠시만 기다려 주세요</p>
+                </div>
+              )}
+
+              {authSheetMode === 'error' && (
+                <div className="py-4 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-[#fff1eb] text-[#ff5100] flex items-center justify-center mx-auto">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-[18px] font-bold text-[#202320]">로그인하지 못했어요</h4>
+                    <p className="text-[13px] text-[#626961]">다시 시도해 주세요</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsSaveAuthSheetOpen(false);
-                      // 등록하지 않고 홈으로만 이동 (체험 생물은 저장하지 않음)
-                      onComplete(assignedPersona);
-                    }}
-                    className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-medium"
+                    onClick={() => setAuthSheetMode('login')}
+                    className="w-full h-13 rounded-xl bg-black text-white text-[14px] font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    저장하지 않고 둘러보기
+                    <RotateCcw className="w-4 h-4" />
+                    <span>다시 시도</span>
                   </button>
-                </motion.div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-4 STEP 3: 서비스 이용 동의 (TERMS)
-            ============================================================== */}
-        {step === 'terms_agreement' && (
-          <motion.div
-            key="terms-agreement-screen"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="w-full min-h-full max-w-md mx-auto bg-white flex flex-col justify-between p-5 sm:p-6 overflow-y-auto"
-          >
-            <div className="pt-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setStep('save_card')}
-                className="p-1 rounded-full text-stone-500 hover:text-stone-900 cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="my-auto py-3 space-y-5 flex-1">
-              <div className="space-y-1">
-                <h3 className="text-xl font-black text-stone-900 tracking-tight">서비스 이용 동의</h3>
-                <p className="text-xs text-stone-500">도감을 저장하기 전 마지막 단계예요</p>
-              </div>
-
-              {/* All agree */}
-              <div className="p-4 rounded-2xl bg-stone-100 flex items-center justify-between cursor-pointer" onClick={handleAgreeAllToggle}>
-                <span className="text-sm font-black text-stone-900">약관 전체 동의</span>
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center border ${
-                    agreeAll ? 'bg-stone-950 border-stone-950 text-white' : 'border-stone-300'
-                  }`}
-                >
-                  {agreeAll && <Check className="w-4 h-4 stroke-[3]" />}
                 </div>
-              </div>
+              )}
 
-              {/* Checklist items */}
-              <div className="space-y-3 px-1 text-xs">
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAgreeAge(!agreeAge)}>
-                  <div className="flex items-center gap-2.5">
-                    <Check className={`w-4 h-4 ${agreeAge ? 'text-stone-900' : 'text-stone-300'}`} />
-                    <span className="font-semibold text-stone-800">만 14세 이상입니다.</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400" />
-                </div>
-
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAgreeTerms(!agreeTerms)}>
-                  <div className="flex items-center gap-2.5">
-                    <Check className={`w-4 h-4 ${agreeTerms ? 'text-stone-900' : 'text-stone-300'}`} />
-                    <span className="font-semibold text-stone-800">[필수] 서비스 이용약관</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400" />
-                </div>
-
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAgreePrivacy(!agreePrivacy)}>
-                  <div className="flex items-center gap-2.5">
-                    <Check className={`w-4 h-4 ${agreePrivacy ? 'text-stone-900' : 'text-stone-300'}`} />
-                    <span className="font-semibold text-stone-800">[필수] 개인정보 처리방침</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400" />
-                </div>
-
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAgreeLocation(!agreeLocation)}>
-                  <div className="flex items-center gap-2.5">
-                    <Check className={`w-4 h-4 ${agreeLocation ? 'text-stone-900' : 'text-stone-300'}`} />
-                    <span className="font-semibold text-stone-800">[필수] 위치기반 서비스 이용약관</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400" />
-                </div>
-
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setAgreeMarketing(!agreeMarketing)}>
-                  <div className="flex items-center gap-2.5">
-                    <Check className={`w-4 h-4 ${agreeMarketing ? 'text-stone-900' : 'text-stone-300'}`} />
-                    <span className="font-medium text-stone-600">[선택] 마케팅 정보 수신 동의</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-stone-400" />
-                </div>
-              </div>
-
-              {/* Note */}
-              <div className="p-3 bg-stone-50 rounded-xl text-[11px] text-stone-500 leading-relaxed border border-stone-100">
-                무료 도감은 10칸, 사진은 <strong className="text-stone-800 font-bold">압축본</strong>으로 보존돼요. 원본 · Live 포토와 무제한 칸은 이용권에서 열려요.
-              </div>
-            </div>
-
-            <div className="shrink-0 pt-3 pb-6 sticky bottom-0 z-20 bg-white/95 backdrop-blur-xs">
-              <button
-                type="button"
-                id="btn-agree-complete"
-                onClick={() => setStep('signup_complete')}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer pointer-events-auto block text-center"
-              >
-                가입 완료
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ==============================================================
-            FLOW 1-4 STEP 4: 가입 완료 (SIGNUP COMPLETE)
-            ============================================================== */}
-        {step === 'signup_complete' && (
-          <motion.div
-            key="signup-complete-screen"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full min-h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-5 sm:p-6 relative overflow-y-auto"
-          >
-            <div className="pt-2 text-center space-y-1 shrink-0">
-              <h3 className="text-xl font-black text-stone-950">가입 완료!</h3>
-              <p className="text-xs text-stone-500">
-                {chosenSpecimen.koreanName}가 내 도감 No.001로 저장됐어요
-              </p>
-            </div>
-
-            {/* 10-Slot Grid Board */}
-            <div className="my-auto py-3 space-y-4 flex-1">
-              <div className="bg-white rounded-3xl p-4 shadow-sm border border-stone-200/80 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold px-1">
-                  <span className="text-stone-900">무료 도감 10칸</span>
-                  <span className="text-stone-900 font-mono">1 / 10</span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-2 pt-2">
-                  {/* Slots 1-10: Empty Dotted Outline Cards (always empty for sample) */}
-                  {Array.from({ length: 10 }).map((_, idx) => (
-                    <div
-                      key={idx + 1}
-                      className="aspect-3/4 rounded-xl overflow-hidden border border-dashed border-stone-300 bg-stone-50/60 flex items-center justify-center text-xs font-mono font-bold text-stone-400"
+              {authSheetMode === 'already_registered' && (
+                <div className="py-4 text-center space-y-4">
+                  <h4 className="text-[18px] font-bold text-[#202320]">이미 가입한 계정이에요</h4>
+                  <p className="text-[13px] text-[#626961]">
+                    기존 도감과 기록으로 바로 들어갈까요?
+                  </p>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAuthProvider(lastTriedProvider, 'login')}
+                      className="w-full h-13 rounded-xl bg-black text-white text-[14px] font-bold cursor-pointer"
                     >
-                      {idx === 0 ? (<img src={chosenSpecimen.originalImage || KINGFISHER_PHOTO} alt={chosenSpecimen.koreanName} className="w-full h-full object-cover rounded-xl" />) : idx + 1}
-                    </div>
-                  ))}
+                      기존 계정으로 로그인
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthSheetMode('signup_select')}
+                      className="w-full py-2 text-[13px] text-[#8c948a] font-semibold cursor-pointer"
+                    >
+                      다른 계정 고르기
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <p className="text-xs text-stone-500 text-center font-medium">
-                이미 모은 생물을 다시 찍는 건 칸을 쓰지 않아요
-              </p>
-            </div>
-
-            <div className="shrink-0 pt-3 pb-6 sticky bottom-0 z-20 bg-[#F5F5F7]/95 backdrop-blur-xs">
-              <button
-                type="button"
-                id="btn-signup-done-next"
-                onClick={() => {
-                  if (hasSeenPlanIntro(userAccount?.id)) {
-                    handleFinalHomeEntry(false);
-                    return;
-                  }
-                  markPlanIntroSeen(userAccount?.id);
-                  setStep('plan_compare');
-                }}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer pointer-events-auto block text-center"
-              >
-                다음
-              </button>
-            </div>
-          </motion.div>
+              {authSheetMode === 'expired' && (
+                <div className="py-4 text-center space-y-4">
+                  <h4 className="text-[18px] font-bold text-[#202320]">로그인이 만료되었어요</h4>
+                  <p className="text-[13px] text-[#626961]">보안을 위해 다시 로그인해 주세요</p>
+                  <button
+                    type="button"
+                    onClick={() => setAuthSheetMode('login')}
+                    className="w-full h-13 rounded-xl bg-black text-white text-[14px] font-bold cursor-pointer"
+                  >
+                    다시 로그인하기
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
         )}
+      </AnimatePresence>
 
-        {/* ==============================================================
-            FLOW 1-5: 요금제 (비교 + 선택 + 시작, 한 화면)
-            ============================================================== */}
-        {step === 'plan_compare' && (
-          <motion.div
-            key="plan-compare-screen"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full min-h-full max-w-md mx-auto bg-[#F5F5F7] flex flex-col justify-between p-5 sm:p-6 overflow-y-auto"
+      {/* ================= A-10 & A-11: 약관 / 개인정보 전문 모달 ================= */}
+      <AnimatePresence>
+        {legalModal && (
+          <div
+            className="fixed inset-0 z-80 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setLegalModal(null)}
           >
-            <div className="pt-2 flex items-center justify-end shrink-0">
-              <button
-                type="button"
-                onClick={() => handleFinalHomeEntry(false)}
-                className="p-1 rounded-full text-stone-400 hover:text-stone-900 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="my-auto py-3 space-y-4 flex-1">
-              <div className="text-center space-y-1">
-                <h3 className="text-xl font-black text-stone-950 tracking-tight">10칸을 넘어, 끝까지 모아 보세요</h3>
-                <p className="text-xs text-stone-500">어떤 요금제를 골라도 지금부터 칸 제한이 사라져요</p>
-              </div>
-
-              {/* 3 Tier Plans */}
-              <div className="space-y-2.5">
-                {/* 1. Yearly (Recommended) */}
+            <motion.div
+              initial={{ y: 32, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 32, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-[28px] sm:rounded-[28px] max-w-md w-full max-h-[82vh] flex flex-col overflow-hidden border border-[#e6e9e5]"
+            >
+              <div className="px-5 py-4 border-b border-[#e6e9e5] flex items-center justify-between shrink-0">
+                <h3 className="text-[17px] font-bold text-[#202320]">
+                  {legalModal === 'terms' ? '회원 이용약관' : '개인정보 수집 및 이용 동의'}
+                </h3>
                 <button
                   type="button"
-                  onClick={() => setSelectedPlanTier('yearly')}
-                  className={`w-full p-4 rounded-3xl border text-left transition-all relative cursor-pointer ${
-                    selectedPlanTier === 'yearly'
-                      ? 'bg-white border-stone-950 shadow-md ring-2 ring-stone-950'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
+                  onClick={() => setLegalModal(null)}
+                  className="w-9 h-9 rounded-full bg-[#f4f5f4] text-[#626961] flex items-center justify-center cursor-pointer"
+                  aria-label="닫기"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-black text-stone-950 bg-[#d4ee38] px-2 py-0.5 rounded-full">
-                      추천 · 가장 많이 선택
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-600">월 구독보다 27% 저렴</span>
-                  </div>
-                  <div className="flex items-baseline justify-between mt-2">
-                    <div>
-                      <h4 className="text-sm font-black text-stone-950">연간 구독</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">1년 · 월 2,417원 꼴</p>
-                    </div>
-                    <span className="text-base font-black text-stone-950">29,000원</span>
-                  </div>
-                </button>
-
-                {/* 2. Monthly */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPlanTier('monthly')}
-                  className={`w-full p-4 rounded-3xl border text-left transition-all cursor-pointer ${
-                    selectedPlanTier === 'monthly'
-                      ? 'bg-white border-stone-950 shadow-md ring-2 ring-stone-950'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <h4 className="text-sm font-black text-stone-950">월 구독</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">매월 자동 결제 · 언제든 해지 가능</p>
-                    </div>
-                    <span className="text-base font-black text-stone-950">3,300원</span>
-                  </div>
-                </button>
-
-                {/* 3. Lifetime */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPlanTier('lifetime')}
-                  className={`w-full p-4 rounded-3xl border text-left transition-all cursor-pointer ${
-                    selectedPlanTier === 'lifetime'
-                      ? 'bg-white border-stone-950 shadow-md ring-2 ring-stone-950'
-                      : 'bg-white/80 border-stone-200 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">
-                      평생 소장
-                    </span>
-                    <span className="text-[11px] font-bold text-stone-500">연간 2년 값으로 평생</span>
-                  </div>
-                  <div className="flex items-baseline justify-between mt-2">
-                    <div>
-                      <h4 className="text-sm font-black text-stone-950">영구 이용권</h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">1번 결제 · 평생 제한 해제</p>
-                    </div>
-                    <span className="text-base font-black text-stone-950">58,000원</span>
-                  </div>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Comparison Table */}
-              <div className="bg-white rounded-3xl p-4 shadow-sm border border-stone-200/80 text-xs">
-                <div className="grid grid-cols-3 pb-2 border-b border-stone-100 font-bold text-stone-400 text-[11px]">
-                  <span>항목</span>
-                  <span className="text-center">무료</span>
-                  <span className="text-right text-stone-900">이용권</span>
-                </div>
-
-                <div className="divide-y divide-stone-100">
-                  <div className="grid grid-cols-3 py-2.5 items-center">
-                    <span className="font-semibold text-stone-700">도감 칸</span>
-                    <span className="text-center text-stone-500 font-mono">10칸</span>
-                    <span className="text-right font-black text-emerald-600">무제한</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 py-2.5 items-center">
-                    <span className="font-semibold text-stone-700">포착 점수 · 백과</span>
-                    <span className="text-center text-stone-500">10칸까지</span>
-                    <span className="text-right font-black text-emerald-600">모든 생물</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 py-2.5 items-center">
-                    <span className="font-semibold text-stone-700">사진 저장</span>
-                    <span className="text-center text-stone-500">압축본</span>
-                    <span className="text-right font-black text-emerald-600">원본 + Live</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 py-2.5 items-center">
-                    <span className="font-semibold text-stone-700">뱃지 · 경험치 · 리포트</span>
-                    <span className="text-center text-stone-500">✓</span>
-                    <span className="text-right font-black text-emerald-600">✓</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 py-2.5 items-center">
-                    <span className="font-semibold text-stone-700">구독이 끝나도</span>
-                    <span className="text-center text-stone-300">-</span>
-                    <span className="text-right font-black text-emerald-600">모든 도감 평생</span>
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 text-[13px] text-[#555c54] leading-relaxed">
+                {legalModal === 'terms' ? (
+                  <>
+                    <p className="font-bold text-[#202320]">제1조 (목적)</p>
+                    <p>
+                      본 약관은 모아로그(Moalog)가 제공하는 야생 생물 촬영 식별, 개인 도감 저장, 생태 리포트 및 탐험맵 서비스의 이용 조건과 절차를 규정합니다.
+                    </p>
+                    <p className="font-bold text-[#202320]">제2조 (안전한 생태 관찰)</p>
+                    <p>
+                      회원은 관찰 및 촬영 시 야생 생물의 서식지를 훼손하지 않으며, 법정보호종 및 멸종위기종의 상세 위치 노출 제한 정책을 준수합니다.
+                    </p>
+                    <p className="font-bold text-[#202320]">제3조 (만 14세 미만 회원 보호)</p>
+                    <p>
+                      만 14세 미만 회원은 법정대리인 동의를 거쳐 가입하며, 공개 메모 작성·프로필 공개·랭킹 노출 기능이 자동으로 비활성화됩니다.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-[#202320]">1. 수집하는 개인정보 항목</p>
+                    <p>
+                      소셜 로그인 식별자, 이메일, 닉네임, 탐험가 유형, 연령 확인 정보(만 14세 이상/미만) 및 만 14세 미만의 경우 법정대리인 성명과 이메일을 수집합니다.
+                    </p>
+                    <p className="font-bold text-[#202320]">2. 수집 및 이용 목적</p>
+                    <p>
+                      회원 식별 및 도감 데이터 동기화, 만 14세 미만 법정대리인 동의 확인, 기기 변경 시 기록 복원에 사용합니다.
+                    </p>
+                    <p className="font-bold text-[#202320]">3. 사진 메타데이터 보호</p>
+                    <p>
+                      커뮤니티 공개 시 업로드 이미지의 EXIF GPS 좌표 등 민감 메타데이터는 자동 제거되어 안전하게 처리됩니다.
+                    </p>
+                  </>
+                )}
               </div>
-            </div>
 
-            <div className="shrink-0 pt-3 pb-6 sticky bottom-0 z-20 bg-[#F5F5F7]/95 backdrop-blur-xs space-y-2">
-              <button
-                type="button"
-                id="btn-subscribe-and-start"
-                onClick={() => {
-                  confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
-                  handleFinalHomeEntry(true);
-                }}
-                className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl text-sm font-black transition-all active:scale-98 shadow-md cursor-pointer block text-center"
-              >
-                {selectedPlanTier === 'yearly'
-                  ? '연간 29,000원으로 시작하기'
-                  : selectedPlanTier === 'monthly'
-                  ? '월 3,300원으로 시작하기'
-                  : '58,000원으로 평생 이용하기'}
-              </button>
-
-              <button
-                type="button"
-                id="btn-plan-skip-free"
-                onClick={() => handleFinalHomeEntry(false)}
-                className="w-full py-1 text-center text-xs text-stone-400 hover:text-stone-700 font-bold cursor-pointer"
-              >
-                무료 10칸으로 먼저 써 볼게요
-              </button>
-            </div>
-          </motion.div>
+              <div className="px-5 py-4 border-t border-[#e6e9e5] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (legalModal === 'terms') setAgreeTerms(true);
+                    else setAgreePrivacy(true);
+                    setLegalModal(null);
+                  }}
+                  className="w-full h-13 rounded-xl bg-black text-white text-[14px] font-bold cursor-pointer"
+                >
+                  동의하고 닫기
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

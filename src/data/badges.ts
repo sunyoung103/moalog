@@ -1,4 +1,5 @@
-import { Badge, Observation, Specimen, UserStats } from '../types';
+import { Badge, Specimen, UserStats, UserAccount } from '../types';
+import { getUnder14DesignFlags } from '../utils/levelPolicy';
 
 export interface ExplorerBadgeDefinition {
   id: string;
@@ -9,7 +10,9 @@ export interface ExplorerBadgeDefinition {
   targetProgress: number;
   progressUnit: string;
   tip: string;
-  expReward: number;
+  tier: 'bronze' | 'silver' | 'gold' | 'legend';
+  xpReward: number;
+  isCommunityOnly?: boolean;
 }
 
 export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
@@ -21,19 +24,45 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '입문',
     targetProgress: 1,
     progressUnit: '종',
-    expReward: 10, // [임시 EXP]
     tip: '카메라 렌즈로 첫 생태 표본을 등록해 보세요.',
+    tier: 'bronze',
+    xpReward: 10,
   },
   {
-    id: 'badge-02',
-    title: '5일 연속 관찰',
-    icon: '🔥',
-    desc: '5일 연속 생태 관찰 기록 달성',
-    category: '연속',
-    targetProgress: 5,
+    id: 'badge-att-7',
+    title: '7일 출석 탐험가',
+    icon: '📅',
+    desc: '누적 출석 7일 달성',
+    category: '출석',
+    targetProgress: 7,
     progressUnit: '일',
-    expReward: 20, // [임시 EXP]
-    tip: '매일 1회 이상 표본을 관찰해 기록을 이어가세요.',
+    tip: '하루 쉬어도 초기화되지 않고 누적 7일에 달성해요.',
+    tier: 'bronze',
+    xpReward: 10,
+  },
+  {
+    id: 'badge-att-14',
+    title: '14일 꾸준한 기록',
+    icon: '🔥',
+    desc: '누적 출석 14일 달성',
+    category: '출석',
+    targetProgress: 14,
+    progressUnit: '일',
+    tip: '누적 출석 14일을 채워 은 뱃지를 얻어 보세요.',
+    tier: 'silver',
+    xpReward: 30,
+  },
+  {
+    id: 'badge-att-30',
+    title: '30일 자연 동반자',
+    icon: '🏅',
+    desc: '누적 출석 30일 달성',
+    category: '출석',
+    targetProgress: 30,
+    progressUnit: '일',
+    tip: '한 달 동안 꾸준히 접속해 금 뱃지를 획득해 보세요.',
+    tier: 'gold',
+    xpReward: 50,
   },
   {
     id: 'badge-03',
@@ -43,8 +72,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '식물',
     targetProgress: 3,
     progressUnit: '종',
-    expReward: 20, // [임시 EXP]
     tip: '야생화나 나뭇잎을 렌즈로 촬영해 보세요.',
+    tier: 'bronze',
+    xpReward: 10,
   },
   {
     id: 'badge-04',
@@ -54,8 +84,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '조류',
     targetProgress: 2,
     progressUnit: '종',
-    expReward: 20, // [임시 EXP]
     tip: '참새, 까치, 직박구리 등 주변 새를 포착하세요.',
+    tier: 'bronze',
+    xpReward: 10,
   },
   {
     id: 'badge-05',
@@ -65,8 +96,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '곤충',
     targetProgress: 2,
     progressUnit: '종',
-    expReward: 20, // [임시 EXP]
     tip: '화단이나 풀숲의 나비와 벌을 관찰해 보세요.',
+    tier: 'bronze',
+    xpReward: 10,
   },
   {
     id: 'badge-06',
@@ -76,8 +108,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '보전',
     targetProgress: 5,
     progressUnit: '종',
-    expReward: 30, // [임시 EXP]
     tip: '다양한 야생 생물을 발견하고 도감을 채우세요.',
+    tier: 'silver',
+    xpReward: 30,
   },
   {
     id: 'badge-07',
@@ -87,8 +120,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '탐사',
     targetProgress: 3,
     progressUnit: '곳',
-    expReward: 30, // [임시 EXP]
     tip: '공원, 하천, 산림 등 여러 서식지를 방문하세요.',
+    tier: 'silver',
+    xpReward: 30,
   },
   {
     id: 'badge-08',
@@ -98,8 +132,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '주기',
     targetProgress: 12,
     progressUnit: '회',
-    expReward: 30, // [임시 EXP]
     tip: '계절과 시기별 변화를 꾸준히 기록해 보세요.',
+    tier: 'silver',
+    xpReward: 30,
   },
   {
     id: 'badge-09',
@@ -109,8 +144,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '도감',
     targetProgress: 10,
     progressUnit: '종',
-    expReward: 40, // [임시 EXP]
     tip: '식물, 조류, 곤충 등 골고루 탐색해 보세요.',
+    tier: 'gold',
+    xpReward: 50,
   },
   {
     id: 'badge-10',
@@ -120,30 +156,9 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '포유류',
     targetProgress: 2,
     progressUnit: '종',
-    expReward: 30, // [임시 EXP]
     tip: '청설모나 다람쥐 등 포유류의 흔적을 찾아보세요.',
-  },
-  {
-    id: 'badge-11',
-    title: '골든아워 탐험가',
-    icon: '🌅',
-    desc: '일출·일몰 시간대 생물 10회 포착',
-    category: '시간',
-    targetProgress: 10,
-    progressUnit: '회',
-    expReward: 40, // [임시 EXP]
-    tip: '이른 아침이나 해질녘 골든아워에 탐사해 보세요.',
-  },
-  {
-    id: 'badge-12',
-    title: '마이크로 접사',
-    icon: '🔬',
-    desc: '초정밀 매크로 접사 5회 촬영',
-    category: '접사',
-    targetProgress: 5,
-    progressUnit: '회',
-    expReward: 30, // [임시 EXP]
-    tip: '10cm 이내 근접 촬영으로 세부를 담아보세요.',
+    tier: 'bronze',
+    xpReward: 10,
   },
   {
     id: 'badge-13',
@@ -153,152 +168,137 @@ export const EXPLORER_BADGES_MASTER: ExplorerBadgeDefinition[] = [
     category: '수변',
     targetProgress: 2,
     progressUnit: '종',
-    expReward: 30, // [임시 EXP]
     tip: '하천, 호수, 습지의 수생 생물을 포착하세요.',
+    tier: 'silver',
+    xpReward: 30,
+  },
+  {
+    id: 'badge-comm-memo',
+    title: '첫 탐험 메모',
+    icon: '📝',
+    desc: '탐험맵에 첫 현장 메모 공유',
+    category: '커뮤니티',
+    targetProgress: 1,
+    progressUnit: '회',
+    tip: '탐험맵에서 주변 탐험가들과 관찰 메모를 나눠보세요.',
+    tier: 'bronze',
+    xpReward: 10,
+    isCommunityOnly: true,
+  },
+  {
+    id: 'badge-comm-heart',
+    title: '첫 하트',
+    icon: '❤️',
+    desc: '탐험맵 기록에 첫 공감 남기기',
+    category: '커뮤니티',
+    targetProgress: 1,
+    progressUnit: '회',
+    tip: '다른 탐험가의 기록에 따뜻한 하트를 눌러보세요.',
+    tier: 'bronze',
+    xpReward: 10,
+    isCommunityOnly: true,
   },
   {
     id: 'badge-14',
     title: '전설의 에코마스터',
     icon: '👑',
-    desc: '14개 탐사 뱃지 올클리어 달성',
+    desc: '모든 핵심 탐사 뱃지 수집 달성',
     category: '명예',
     targetProgress: 14,
     progressUnit: '개',
-    expReward: 100, // [임시 EXP]
     tip: '모든 탐사 뱃지를 수집해 전설에 도달하세요.',
+    tier: 'legend',
+    xpReward: 100,
   },
 ];
 
+export const TOTAL_POLICY_BADGES_ADULT = 45;
+export const TOTAL_POLICY_BADGES_UNDER14 = 43; // 커뮤니티 뱃지 2개(첫 탐험 메모 · 첫 하트) 제외
+
 export interface EvaluatedBadge extends ExplorerBadgeDefinition {
-  currentProgress: number;
   isUnlocked: boolean;
   unlockedAt?: string;
 }
 
-// 탐사 레벨 기준: 누적 EXP. 전체 뱃지 EXP 합계의 20/40/60/80% 지점에서 Lv.2~Lv.5 시작 (100%는 전체 달성)
-// 인덱스 0 = Lv.1, 1 = Lv.2, 2 = Lv.3, 3 = Lv.4, 4 = Lv.5
-// 레벨 계산은 이 파일의 getExplorerLevelIdx 한 곳에서만 합니다.
-export const EXPLORER_TOTAL_EXP = EXPLORER_BADGES_MASTER.reduce((sum, d) => sum + d.expReward, 0);
-export const EXPLORER_LEVEL_MIN_EXP = [0, 0.2, 0.4, 0.6, 0.8].map((ratio) => Math.round(EXPLORER_TOTAL_EXP * ratio));
-
-export function getExplorerLevelIdx(exp: number): number {
-  let idx = 0;
-  EXPLORER_LEVEL_MIN_EXP.forEach((min, i) => {
-    if (exp >= min) idx = i;
-  });
-  return idx;
-}
-
-// EXP: 획득한 뱃지의 expReward 합계 (저장값이 아니라 계산값)
-export function getExplorerExp(badges: EvaluatedBadge[]): number {
-  return badges.filter((b) => b.isUnlocked).reduce((sum, b) => sum + b.expReward, 0);
-}
-
-// 관찰 통계 계산용: 수집(비대기, 미삭제) 표본만 사용
-// 앨범에서 가져온 사진 구분 (seasonLabel은 기존 데이터 호환용)
-const ALBUM_SEASON_LABEL = '앨범 포착 기록';
-
-function isLensObservation(obs: Observation): boolean {
-  return obs.isCapturedWithLens ?? obs.seasonLabel !== ALBUM_SEASON_LABEL;
-}
-
-// EXP·뱃지 집계용: 앨범 관찰 기록을 제외. 관찰이 전부 앨범이면 표본에서 제외
-function getLensStatsSpecimens(specimens: Specimen[]): Specimen[] {
-  return specimens.flatMap((s) => {
-    const all = s.observations || [];
-    if (all.length === 0) return [s];
-    const lens = all.filter(isLensObservation);
-    return lens.length > 0 ? [{ ...s, observations: lens }] : [];
-  });
-}
-function getStatsTargetSpecimens(specimens: Specimen[] = []): Specimen[] {
-  return getLensStatsSpecimens((specimens || []).filter((s) => s.isCollected && !s.isPending && !s.isDeleted));
-}
-
-function toDayKey(year: number, month: number, day: number): string {
-  return `${year}.${String(month).padStart(2, '0')}.${String(day).padStart(2, '0')}`;
-}
-
-// 연속 관찰 일수 (관찰 날짜 'YYYY.MM.DD' 기준)
-// 오늘 기록이 있으면 오늘부터, 없으면 어제부터 거꾸로 셉니다.
-// 즉 어제까지 이어진 기록은 유지되고, 오늘 기록이 생기면 +1 됩니다.
-export function calculateStreakDays(specimens: Specimen[] = [], today: Date = new Date()): number {
-  const dayKeys = new Set<string>();
-  getStatsTargetSpecimens(specimens).forEach((s) => {
-    s.observations?.forEach((obs) => {
-      const m = obs.date?.replace(/-/g, '.').match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
-      if (m) dayKeys.add(toDayKey(Number(m[1]), Number(m[2]), Number(m[3])));
-    });
-  });
-
-  const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const todayKey = toDayKey(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate());
-  if (!dayKeys.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
-
-  let streak = 0;
-  while (dayKeys.has(toDayKey(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate()))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
-
-// 방문 서식지 수: 관찰 기록의 장소명(구 포함, 예: "서울숲 (성동구 성수동)")이 서로 다른 개수
-export function countVisitedHabitats(specimens: Specimen[] = []): number {
-  const places = new Set<string>();
-  getStatsTargetSpecimens(specimens).forEach((s) => {
-    s.observations?.forEach((obs) => {
-      const place = obs.location?.trim();
-      if (place) places.add(place);
-    });
-  });
-  return places.size;
-}
-
-export function evaluateExplorerBadges(specimens: Specimen[] = [], userStats: UserStats): EvaluatedBadge[] {
+export function evaluateExplorerBadges(
+  specimens: Specimen[] = [],
+  userStats: UserStats,
+  userAccount?: UserAccount
+): EvaluatedBadge[] {
+  const { under14 } = getUnder14DesignFlags(userAccount);
   const safeSpecimens = specimens || [];
-  const collectedList = getLensStatsSpecimens(safeSpecimens.filter((s) => s.isCollected && !s.isPending));
+  const collectedList = safeSpecimens.filter((s) => s.isCollected && !s.isPending);
   const plantCount = collectedList.filter((s) => s.category === 'plants').length;
   const insectCount = collectedList.filter((s) => s.category === 'insects').length;
   const birdCount = collectedList.filter((s) => s.category === 'birds').length;
   const mammalCount = collectedList.filter((s) => s.category === 'mammals').length;
-  const aquaticCount = collectedList.filter((s) => s.category === 'fishes' || s.category === 'crustaceans' || s.category === 'mollusks').length;
-  const streakDays = calculateStreakDays(collectedList);
+  const aquaticCount = collectedList.filter(
+    (s) => s.category === 'fishes' || s.category === 'crustaceans' || s.category === 'mollusks'
+  ).length;
+  const streakDays = userStats?.streakDays || 0;
   const userUnlockedIds = new Set(userStats?.badges || []);
-  const totalObsCount = collectedList.reduce((acc, s) => acc + (s.observations ? s.observations.length : 0), 0);
+  const totalObsCount = collectedList.reduce(
+    (acc, s) => acc + (s.observations ? s.observations.length : 0),
+    0
+  );
 
-  // 뱃지별 현재 진행도 (14번 제외 13개)
-  const progressById: Record<string, number> = {
-    'badge-01': Math.min(1, collectedList.length),
-    'badge-02': Math.min(5, streakDays),
-    'badge-03': Math.min(3, plantCount),
-    'badge-04': Math.min(2, birdCount),
-    'badge-05': Math.min(2, insectCount),
-    'badge-06': Math.min(5, collectedList.length),
-    'badge-07': Math.min(3, countVisitedHabitats(collectedList)),
-    'badge-08': Math.min(12, totalObsCount),
-    'badge-09': Math.min(10, collectedList.length),
-    'badge-10': Math.min(2, mammalCount),
-    'badge-11': Math.min(10, totalObsCount > 0 ? 1 : 0),
-    'badge-12': Math.min(5, totalObsCount > 0 ? 1 : 0),
-    'badge-13': Math.min(2, aquaticCount),
-  };
+  // 14세 미만은 커뮤니티 뱃지 2개(첫 탐험 메모 · 첫 하트)를 숨긴다 (6장)
+  const visibleMaster = under14
+    ? EXPLORER_BADGES_MASTER.filter((b) => !b.isCommunityOnly)
+    : EXPLORER_BADGES_MASTER;
 
-  // 14번(전설의 에코마스터): 나머지 13개가 모두 달성됐을 때만 해금 (자기 자신은 세지 않음)
-  const achievedCount = EXPLORER_BADGES_MASTER.filter((d) => d.id !== 'badge-14').filter((d) => {
-    const done = userUnlockedIds.has(d.id) || (progressById[d.id] ?? 0) >= d.targetProgress;
-    return done;
-  }).length;
-  progressById['badge-14'] = achievedCount;
+  return visibleMaster.map((def) => {
+    let current = 0;
+    switch (def.id) {
+      case 'badge-01':
+        current = Math.min(1, collectedList.length);
+        break;
+      case 'badge-att-7':
+      case 'badge-att-14':
+      case 'badge-att-30':
+        current = streakDays;
+        break;
+      case 'badge-03':
+        current = plantCount;
+        break;
+      case 'badge-04':
+        current = birdCount;
+        break;
+      case 'badge-05':
+        current = insectCount;
+        break;
+      case 'badge-06':
+        current = collectedList.length;
+        break;
+      case 'badge-07':
+        current = userStats?.exploredHabitats?.length || 0;
+        break;
+      case 'badge-08':
+        current = totalObsCount;
+        break;
+      case 'badge-09':
+        current = collectedList.length;
+        break;
+      case 'badge-10':
+        current = mammalCount;
+        break;
+      case 'badge-13':
+        current = aquaticCount;
+        break;
+      case 'badge-14':
+        current = userUnlockedIds.size;
+        break;
+      default:
+        current = 0;
+    }
 
-  return EXPLORER_BADGES_MASTER.map((def) => {
-    const current = progressById[def.id] ?? 0;
-    const isUnlocked = userUnlockedIds.has(def.id) || (def.targetProgress > 0 && current >= def.targetProgress);
+    // 뱃지 상태는 획득 / 미획득 두 상태만 존재 (5-2)
+    const isUnlocked =
+      userUnlockedIds.has(def.id) || (def.targetProgress > 0 && current >= def.targetProgress);
     return {
       ...def,
-      currentProgress: current,
       isUnlocked,
-      unlockedAt: isUnlocked ? '2026.10.27' : undefined,
+      unlockedAt: isUnlocked ? '2026.11.22' : undefined,
     };
   });
 }
