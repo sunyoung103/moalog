@@ -248,6 +248,7 @@ export interface UserStats {
   };
   language?: SupportedLanguage; // 'ko' | 'en' | 'zh' | 'ja' | 'fr' | 'es' | 'de'
   showEnglishNameWithLocal?: boolean; // When non-English is chosen, show English name alongside
+  country?: string; // e.g. 'KR', 'US', 'JP', 'CN', 'FR', 'AU', 'GLOBAL'
 }
 
 export const EXPLORER_TITLES = {

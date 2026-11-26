@@ -20,6 +20,16 @@ import { getExplorerTitleInfo } from '../utils/explorerTitles';
 import { PersonaBadgeIcon } from './PersonaBadgeIcon';
 import { DataSourcesModal } from './DataSourcesModal';
 
+export const SUPPORTED_REGIONS = [
+  { code: 'KR', label: '대한민국', nativeLabel: 'South Korea', flag: '🇰🇷', apiNode: 'NIBR & GBIF Backbone (공공누리·CC BY 4.0)' },
+  { code: 'US', label: '미국', nativeLabel: 'United States', flag: '🇺🇸', apiNode: 'GBIF US & USFWS / IUCN (CC BY 4.0)' },
+  { code: 'JP', label: '일본', nativeLabel: 'Japan', flag: '🇯🇵', apiNode: 'GBIF JP & CoL Asia (CC BY 4.0)' },
+  { code: 'CN', label: '중국', nativeLabel: 'China', flag: '🇨🇳', apiNode: 'GBIF CN & CAS Flora (CC BY 4.0)' },
+  { code: 'FR', label: '프랑스', nativeLabel: 'France', flag: '🇫🇷', apiNode: 'GBIF FR & INPN (CC BY 4.0)' },
+  { code: 'AU', label: '호주', nativeLabel: 'Australia', flag: '🇦🇺', apiNode: 'GBIF AU & ALA (CC BY 4.0)' },
+  { code: 'GLOBAL', label: '글로벌 / 기타', nativeLabel: 'Global / Worldwide', flag: '🌍', apiNode: 'GBIF World & IUCN Red List (CC BY 4.0)' },
+];
+
 interface MyPageModalProps {
   userStats: UserStats;
   onUpdateStats: (newStats: Partial<UserStats>) => void;
@@ -62,6 +72,7 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
   const [isTitleSubPageOpen, setIsTitleSubPageOpen] = useState(false);
   const [pendingTitleId, setPendingTitleId] = useState<string>(userStats.selectedTitleId || 'default');
   const [isLanguageSubPageOpen, setIsLanguageSubPageOpen] = useState(false);
+  const [isCountrySubPageOpen, setIsCountrySubPageOpen] = useState(false);
   const [isDataSourcesOpen, setIsDataSourcesOpen] = useState(false);
   const [isConfirmAdultTransitionOpen, setIsConfirmAdultTransitionOpen] = useState(false);
   const [adultTransitionStep, setAdultTransitionStep] = useState<'confirm' | 'reconsent'>('confirm');
@@ -380,6 +391,80 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          ) : isCountrySubPageOpen ? (
+            /* ================= [SUB-PAGE] Country / Region Selection ================= */
+            <motion.div
+              key="country-subpage"
+              initial={{ x: 24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
+            >
+              <div className="flex items-center justify-between pb-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCountrySubPageOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <span className="text-[16px] font-bold text-[#202320]">국가 / 지역 설정</span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="py-2 space-y-3.5 flex-1 overflow-y-auto scrollbar-none">
+                <div className="bg-emerald-50 rounded-[20px] p-4 border border-emerald-200/70 space-y-1">
+                  <p className="text-[13px] font-bold text-emerald-900">지역별 오픈 생태 API 연동</p>
+                  <p className="text-[11px] text-emerald-700 leading-relaxed">
+                    선택하신 국가/지역의 공식 오픈 생물다양성 노드(GBIF, NIBR, IUCN)와 연동되어 현지 법정 보호종 및 자생지 정보를 정확히 제공합니다.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {SUPPORTED_REGIONS.map((reg) => {
+                    const isSelected = (userStats.country || 'KR') === reg.code;
+                    return (
+                      <button
+                        key={reg.code}
+                        type="button"
+                        onClick={() => {
+                          onUpdateStats({ country: reg.code });
+                          onShowToast(`접속 지역이 ${reg.label}(으)로 변경되었습니다`);
+                        }}
+                        className={`w-full p-4 rounded-[20px] text-left transition-all flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-black text-white border-2 border-black shadow-md'
+                            : 'bg-white text-[#202320] border border-[#e6e9e5] hover:bg-[#fbfbfb]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-2xl shrink-0">{reg.flag}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-[14px] font-bold truncate leading-tight">{reg.nativeLabel}</p>
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[#f4f5f4] text-[#6b7280]'}`}>
+                                {reg.label}
+                              </span>
+                            </div>
+                            <p className={`text-[11px] truncate mt-1 font-mono ${isSelected ? 'text-white/70' : 'text-[#8c948a]'}`}>
+                              API 노드: {reg.apiNode}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-5 h-5 text-[#c4eb43] shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </motion.div>
           ) : isAccountSubPageOpen ? (
@@ -796,6 +881,18 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                       <span className="text-[15px] font-semibold text-[#202320]">언어</span>
                       <span className="text-[13px] text-[#8c948a] flex items-center gap-1">
                         {SUPPORTED_LANGUAGES.find((l) => l.code === (userStats.language || 'ko'))?.nativeLabel || '시스템 기본'}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsCountrySubPageOpen(true)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
+                    >
+                      <span className="text-[15px] font-semibold text-[#202320]">국가 / 지역 설정</span>
+                      <span className="text-[13px] text-[#8c948a] flex items-center gap-1">
+                        {SUPPORTED_REGIONS.find((r) => r.code === (userStats.country || 'KR'))?.label || '대한민국'}
                         <ChevronRight className="w-4 h-4" />
                       </span>
                     </button>

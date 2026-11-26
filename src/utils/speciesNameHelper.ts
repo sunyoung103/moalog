@@ -216,3 +216,42 @@ export function getSpeciesTaxonomyCategoryLabel(category?: string): string {
   }
 }
 
+export function getLocalizedEcologyText(text: string, country: string = 'KR', lang: SupportedLanguage = 'ko'): string {
+  if (!text) return '';
+  if (country === 'KR' && lang === 'ko') return text;
+
+  let res = text;
+  if (country === 'US' || lang === 'en') {
+    res = res
+      .replace(/국립산림과학원/g, 'USDA Forest Service & Global Ecological Research')
+      .replace(/국립생물자원관/g, 'Global Biodiversity Information Facility (GBIF)')
+      .replace(/국립수목원/g, 'Global Botanical Gardens Network')
+      .replace(/한라산/g, 'Native Temperate Mountain Ranges')
+      .replace(/제주도/g, 'Native Region')
+      .replace(/환경부/g, 'Environmental Protection Agency & IUCN')
+      .replace(/자생/g, 'native distribution')
+      .replace(/보전 연구/g, 'conservation research');
+  } else if (country === 'JP' || lang === 'ja') {
+    res = res
+      .replace(/국립산림과학원/g, '森林総合研究所 (FFPRI)')
+      .replace(/국립생물자원관/g, 'GBIF Japan Node')
+      .replace(/국립수목원/g, '日本植物園協会')
+      .replace(/한라산/g, '自生地山岳地帯')
+      .replace(/제주도/g, '原産地')
+      .replace(/환경省/g, '環境省')
+      .replace(/자생/g, '自生')
+      .replace(/보전 연구/g, '保全研究');
+  } else if (country === 'CN' || lang === 'zh') {
+    res = res
+      .replace(/국립산림과학원/g, '中国林业科学研究院')
+      .replace(/국립생물자원관/g, '中国科学院生物多样性委员会')
+      .replace(/국립수목원/g, '中国国家植物园')
+      .replace(/한라산/g, '原产地山地')
+      .replace(/제주도/g, '原产地')
+      .replace(/환경부/g, '环境保护部 및 IUCN')
+      .replace(/자생/g, '原生')
+      .replace(/보전 연구/g, '保护研究');
+  }
+  return res;
+}
+

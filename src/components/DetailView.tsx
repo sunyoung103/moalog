@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Specimen, Observation, SpeciesEcologyDetail, UserStats, UserAccount } from '../types';
 import { getApiSource, getIdentificationSourceMetadata, API_SOURCES } from '../utils/apiSources';
 import { isValidEcologyDetail, isSpecimenDataMatch, validateSpecimenEcologyData, isMeaningfulContent } from '../utils/validation';
-import { getSpeciesPrimaryName, getSpeciesEnglishName, formatSpeciesDisplayName } from '../utils/speciesNameHelper';
+import { getSpeciesPrimaryName, getSpeciesEnglishName, formatSpeciesDisplayName, getLocalizedEcologyText } from '../utils/speciesNameHelper';
 import { buildTaxonomySteps } from '../utils/taxonomyRanks';
 import {
   MapPin,
@@ -470,9 +470,10 @@ export const DetailView: React.FC<DetailViewProps> = ({
 
     let isMounted = true;
     setIsLoadingInat(true);
+    const lang = userStats?.language || 'ko';
     
-    // Fetch iNaturalist
-    fetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(query)}&locale=ko`)
+    // Fetch iNaturalist with user selected language locale
+    fetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(query)}&locale=${lang}`)
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted) return;
@@ -508,9 +509,11 @@ export const DetailView: React.FC<DetailViewProps> = ({
         .catch(err => console.error('Failed to fetch GBIF data:', err));
     }
 
-    // Fetch Korean Wikipedia REST summary for authentic taxonomy & species description
-    if (specimen.koreanName) {
-      fetch(`https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(specimen.koreanName)}`)
+    // Fetch Wikipedia REST summary in user language for authentic taxonomy & species description
+    const wikiLang = ['ko', 'en', 'ja', 'zh', 'fr', 'es', 'de'].includes(lang) ? lang : 'en';
+    const wikiQueryName = lang === 'en' ? (specimen.englishName || specimen.scientificName || specimen.koreanName) : (specimen.koreanName || specimen.scientificName);
+    if (wikiQueryName) {
+      fetch(`https://${wikiLang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiQueryName)}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (!isMounted) return;
@@ -616,7 +619,8 @@ export const DetailView: React.FC<DetailViewProps> = ({
       .catch((err) => console.error('Failed to fetch iNaturalist histogram:', err));
 
     // 2. Ancestors taxonomy chain
-    fetch(`https://api.inaturalist.org/v1/taxa/${inatData.id}?locale=ko`)
+    const lang = userStats?.language || 'ko';
+    fetch(`https://api.inaturalist.org/v1/taxa/${inatData.id}?locale=${lang}`)
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted) return;
@@ -796,12 +800,29 @@ export const DetailView: React.FC<DetailViewProps> = ({
   });
 
   // Dynamic API-first ecoDetail with static fallback
-  const ecoDetail = liveEcologyDetail
+  const rawEcoDetail = liveEcologyDetail
     ? {
         ...staticEcoDetail,
         ...liveEcologyDetail,
       }
     : staticEcoDetail;
+
+  const userCountry = userStats?.country || 'KR';
+  const userLang = userStats?.language || 'ko';
+
+  const ecoDetail = useMemo(() => {
+    if (!rawEcoDetail) return rawEcoDetail;
+    return {
+      ...rawEcoDetail,
+      habitat: getLocalizedEcologyText(rawEcoDetail.habitat || '', userCountry, userLang),
+      dietAndBehavior: getLocalizedEcologyText(rawEcoDetail.dietAndBehavior || '', userCountry, userLang),
+      etymology: getLocalizedEcologyText(rawEcoDetail.etymology || '', userCountry, userLang),
+      lynxBirdLifeNote: getLocalizedEcologyText(rawEcoDetail.lynxBirdLifeNote || '', userCountry, userLang),
+      keyIdentification: getLocalizedEcologyText(rawEcoDetail.keyIdentification || '', userCountry, userLang),
+      specialNotes: getLocalizedEcologyText(rawEcoDetail.specialNotes || '', userCountry, userLang),
+      status: getLocalizedEcologyText(rawEcoDetail.status || '', userCountry, userLang),
+    };
+  }, [rawEcoDetail, userCountry, userLang]);
 
   const detailGlobalProfile = useMemo(
     () =>
