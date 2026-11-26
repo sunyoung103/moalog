@@ -41,6 +41,25 @@ export function getExplorerTitleInfo(
       .flatMap((s) => (s.observations || []).map((o) => o.date).filter(Boolean))
       .sort()[0] || '최근';
 
+  // Persona options (탐험가 유형별 칭호)
+  const personaTitleList = [
+    { key: 'general', name: '만능 탐험가' },
+    { key: 'botanist', name: '식물 탐험가' },
+    { key: 'birder', name: '조류 탐험가' },
+    { key: 'entomologist', name: '곤충 탐험가' },
+    { key: 'mammalogist', name: '포유류 탐험가' },
+    { key: 'herpetologist', name: '양서·파충류 탐험가' },
+    { key: 'ichthyologist', name: '어류 탐험가' },
+    { key: 'mycologist', name: '균류 탐험가' },
+  ];
+
+  const personaOptions: ExplorerTitleOption[] = personaTitleList.map((p) => ({
+    id: `persona-${p.key}`,
+    title: `${titleAdj} ${p.name}`,
+    subtitle: `탐험가 유형 칭호 · ${p.name}`,
+    isUnlocked: true,
+  }));
+
   const hiddenOptions: ExplorerTitleOption[] = [
     {
       id: 'title-night-owl',
@@ -53,7 +72,7 @@ export function getExplorerTitleInfo(
     {
       id: 'title-bird-keeper',
       title: '물가의 관찰자',
-      subtitle: '숨겨진 칭호 · 수변 생태계 3회 이상 기록',
+      subtitle: '숨겨진 칭호 · 수변 생태계 2회 이상 기록',
       isHidden: true,
       isUnlocked:
         collected.filter((s) => s.category === 'birds' || s.category === 'fishes' || (s.habitatType || '').includes('하천') || (s.habitatType || '').includes('습지')).length >= 2,
@@ -80,9 +99,10 @@ export function getExplorerTitleInfo(
   const unlockedHidden = hiddenOptions.filter((o) => o.isUnlocked);
   const lockedHiddenCount = hiddenOptions.filter((o) => !o.isUnlocked).length;
 
+  const allAvailableOptions = [defaultOption, ...personaOptions, ...unlockedHidden];
   const selectedId = userStats.selectedTitleId || 'default';
   const activeOption =
-    [defaultOption, ...unlockedHidden].find((o) => o.id === selectedId) || defaultOption;
+    allAvailableOptions.find((o) => o.id === selectedId) || defaultOption;
 
   return {
     currentLevel,
@@ -91,6 +111,7 @@ export function getExplorerTitleInfo(
     activeTitle: activeOption.title,
     activeTitleId: activeOption.id,
     defaultOption,
+    personaOptions,
     unlockedHidden,
     lockedHiddenCount,
   };

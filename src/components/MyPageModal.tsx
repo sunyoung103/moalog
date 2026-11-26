@@ -70,6 +70,7 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
   const [reconsentCommunity, setReconsentCommunity] = useState(false);
   const [isTrashSubPageOpen, setIsTrashSubPageOpen] = useState(false);
   const [isSubManagementSubPageOpen, setIsSubManagementSubPageOpen] = useState(false);
+  const [isAccountSubPageOpen, setIsAccountSubPageOpen] = useState(false);
   const [legalDocType, setLegalDocType] = useState<'terms' | 'privacy' | null>(null);
 
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
@@ -242,7 +243,7 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                 <div className="space-y-2.5">
                   <h3 className="text-[18px] font-bold text-[#202320]">표시할 칭호</h3>
                   <div className="bg-white rounded-[22px] border border-[#e6e9e5] divide-y divide-[#f4f5f4] overflow-hidden">
-                    {[titleInfo.defaultOption, ...titleInfo.unlockedHidden].map((opt) => {
+                    {[titleInfo.defaultOption, ...(titleInfo.personaOptions || []), ...titleInfo.unlockedHidden].map((opt) => {
                       const isSelected = pendingTitleId === opt.id;
                       return (
                         <button
@@ -379,6 +380,93 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          ) : isAccountSubPageOpen ? (
+            /* ================= [SUB-PAGE] Connected Account Info ================= */
+            <motion.div
+              key="account-info-subpage"
+              initial={{ x: 24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex flex-col h-full flex-1 overflow-hidden px-4 pt-3 pb-6"
+            >
+              <div className="flex items-center justify-between pb-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountSubPageOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <span className="text-[16px] font-bold text-[#202320]">연동된 계정 정보</span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-white border border-[#e6e9e5] text-[#202320] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="py-2 space-y-4 flex-1 overflow-y-auto scrollbar-none">
+                <div className="bg-white rounded-[20px] p-5 border border-[#e6e9e5] space-y-4 text-center">
+                  <div className="w-16 h-16 rounded-full bg-[#f4fbdd] border border-[#c4eb43] text-[#6d8911] text-2xl font-bold flex items-center justify-center mx-auto shadow-xs">
+                    {userAccount.name ? userAccount.name[0] : '👤'}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-[18px] font-bold text-[#202320]">{userAccount.name || '탐험가'}</h3>
+                    <p className="text-[13px] text-[#8c948a]">{userAccount.email || '연동된 이메일 없음'}</p>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f4f5f4] text-[#202320] text-[12px] font-bold">
+                    <span>{userAccount.provider === 'apple' ? ' Apple 계정 연동됨' : 'Google 계정 연동됨'}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-[20px] p-4 border border-[#e6e9e5] space-y-3 text-[13px]">
+                  <div className="flex justify-between pb-2.5 border-b border-[#f4f5f4]">
+                    <span className="text-[#8c948a]">연동일</span>
+                    <span className="font-semibold text-[#202320] tabular-nums">{userAccount.connectedAt || '최근'}</span>
+                  </div>
+                  <div className="flex justify-between pb-2.5 border-b border-[#f4f5f4]">
+                    <span className="text-[#8c948a]">계정 유형</span>
+                    <span className="font-semibold text-[#202320]">
+                      {userAccount.isUnder14 ? '만 14세 미만 (보호자 동의)' : '일반 계정'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8c948a]">상태</span>
+                    <span className="font-bold text-[#6d8911] flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 정상 연동 중
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountSubPageOpen(false);
+                        setIsConfirmLogoutOpen(true);
+                      }}
+                      className="w-full h-13 rounded-xl bg-white border border-[#e6e9e5] text-[#202320] font-bold text-[14px] cursor-pointer"
+                    >
+                      로그아웃
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAccountSubPageOpen(false);
+                      setIsConfirmDeleteAccountOpen(true);
+                    }}
+                    className="w-full h-13 rounded-xl bg-white border border-[#fee2e2] text-[#ff5100] font-bold text-[14px] cursor-pointer"
+                  >
+                    계정 삭제
+                  </button>
+                </div>
               </div>
             </motion.div>
           ) : isSubManagementSubPageOpen ? (
@@ -802,7 +890,13 @@ export const MyPageModal: React.FC<MyPageModalProps> = ({
                   <div className="bg-white rounded-[20px] border border-[#e6e9e5] divide-y divide-[#f4f5f4]">
                     <button
                       type="button"
-                      onClick={onOpenLoginModal}
+                      onClick={() => {
+                        if (userAccount.isLoggedIn) {
+                          setIsAccountSubPageOpen(true);
+                        } else {
+                          onOpenLoginModal();
+                        }
+                      }}
                       className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#fbfbfb] transition-colors cursor-pointer"
                     >
                       <span className="text-[15px] font-semibold text-[#202320]">연동된 계정</span>
