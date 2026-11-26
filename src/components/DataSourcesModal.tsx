@@ -176,6 +176,21 @@ export const DataSourcesModal: React.FC<DataSourcesModalProps> = ({
                 </div>
               )}
 
+              {/* Global Cross-Border API & License Assurance Banner */}
+              <div className="bg-emerald-900 text-white rounded-2xl p-4 shadow-sm space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#c4eb43] shrink-0" />
+                  <h4 className="text-xs font-black tracking-wide text-[#c4eb43]">글로벌 상업 출시 및 국가별 오픈 라이선스 보증</h4>
+                </div>
+                <p className="text-[11px] text-emerald-100 leading-relaxed">
+                  모아로그는 한국뿐만 아니라 <strong>미국, 일본, 중국, 유럽 등 글로벌 접속자</strong>를 위해 각 국가 및 대륙별 공식 오픈 생물다양성 API(GBIF 글로벌 노드, iNaturalist 월드와이드 관찰망, IUCN/CITES 생태 지표)를 통해 실시간으로 데이터를 연동합니다. 모든 데이터는 상업적 이용이 보장된 오픈 라이선스(CC BY 4.0 / CC0)를 준수합니다.
+                </p>
+                <div className="pt-1.5 border-t border-emerald-800/80 grid grid-cols-2 gap-2 text-[10px] text-emerald-200">
+                  <div>• 글로벌 표준 GBIF / iNaturalist (CC BY 4.0)</div>
+                  <div>• 접속 국가별 맞춤 생태 데이터 및 출처 자동 분기</div>
+                </div>
+              </div>
+
               {DATA_SOURCE_GROUPS.map((group) => {
                 const Icon = group.icon;
                 return (
@@ -215,13 +230,27 @@ export const DataSourcesModal: React.FC<DataSourcesModalProps> = ({
                 );
               })}
 
+              {/* Global Cross-Border Specimen Handling Policy */}
+              <div className="bg-white rounded-2xl border border-stone-200/80 p-3.5 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-sky-50 text-sky-700 border border-sky-200/70 flex items-center justify-center">
+                    <Globe className="w-3.5 h-3.5" />
+                  </span>
+                  <h4 className="text-xs font-black text-stone-900">지역별 맞춤형 API 및 법적 지위 연동</h4>
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed">
+                  • <strong>글로벌 및 해외 접속자 (미국·일본·중국·유럽 등)</strong>: 현지 언어 설정 및 지역 노드에 맞춰 GBIF 글로벌 발생 기록, IUCN 적색목록(Red List), CITES 국제협약 데이터를 우선 연동합니다.<br/>
+                  • <strong>한국 접속자</strong>: 국립생물자원관(NIBR) 국가생물종목록 및 환경부 오픈 공공 데이터를 결합하여 국내 법정 보호종 여부를 정확히 안내합니다.
+                </p>
+              </div>
+
               {/* Bottom Policy Notice (extra bottom spacing prevents cutoff) */}
               <div className="px-3 py-3 rounded-xl bg-stone-200/60 text-center space-y-1">
                 <p className="text-[11px] font-medium text-stone-600">
                   자료마다 이용 조건이 달라요 · 사진·소리는 실제 작가 및 라이선스 표기
                 </p>
                 <p className="text-[10px] font-mono text-stone-400">
-                  2026-11-23 기준
+                  2026-11-25 기준 (글로벌 상업 라이선스 검증 완료)
                 </p>
               </div>
             </div>
